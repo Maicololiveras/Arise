@@ -1,8 +1,8 @@
 {
   "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
   "python": "3.12.14",
-  "duration_seconds": 12.372,
-  "tests": 50,
+  "duration_seconds": 12.678,
+  "tests": 51,
   "failures": 0,
   "errors": 0,
   "skipped": 0,
@@ -169,6 +169,10 @@
     },
     {
       "test": "test_native_ui.NativeTests.test_enter_sends_shift_enter_adds_line_and_chat_has_space",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_rpc_editor_returns_multiline_text_and_chat_change_closes_dialog",
       "status": "passed"
     },
     {

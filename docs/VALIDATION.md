@@ -2,13 +2,13 @@
 
 Fecha: 2026-10-09. Linux local, Python 3.12, Qt 6.10.3 offscreen, Node 24, Pi 1.1.0 y Gentle Shell 4.0.0.
 
-50 pruebas locales: cero fallos, errores o skips. Informe completo en local-test-results.json. Incluye Pi/Gentle reales con proveedor HTTP local simulado, sesiones y worktrees, crear/aplicar perfil, guardar modelos/esfuerzo, paleta, agentes, estadísticas, diagnóstico y comandos locales sin consumo adicional del modelo. El teclado nativo verifica Enter, Shift+Enter y altura útil del chat. Las pruebas de voz cloud usan servidores WebSocket locales simulados; las de formatos locales verifican el contrato de cada motor.
+51 pruebas locales: cero fallos, errores o skips. Informe completo en local-test-results.json. Incluye Pi/Gentle reales con proveedor HTTP local simulado, sesiones y worktrees, crear/aplicar perfil, guardar modelos/esfuerzo, paleta, agentes, estadísticas, diagnóstico y comandos locales sin consumo adicional del modelo. El teclado nativo verifica Enter, Shift+Enter y altura útil del chat. El editor RPC devuelve texto multilínea y los diálogos del chat anterior se cierran al cambiar de sesión. Las pruebas de voz cloud usan servidores WebSocket locales simulados; las de formatos locales verifican el contrato de cada motor.
 
 El modelo Vosk español oficial se descargó, cargó con Model/KaldiRecognizer reales y procesó PCM de silencio. El ZIP se instaló con su manifiesto SHA-256 y pasó la comprobación de integridad ZIP. No es una prueba de precisión con voz humana. No se accedió a los archivos Whisper de la máquina del usuario; se implementó su detección por las rutas y formatos de su captura.
 
 El helper Gentle AI 4.0.0 Linux se instaló con el instalador oficial y verificación de sus hashes. npm audit sobre las nuevas dependencias fijadas reportó cero vulnerabilidades en esta revisión; no implica ausencia de riesgos desconocidos.
 
-CI: la revisión anterior pasó Docker/Windows en el run 37941203118. La revisión 0.3.0 ejecuta el mismo pipeline, ahora con 50 tests, Vosk incluido, Whisper CPU/.pt y prueba de carga/importación desde el ejecutable congelado. Consulta el run correspondiente al commit actual para sus resultados; no atribuyas la validación anterior al nuevo paquete.
+CI: la revisión anterior pasó Docker/Windows en el run 37941203118. La revisión 0.3.0 ejecuta el mismo pipeline, ahora con 51 tests, Vosk incluido, Whisper CPU/.pt y prueba de carga/importación desde el ejecutable congelado. Consulta el run correspondiente al commit actual para sus resultados; no atribuyas la validación anterior al nuevo paquete.
 
 Docker local no ejecutado: este entorno no tiene Docker. Se usa el contenedor real del workflow de GitHub Actions.
 

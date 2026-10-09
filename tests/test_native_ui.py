@@ -4,7 +4,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QMessageBox, QTextEdit
 from PySide6.QtCore import QTimer, Qt
 from unittest.mock import patch
 from PySide6.QtTest import QTest
@@ -63,3 +63,16 @@ class NativeTests(unittest.TestCase):
             self.assertEqual(panel.input.toPlainText(), "")
         self.assertEqual(panel.mic_button.toolTip(), "Hablar con ARISE")
         self.assertEqual(panel.windowTitle(), "ARISE Assistant")
+
+    def test_rpc_editor_returns_multiline_text_and_chat_change_closes_dialog(self):
+        answers=[]
+        with patch.object(self.r,'answer_dialog',side_effect=lambda record:answers.append(record)):
+            self.c.dialog({'id':'edit-fixture','method':'editor','title':'Perfil JSON','prefill':'uno\ndos'})
+            dialog=self.c.pending_dialogs['edit-fixture']; dialog.findChild(QTextEdit).setPlainText('modelo\nesfuerzo')
+            dialog.accept(); QTest.qWait(80)
+            self.assertEqual(answers[0]['value'],'modelo\nesfuerzo')
+            self.assertFalse(answers[0]['cancelled'])
+            self.c.dialog({'id':'old-chat','method':'input','title':'Perfil'})
+            self.c.close_dialogs(); QTest.qWait(30)
+            self.assertFalse(self.c.pending_dialogs)
+            self.assertEqual(len(answers),1)

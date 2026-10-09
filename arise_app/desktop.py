@@ -471,7 +471,7 @@ class Controller(QObject):
     def __init__(self, app, runtime, orb, start_voice=True):
         super().__init__(); self.app, self.runtime, self.orb = app, runtime, orb
         self.voice = runtime.voice_service if getattr(runtime, "is_remote", False) else VoiceService(runtime); self.workers = []; self.cursor = 0; self.closed = False
-        self.settings_window = None
+        self.settings_window = None; self.pending_dialogs = {}
         self.panel = Panel(self)
         self.wake_requested.connect(self._wake); self.stop_requested.connect(self._stop)
         self.tray = QSystemTrayIcon(icon(), self); self.tray.setToolTip("ARISE · Oye Arise")
@@ -508,7 +508,13 @@ class Controller(QObject):
     def stop(self): self.stop_requested.emit()
 
     def _stop(self):
+        self.close_dialogs()
         self.background(lambda:(self.voice.end_session(),self.runtime.stop()))
+
+    def close_dialogs(self):
+        for dialog in list(self.pending_dialogs.values()):
+            dialog.setProperty("arise_cancelled", True); dialog.reject()
+        self.pending_dialogs.clear()
 
     def toggle_mute(self): self.voice.mute(not self.voice.muted)
 
@@ -558,7 +564,7 @@ class Controller(QObject):
         for event in result["events"]:
             kind, data = event["kind"], event["data"]
             if kind == "conversation_changed":
-                self.panel.reload(); continue
+                self.close_dialogs(); self.panel.reload(); continue
             if event.get("conversation") != self.panel.current_chat: continue
             if kind == "orb":
                 active = data["state"] != "idle"
@@ -593,13 +599,25 @@ class Controller(QObject):
         except ValueError: pass
 
     def dialog(self, data):
+        origin = self.panel.current_chat
+        def submit(dialog, result, value, confirmed=False):
+            if dialog.property("arise_cancelled") or origin != self.panel.current_chat: return
+            record={"id":data["id"],"cancelled":result != QDialog.Accepted,"value":value,"confirmed":confirmed}
+            self.background(lambda:self.runtime.answer_dialog(record))
+        def track(dialog):
+            self.pending_dialogs[data["id"]] = dialog
+            dialog.finished.connect(lambda _:self.pending_dialogs.pop(data["id"],None))
+            dialog.finished.connect(dialog.deleteLater)
+            if data.get("timeoutMs"):
+                timer=QTimer(dialog); timer.setSingleShot(True); timer.timeout.connect(dialog.reject); timer.start(max(1,int(data["timeoutMs"])))
+            dialog.open()
         if data["method"] == "editor":
             dialog = QDialog(self.panel); dialog.setWindowTitle(data.get("title", "ARISE")); dialog.resize(560, 400)
             layout = QVBoxLayout(dialog); editor = QTextEdit(); editor.setPlainText(str(data.get("prefill", ""))); layout.addWidget(editor)
             buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel); layout.addWidget(buttons)
             buttons.accepted.connect(dialog.accept); buttons.rejected.connect(dialog.reject)
-            dialog.finished.connect(lambda result:self.background(lambda:self.runtime.answer_dialog({"id":data["id"],"cancelled":result != QDialog.Accepted,"value":editor.toPlainText()})))
-            dialog.finished.connect(dialog.deleteLater); dialog.open(); return
+            dialog.finished.connect(lambda result:submit(dialog,result,editor.toPlainText()))
+            track(dialog); return
         dialog = QInputDialog(self.panel); dialog.setWindowTitle(data.get("title", "ARISE")); dialog.setLabelText(data.get("message", data.get("title", "Tu respuesta")))
         method = data["method"]
         if method in ("select", "confirm"):
@@ -607,9 +625,8 @@ class Controller(QObject):
         else: dialog.setTextValue(str(data.get("prefill", "")))
         def answer(result):
             value = dialog.textValue()
-            record = {"id": data["id"], "cancelled": result != QDialog.Accepted, "value": value, "confirmed": value == "Sí"}
-            self.background(lambda: self.runtime.answer_dialog(record))
-        dialog.finished.connect(answer); dialog.finished.connect(dialog.deleteLater); dialog.open()
+            submit(dialog,result,value,value == "Sí")
+        dialog.finished.connect(answer); track(dialog)
 
     def open_pi(self):
         if os.name != "nt":
