@@ -2,6 +2,7 @@
 import queue
 import json
 import uuid
+import time
 from contextlib import nullcontext
 import threading
 import unicodedata
@@ -16,7 +17,7 @@ class LocalVoiceBridge:
         self.closed = threading.Event(); self.lock = threading.RLock()
         self.generation = 0; self.cancel_speech = threading.Event(); self.interrupted = False
         self.commands = queue.Queue(maxsize=8); self.responses = queue.Queue(maxsize=8)
-        self.asked = set(); self.front = None; self.front_attempted=False; self.waiting=set()
+        self.asked = set(); self.front = None; self.front_attempted=False; self.front_retry_after=0; self.last_failure=""; self.waiting=set()
         self.delegates=queue.Queue(maxsize=8)
         self.threads = [threading.Thread(target=self._commands,daemon=True,name='arise-local-delegate'),threading.Thread(target=self._responses,daemon=True,name='arise-local-speech'),threading.Thread(target=self._delegates,daemon=True,name='arise-gentle-dispatch')]
         for thread in self.threads: thread.start()
@@ -59,19 +60,32 @@ class LocalVoiceBridge:
                         if self.valid():self.runtime.set_desktop(False)
                     self.speak('Control del equipo desactivado.',epoch);continue
                 if self.answer_question(text): continue
-                if not self.front_attempted:
+                if not self.front_attempted or (not self.front and time.monotonic() >= self.front_retry_after):
                     self.front_attempted=True
                     if self.runtime.storage.config.get('local_dialogue_enabled',False):
                         try:
                             from .local_dialogue import LocalDialogue
                             self.front=LocalDialogue(self.runtime)
-                        except Exception:
-                            self.runtime.emit('notice',{'text':'Modelo conversacional local no disponible; se usa voz directa con la sesión de Gentle. Revisa el servidor local en Voz y audio.'})
+                        except Exception as error:
+                            self.front_retry_after=time.monotonic()+30
+                            self.runtime.emit('notice',{'text':'Modelo conversacional local no disponible: '+str(error)[:300]+' Se intentará usar Gentle.'})
                 if self.front:
-                    self.speak(self.front.respond(text,self.dispatch_front),epoch);continue
+                    try:
+                        self.speak(self.front.respond(text,self.dispatch_front),epoch)
+                        self.last_failure=''
+                    except Exception:
+                        self.front=None
+                        self.front_retry_after=time.monotonic()+30
+                        raise
+                    continue
                 task = self._steer(text)
+                self.last_failure=''
                 threading.Thread(target=self._wait_result,args=(task['task_id'],epoch),daemon=True,name='arise-local-result').start()
-            except Exception as error: self.runtime.emit('error',{'text':str(error)[:300]})
+            except Exception as error:
+                message=str(error)[:300]
+                if message != self.last_failure:
+                    self.runtime.emit('error',{'text':message})
+                    self.last_failure=message
     def _steer(self,instruction):
         with getattr(self.runtime,'transition_lock',nullcontext()):
             if not self.valid():raise RuntimeError('La sesión de voz cambió; la instrucción no se ejecutó.')
@@ -134,7 +148,11 @@ class LocalVoiceBridge:
                 cancel=threading.Event(); self.cancel_speech=cancel
             self.runtime.emit('voice_transcript',{'role':'assistant','text':text})
             try: self.say(text,cancel)
-            except Exception as error: self.runtime.emit('error',{'text':str(error)[:300]})
+            except Exception as error:
+                message=str(error)[:300]
+                if message != self.last_failure:
+                    self.runtime.emit('error',{'text':message})
+                    self.last_failure=message
     def poll_questions(self):
         if not self.valid(): return
         for identity,question in list(self.runtime.dialogs.items()):

@@ -18,6 +18,7 @@ DEFAULTS = {
     "local_stt_model": "", "local_stt_engine": "auto", "piper_model": "", "piper_command": ["piper"],
     "orb_size": 96, "orb_position": None, "pinned": True, "reduced_motion": False, "orb_animation": "sprite",
     "onboarding_complete": False, "local_barge_in": True, "voice_interrupt_threshold": 800,
+    "local_server_command": [],
     "local_dialogue_enabled": True, "local_dialogue_url": "http://127.0.0.1:1235/v1", "local_dialogue_model": "",
     "active_chat": "",
     "gmail_client_file": "",

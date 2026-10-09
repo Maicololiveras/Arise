@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import threading
 import uuid
+from .diagnostics import DiagnosticTail
 
 
 def executable_argv(command):
@@ -34,6 +35,7 @@ class JsonProcess:
         self.write_lock = threading.Lock()
         self.on_event = on_event or (lambda e: None)
         self.closed = False
+        self.diagnostics = DiagnosticTail()
         self.process = subprocess.Popen(
             executable_argv(command), cwd=cwd, env=env,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -43,9 +45,7 @@ class JsonProcess:
         threading.Thread(target=self._drain_error, daemon=True).start()
 
     def _drain_error(self):
-        # Drain diagnostics but never expose raw logs that might contain credentials.
-        while self.process.stderr.read(4096):
-            pass
+        self.diagnostics.drain(self.process.stderr)
 
     def _read(self):
         try:
@@ -66,11 +66,14 @@ class JsonProcess:
                 else:
                     self.on_event(event)
         finally:
+            self.diagnostics.done.wait(.5)
+            code = self.process.poll()
+            detail = f"El proceso se cerró (salida {code if code is not None else 'desconocida'}). {self.diagnostics.hint()}"
             with self.lock:
                 for target in self.pending.values():
-                    target.put({"error": {"message": "El proceso se cerró."}})
+                    target.put({"error": {"message": detail}})
             if not self.closed:
-                self.on_event({"type": "process_closed"})
+                self.on_event({"type": "process_closed", "exit_code": code, "diagnostic": detail})
 
     def send(self, record):
         with self.write_lock:

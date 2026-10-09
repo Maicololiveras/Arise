@@ -5,12 +5,14 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import tomllib
 import urllib.request
 from pathlib import Path
 from .github_access import github_token, github_opener, github_json
 from .downloads import safe_extract
 from .bundle import application_root
 from .processes import executable_argv
+from .diagnostics import checked_run
 LOCK=threading.Lock()
 COMPONENTS={'screenview':('screenview-mcp','screenview_mcp.server:main'),'inputcontrol':('inputcontrol-mcp','inputcontrol_mcp.server:main')}
 
@@ -30,7 +32,7 @@ def _install(runtime):
     if not (python/'python.exe').is_file(): shutil.copytree(source_python,python,dirs_exist_ok=True)
     launcher=tools/'mcp_entry.py'; shutil.copy2(bundle/'mcp_entry.py',launcher)
     if (bundle/'media').is_dir(): shutil.copytree(bundle/'media',tools/'media',dirs_exist_ok=True)
-    records={}; packages=[]
+    records={}; packages=[]; build_requirements=set()
     with tempfile.TemporaryDirectory(dir=tools,prefix='sources-') as temporary:
         for name,(repo,entry) in COMPONENTS.items():
             base='https://api.github.com/repos/Maicololiveras/'+repo
@@ -47,12 +49,20 @@ def _install(runtime):
             extracted=Path(temporary)/repo; safe_extract(archive,extracted)
             roots=[path for path in extracted.iterdir() if path.is_dir() and (path/'pyproject.toml').is_file()]
             if len(roots)!=1: raise RuntimeError('La descarga no contiene el proyecto Python esperado.')
+            metadata=tomllib.loads((roots[0]/'pyproject.toml').read_text(encoding='utf-8'))
+            requirements=metadata.get('build-system',{}).get('requires',['setuptools','wheel'])
+            if not isinstance(requirements,list) or not all(isinstance(item,str) and item and not item.startswith('-') for item in requirements):
+                raise RuntimeError('Requisitos de compilación inválidos en el repositorio de herramientas.')
+            build_requirements.update(requirements)
             packages.append(str(roots[0])+'[windows]'); records[name]={'repo':repo,'commit':commit,'entry':entry}
-        command=[str(python/'python.exe'),'-m','pip','install','--disable-pip-version-check','--no-warn-script-location',*packages]
+        command=[str(python/'python.exe'),'-m','pip','install','--disable-pip-version-check','--no-warn-script-location','--no-build-isolation',*packages]
         env={key:value for key,value in os.environ.items() if key not in ('GITHUB_TOKEN','GH_TOKEN','OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY')}
         env['PYTHONPATH']=''
-        result=subprocess.run(command,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=480,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-        if result.returncode: raise RuntimeError('No se pudieron instalar las dependencias de manos y ojos. Revisa la conexión y vuelve a intentar.')
+        # Embedded Python's _pth ignores pip's isolated-build PYTHONPATH. Install
+        # declared build backends into the owned runtime before building sources.
+        if build_requirements:
+            checked_run([str(python/'python.exe'),'-m','pip','install','--disable-pip-version-check',*sorted(build_requirements)], 'Preparación de compilación de herramientas', env=env, timeout=480, creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        checked_run(command, 'Instalación de manos y ojos', env=env, timeout=480, creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     probe=subprocess.run([str(python/'python.exe'),'-c','import screenview_mcp.server, inputcontrol_mcp.server'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     if probe.returncode: raise RuntimeError('Las herramientas descargadas no pudieron cargarse; no se cambió la configuración.')
     for name in COMPONENTS:

@@ -31,8 +31,10 @@ class LocalDialogue:
         self.history=runtime.storage.voice_history(self.conversation)
         self.tools=[{'type':'function','function':tool} for tool in TOOLS]+[STATUS_TOOL]
         self.seen={}
-        data=self.request('models',timeout=2).get('data',[])
+        data=runtime.model_service.ensure(lambda:self.request('models',timeout=2),config.get('local_server_command',[])).get('data',[])
         if not data:raise RuntimeError('El servidor local no tiene un modelo disponible.')
+        if self.model and self.model not in [row.get('id') for row in data]:
+            raise RuntimeError('El modelo conversacional elegido no figura en el catálogo del servidor local.')
         if not self.model: self.model=data[0]['id']
     def request(self,path,payload=None,timeout=45):
         headers={'Content-Type':'application/json'}

@@ -127,6 +127,7 @@ class Settings(QDialog):
             idx = combo.findData(config[key]); combo.setCurrentIndex(max(0, idx)); self.fields[key] = combo; f.addRow(label, combo)
         self.check_field(f, 'local_dialogue_enabled', 'Conversar con un modelo local mientras Gentle trabaja', config['local_dialogue_enabled'])
         self.text_field(f,'local_dialogue_url','Servidor conversacional local',config['local_dialogue_url'])
+        self.text_field(f,'local_server_command','Arranque del servidor (lista JSON; vacío: externo)',json.dumps(config['local_server_command']))
         self.text_field(f,'local_dialogue_model','Modelo local (vacío: detectar)',config['local_dialogue_model'])
         self.check_field(f, "local_barge_in", "Permitir interrupciones en voz local", config["local_barge_in"])
         threshold=QSpinBox(); threshold.setRange(300,10000); threshold.setValue(config["voice_interrupt_threshold"]); self.fields["voice_interrupt_threshold"]=threshold; f.addRow("Umbral de interrupción local",threshold)
@@ -227,6 +228,7 @@ class Settings(QDialog):
             else: value = field.text().strip()
             changes[key] = value
         changes["pi_command"] = json.loads(changes["pi_command"])
+        changes["local_server_command"] = json.loads(changes["local_server_command"])
         changes["wake_phrases"] = [v.strip().lower() for v in changes["wake_phrases"].split(",") if v.strip()]
         extra = json.loads(changes.pop("extra_mcp"))
         if not isinstance(extra, dict): raise ValueError("MCP adicionales debe ser un objeto JSON")

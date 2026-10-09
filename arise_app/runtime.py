@@ -43,6 +43,8 @@ class Runtime:
         self.pi_state = {}
         self.pi_commands = set()
         self.pi_epoch = 0
+        self.pi_retry_after = 0.0
+        self.pi_failure = ""
         self.settled = threading.Event()
         self.settled.set()
         self.busy = False
@@ -60,6 +62,8 @@ class Runtime:
         self.storage.save_config(self.storage.config)
         self.transition_lock = threading.RLock()
         self.gmail = Gmail(self.storage, self.emit)
+        from .model_service import ModelService
+        self.model_service = ModelService()
         self.memory_path = self.storage.root / "memory.json"
 
     def emit(self, kind, data):
@@ -77,6 +81,7 @@ class Runtime:
         gmail_connected = self.gmail.vault.path.exists()
         return {"version": __version__, "conversation": self.conversation, "busy": self.busy,
             "session": self.sessions.get(self.conversation),
+            "model_service": self.model_service.snapshot(),
             "pi": {"connected": bool(self.pi and self.pi.process.poll() is None),
                 "available": bool(shutil.which(pi_command[0]) or Path(pi_command[0]).is_file()),
                 "state": self.pi_state},
@@ -96,7 +101,7 @@ class Runtime:
                 config[key] = changes[key]
         if not isinstance(config["workspace"], str) or not Path(config["workspace"]).is_dir():
             raise ValueError("La carpeta de trabajo debe existir.")
-        for key in ("pi_command", "pi_extra_args"):
+        for key in ("pi_command", "pi_extra_args", "local_server_command"):
             if not isinstance(config[key], list) or not all(isinstance(x, str) for x in config[key]):
                 raise ValueError(f"{key} debe ser una lista de argumentos.")
         if not config["pi_command"]:
@@ -112,6 +117,8 @@ class Runtime:
         if not all(isinstance(config[k], str) and 0 < len(config[k]) < 120 for k in ("voice", "voice_model")):
             raise ValueError("Modelo o voz inválidos.")
         self.disconnect()
+        self.model_service.close()
+        self.pi_retry_after = 0.0
         self.storage.save_config(config)
         self.sessions.save_preferences(self.conversation)
         if "workspace" in changes and config["workspace"] != self.sessions.get(self.conversation)["workspace"]:
@@ -136,6 +143,11 @@ class Runtime:
         with self.connect_lock:
             if self.pi and self.pi.process.poll() is None:
                 return self.pi_state
+            if time.monotonic() < self.pi_retry_after:
+                raise RuntimeError("Pi está temporalmente pausado tras un fallo. Espera 30 segundos o guarda la configuración corregida. " + self.pi_failure)
+            if self.pi:
+                self.pi.close()
+                self.pi = None
             config = self.storage.config
             if config.get('gentle_path'):
                 from .discovery import installed_pi_version
@@ -185,9 +197,13 @@ class Runtime:
                     self.pi_state["gentleVerified"] = False
                 if self.pi_state.get("sessionFile"):
                     self.storage.set_pi_file(self.conversation, self.pi_state["sessionFile"])
+                self.pi_retry_after = 0.0
+                self.pi_failure = ""
                 self.emit("notice", {"text": "Sesión de Pi conectada. Las extensiones instaladas se cargan desde Pi."})
                 return self.pi_state
-            except Exception:
+            except Exception as error:
+                self.pi_retry_after = time.monotonic() + 30
+                self.pi_failure = str(error)[:600]
                 self.pi.close()
                 self.pi = None
                 raise
@@ -224,8 +240,10 @@ class Runtime:
         elif kind == "agent_settled":
             self.finish_task()
         elif kind == "process_closed":
-            self.finish_task("La sesión de Pi se cerró.")
-            self.emit("error", {"text": "Pi se cerró. Revisa su instalación y el proveedor configurado."})
+            self.pi_failure = event.get("diagnostic", "La sesión de Pi se cerró.")
+            self.pi_retry_after = time.monotonic() + 30
+            self.finish_task(self.pi_failure)
+            self.emit("error", {"text": "Pi: " + self.pi_failure})
         elif kind == "extension_ui_request":
             if event.get("method") in ("select", "confirm", "input", "editor"):
                 self.dialogs[event["id"]] = event
@@ -494,3 +512,4 @@ class Runtime:
     def close(self):
         self.stop()
         self.suspend_chat()
+        self.model_service.close()

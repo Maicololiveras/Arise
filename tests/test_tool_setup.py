@@ -28,8 +28,10 @@ class ToolSetupTests(unittest.TestCase):
                     if '/'+repo+'/zipball/' in url:return io.BytesIO(archives[repo])
                 raise AssertionError(url)
             def metadata(url,opener):return {'sha':'a'*40} if '/commits/' in url else {'default_branch':'master'}
-            with patch('arise_app.tool_setup.application_root',return_value=root/'app'),patch('arise_app.tool_setup.github_opener',return_value=opener),patch('arise_app.tool_setup.github_json',side_effect=metadata),patch('arise_app.tool_setup.subprocess.run',return_value=SimpleNamespace(returncode=0)) as run:
+            with patch('arise_app.tool_setup.checked_run') as checked,patch('arise_app.tool_setup.application_root',return_value=root/'app'),patch('arise_app.tool_setup.github_opener',return_value=opener),patch('arise_app.tool_setup.github_json',side_effect=metadata),patch('arise_app.tool_setup.subprocess.run',return_value=SimpleNamespace(returncode=0)) as run:
                 result=_install(runtime)
+            self.assertEqual(checked.call_count,2)
+            self.assertIn('--no-build-isolation',checked.call_args.args[0])
             self.assertEqual(result['catalogs'],{'screenview':1,'inputcontrol':1})
             self.assertTrue((root/'tools/installed.json').is_file())
             for spec in config['mcp'].values():self.assertEqual(spec['command'][0],str(root/'tools/python/python.exe'));self.assertTrue(spec['enabled'])
