@@ -1,9 +1,27 @@
 param([Parameter(Mandatory=$true)][string]$InstallDir, [string]$DataDir = (Join-Path $env:LOCALAPPDATA 'ARISE-Orb'))
 $ErrorActionPreference = 'Stop'
-$root = [IO.Path]::GetFullPath($InstallDir).TrimEnd('\') + '\'
+# CIM returns long executable paths even when Setup was launched through an 8.3 path.
+Add-Type -TypeDefinition @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public static class ArisePaths {
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    public static extern uint GetLongPathName(string path, StringBuilder result, uint size);
+}
+'@
+function CanonicalPath([string]$path) {
+    $full = [IO.Path]::GetFullPath($path)
+    $buffer = New-Object Text.StringBuilder 32768
+    $length = [ArisePaths]::GetLongPathName($full,$buffer,32768)
+    if($length -gt 0 -and $length -lt 32768) { return $buffer.ToString() }
+    return $full
+}
+$root = (CanonicalPath $InstallDir).TrimEnd('\') + '\' 
 function Snapshot { @(Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,ExecutablePath,CreationDate) }
 function Is-Arise($process) {
     $path = $process.ExecutablePath
+    if($path) { $path = CanonicalPath $path }
     $path -and $path.StartsWith($root,[StringComparison]::OrdinalIgnoreCase) -and ([IO.Path]::GetFileName($path) -in @('ARISE.exe','ARISE-host.exe'))
 }
 $all = Snapshot
