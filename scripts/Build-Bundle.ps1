@@ -23,17 +23,11 @@ $manifest=@{
     pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/cli.js')
     gentle_path=$gentle
     wake_model='@bundle/models/vosk-model-small-es-0.42'
-    versions=@{pi='1.1.0';gentle='4.0.0';arise='0.3.0';vosk='small-es-0.42'}
+    versions=@{pi='1.1.0';gentle='4.0.0';arise='0.4.0';vosk='small-es-0.42'}
     mcp=@{}
 }
 & python (Join-Path $PSScriptRoot 'prepare_voice_pack.py') --destination $bundle --output (Join-Path (Split-Path $Target -Parent) 'ARISE-Voice-Models-es.zip')
 Check-Exit 'Modelo Vosk español integrado y ZIP de voz'
-if($WithTools){
-    if(-not $ReposRoot){throw '-WithTools requiere -ReposRoot con screenview-mcp, inputcontrol-mcp, transcripcion-ia y forge-mcp'}
-    $repos=(Resolve-Path -LiteralPath $ReposRoot).Path
-    foreach($name in @('screenview-mcp','inputcontrol-mcp','transcripcion-ia','forge-mcp')){
-        if(-not(Test-Path -LiteralPath (Join-Path $repos $name))){throw "Falta $name"}
-    }
     # Embedded Python is relocatable; pip-generated .exe launchers are deliberately avoided.
     $pythonRoot=Join-Path $bundle 'python';New-Item -ItemType Directory -Path $pythonRoot -Force | Out-Null
     $archive=Join-Path $env:TEMP ('arise-python-'+[guid]::NewGuid()+'.zip')
@@ -41,8 +35,6 @@ if($WithTools){
     Expand-Archive -LiteralPath $archive -DestinationPath $pythonRoot;Remove-Item -LiteralPath $archive
     @('python312.zip','.','Lib\site-packages','import site') | Set-Content -LiteralPath (Join-Path $pythonRoot 'python312._pth') -Encoding ASCII
     $site=Join-Path $pythonRoot 'Lib\site-packages'
-    & python -m pip install --target $site ("{0}[windows]" -f (Join-Path $repos 'screenview-mcp')) ("{0}[windows]" -f (Join-Path $repos 'inputcontrol-mcp')) ("{0}[local]" -f (Join-Path $repos 'transcripcion-ia'))
-    Check-Exit 'MCP Python'
     $ffmpeg=$null
     if($env:ChocolateyInstall){$ffmpeg=Get-ChildItem -LiteralPath (Join-Path $env:ChocolateyInstall 'lib/ffmpeg') -Filter ffmpeg.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1}
     if(-not $ffmpeg){$command=Get-Command ffmpeg.exe -ErrorAction SilentlyContinue;if($command){$ffmpeg=Get-Item -LiteralPath $command.Source}}
@@ -50,6 +42,17 @@ if($WithTools){
     $media=Join-Path $bundle 'media';New-Item -ItemType Directory -Path $media -Force | Out-Null
     foreach($exe in @('ffmpeg.exe','ffprobe.exe')){Copy-Item -LiteralPath (Join-Path $ffmpeg.DirectoryName $exe) -Destination $media}
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'mcp_entry.py') -Destination (Join-Path $bundle 'mcp_entry.py')
+    & python -m pip install --target $site "pip==25.2" "setuptools==80.9.0" "wheel==0.45.1"
+    Check-Exit "Runtime pip de herramientas"
+
+if($WithTools){
+    if(-not $ReposRoot){throw '-WithTools requiere -ReposRoot con screenview-mcp, inputcontrol-mcp, transcripcion-ia y forge-mcp'}
+    $repos=(Resolve-Path -LiteralPath $ReposRoot).Path
+    foreach($name in @('screenview-mcp','inputcontrol-mcp','transcripcion-ia','forge-mcp')){
+        if(-not(Test-Path -LiteralPath (Join-Path $repos $name))){throw "Falta $name"}
+    }
+    & python -m pip install --target $site ("{0}[windows]" -f (Join-Path $repos 'screenview-mcp')) ("{0}[windows]" -f (Join-Path $repos 'inputcontrol-mcp')) ("{0}[local]" -f (Join-Path $repos 'transcripcion-ia'))
+    Check-Exit 'MCP Python'
     foreach($row in @(@('screenview','screenview_mcp.server:main'),@('inputcontrol','inputcontrol_mcp.server:main'),@('transcripcion','transcripcion_mcp.server:main'))){
         $manifest.mcp[$row[0]]=@{command=@('@bundle/python/python.exe','@bundle/mcp_entry.py',$row[1]);enabled=$true}
     }

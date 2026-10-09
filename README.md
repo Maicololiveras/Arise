@@ -10,7 +10,7 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 
 ## Qué incluye
 
-- Orbe circular de 96 px, arrastrable y configurable entre 48 y 240 px.
+- Orbe persistente de 96 px, arrastrable y configurable entre 48 y 240 px. Doble clic abre el chat; clic sencillo lo oculta. El panel sigue al orbe y se oculta tras 60 segundos de inactividad. La última posición queda guardada.
 - Animación de 24 fotogramas de la esfera ARISE original: atlas PNG de aproximadamente 580 KB, 10 FPS, movimiento reducido y alternativa QPainter.
 - Panel de 360 × 540 px: ARISE Assistant arriba, conversación ampliada y barra inferior de iconos. Enter envía; Shift+Enter añade una línea.
 - Daemon independiente; cerrar el panel no cancela el trabajo. Supervisor de procesos escrito en Rust.
@@ -19,7 +19,7 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 - Proyectos elegidos por carpeta: primer chat en la ruta original; siguientes chats en worktrees Git o copias independientes, con ajustes del agente por chat.
 - Conexión mediante RPC de Pi: sesiones, modelos disponibles, esfuerzo, eventos y diálogos de extensiones.
 - Voz OpenAI Realtime y Gemini Live con adaptadores independientes, audio nativo y delegación a Gentle Shell.
-- Conversación local por turnos: Vosk, faster-whisper o OpenAI Whisper → Pi → voces Windows SAPI o Piper. Detección de modelos existentes; los archivos .pt y las carpetas CTranslate2 usan motores separados.
+- Voz local con captura continua, interrupciones de audio y correcciones en la misma sesión: Vosk, faster-whisper o OpenAI Whisper → Pi → voces Windows SAPI o Piper. Detección de modelos existentes; los archivos .pt y las carpetas CTranslate2 usan motores separados.
 - Vosk español incluido en el instalador y ZIP de modelos separado. Activación local configurable, micrófono, clic y Ctrl+Alt+A.
 - Ctrl+Alt+Esc para cancelar tareas y revocar el control.
 - MCP stdio, importación de configuraciones, catálogo real y contenido de imagen preservado para modelos con visión.
@@ -27,13 +27,15 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 - Archivos dentro del workspace y notas explícitas de Memory; las extensiones de memoria existentes de Pi siguen cargándose.
 - Modo de código opcional para habilitar las herramientas de shell y edición de Pi.
 - Acceso web por texto opcional, con sesión privada, control de origen, CSRF y despliegue detrás de HTTPS.
-- Docker, CI de Windows, empaquetado portable y receta de instalador Inno Setup.
+- Actualizador con novedades desde main, consentimiento, SHA-256 y launcher externo para cerrar procesos y reemplazar la instalación.
+- Descarga/configuración de manos y ojos privados mediante acceso GitHub y Python integrado.
+- Docker, CI de Windows y pruebas de reemplazo con el instalador Inno Setup.
 
 ## Instalar y configurar
 
-[Descargar ARISE 0.3.0 para Windows](https://github.com/Maicololiveras/Arise/actions/runs/37954993176/artifacts/11628570722). Descomprime el artefacto y ejecuta `dist/ARISE-Setup.exe`. Incluye la versión portable y resultados de las pruebas.
+[Descargar ARISE 0.4.0 para Windows](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.0). Ejecuta `ARISE-Setup.exe`; las releases se publican solo después de las pruebas de Docker, Windows y reemplazo de instalación.
 
-El build base incluye Pi 1.1.0, Gentle Shell/Gentle AI 4.0.0, Vosk español y los motores Whisper CPU. Los cuatro repos de MCP son privados: para incluirlos desde GitHub Actions configura el secret `ARISE_COMPONENTS_TOKEN` con lectura de esos repos; sin él, se construye el paquete base y puedes detectar/importar las herramientas ya instaladas. La conexión GitHub de ChatGPT no entrega automáticamente su permiso a Actions.
+La versión 0.4.0 incorpora [versionamiento, actualización y repos privados](docs/UPDATES.md). El primer salto desde 0.3.0 se instala manualmente. El build base incluye Pi 1.1.0, Gentle Shell/Gentle AI 4.0.0, Vosk español y los motores Whisper CPU. Los cuatro repos de MCP son privados: para incluirlos desde GitHub Actions configura el secret `ARISE_COMPONENTS_TOKEN` con lectura de esos repos; sin él, se construye el paquete base y puedes detectar/importar las herramientas ya instaladas. La conexión GitHub de ChatGPT no entrega automáticamente su permiso a Actions.
 
 El workflow de Windows genera `dist/ARISE` y, si Inno Setup está disponible, `ARISE-Setup.exe`. El paquete compila la aplicación e incluye Pi/Gentle Shell; con `-WithTools` añade ScreenView, InputControl, Forge y Transcripción. No requiere instalar Python ni Node en la máquina que recibe el paquete.
 
@@ -52,7 +54,7 @@ Los perfiles de Gentle son globales y pueden fijarse a un clon/repositorio; no c
 
 El paquete guarda los chats bajo la carpeta `chat` junto al ejecutable; en desarrollo usa la carpeta de datos. Los worktrees conservan su rama y sus archivos al cerrar el chat. Git worktrees copian los cambios no confirmados y archivos no ignorados del proyecto; los archivos ignorados por Git, como node_modules, se regeneran en la nueva ruta si se necesitan.
 
-El programa inicia el daemon automáticamente. Sus menús distinguen **Cerrar panel y orbe** de **Salir de ARISE**, que detiene el motor. La activación y los atajos residen en el daemon. El orbe aparece al abrir la vista; si la vista está cerrada, el daemon puede seguir recibiendo voz y ejecutando tareas.
+El programa inicia el daemon automáticamente. El orbe permanece visible hasta **Salir de ARISE**, que detiene el motor; cerrar el chat solo oculta el panel. La activación por voz conserva el panel oculto. La activación y los atajos residen en el daemon. El orbe aparece al abrir la vista; si la vista está cerrada, el daemon puede seguir recibiendo voz y ejecutando tareas.
 
 Para ejecutar desde código en Windows:
 

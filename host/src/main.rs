@@ -1,4 +1,6 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+#[cfg(target_os = "windows")]
+mod windows_job;
 use std::{env, path::PathBuf, process::{Command, ExitCode, Stdio}};
 
 fn parse(args: impl Iterator<Item=String>) -> Result<(PathBuf, PathBuf, Option<String>), String> {
@@ -25,7 +27,14 @@ fn main() -> ExitCode {
     command.arg("--data-dir").arg(data).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     // The engine owns the single-instance lock and task journal. An unexpected
     // exit is not replayed: automatic retry could repeat external side effects.
-    match command.spawn().and_then(|mut child| child.wait()) {
+    match command.spawn().and_then(|mut child| {
+        #[cfg(target_os = "windows")]
+        let _job = match windows_job::Job::own(&child) {
+            Ok(job) => job,
+            Err(error) => {let _=child.kill(); let _=child.wait(); return Err(error);}
+        };
+        child.wait()
+    }) {
         Ok(status) if status.success() => ExitCode::SUCCESS,
         Ok(_) => ExitCode::from(4),
         Err(_) => ExitCode::from(5),

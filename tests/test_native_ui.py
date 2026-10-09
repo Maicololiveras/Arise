@@ -44,7 +44,7 @@ class NativeTests(unittest.TestCase):
         settings.close()
     def test_closing_orb_keeps_application_services_alive(self):
         self.orb.close();QTest.qWait(30)
-        self.assertFalse(self.orb.isVisible())
+        self.assertTrue(self.orb.isVisible())
         self.r.call_tool("memory.save",{"text":"Después de cerrar orbe"})
         self.assertTrue(self.r.memory_path.exists())
         self.assertFalse(self.c.closed)
@@ -76,3 +76,40 @@ class NativeTests(unittest.TestCase):
             self.c.close_dialogs(); QTest.qWait(30)
             self.assertFalse(self.c.pending_dialogs)
             self.assertEqual(len(answers),1)
+
+    def test_double_click_opens_single_click_hides_without_voice(self):
+        self.assertFalse(self.c.panel.isVisible())
+        with patch.object(self.c.voice, 'wake') as wake:
+            QTest.mouseDClick(self.orb, Qt.LeftButton); QTest.mouseRelease(self.orb, Qt.LeftButton); QTest.qWait(20)
+            self.assertTrue(self.c.panel.isVisible())
+            QTest.mouseClick(self.orb, Qt.LeftButton); QTest.qWait(20)
+            self.assertFalse(self.c.panel.isVisible()); self.assertTrue(self.orb.isVisible()); wake.assert_not_called()
+
+    def test_panel_follows_orb_position_is_saved_and_offscreen_is_clamped(self):
+        self.c.show_panel(); self.orb.move(400, 30); QTest.qWait(350)
+        self.assertEqual(self.r.storage.config['orb_position'], [400, 30])
+        self.assertEqual(self.c.panel.x(), self.orb.x()-self.c.panel.width()-12)
+        self.assertEqual(self.c.panel.y(), 30)
+        self.orb.move(-10000,-10000); QTest.qWait(350)
+        self.assertGreaterEqual(self.orb.x(), 0); self.assertGreaterEqual(self.c.panel.x(), 0)
+        self.assertEqual(self.r.storage.config['orb_position'], [self.orb.x(), self.orb.y()])
+
+    def test_idle_hides_chat_after_minute_and_typing_resets_timer(self):
+        self.c.show_panel(); self.c.last_interaction=time.monotonic()-59
+        self.c.hide_if_idle(); self.assertTrue(self.c.panel.isVisible())
+        QTest.keyClicks(self.c.panel.input,'borrador')
+        self.assertLess(time.monotonic()-self.c.last_interaction,1)
+        self.c.last_interaction=time.monotonic()-61; self.c.hide_if_idle()
+        self.assertFalse(self.c.panel.isVisible()); self.assertTrue(self.orb.isVisible())
+        self.c.show_panel(); self.assertEqual(self.c.panel.input.toPlainText(),'borrador')
+
+    def test_unpinned_legacy_config_cannot_hide_persistent_orb(self):
+        self.r.storage.config['pinned']=False; self.c.reconfigure()
+        self.r.orb.update('idle'); self.c.poll()
+        self.assertTrue(self.orb.isVisible())
+
+    def test_voice_wake_does_not_open_chat(self):
+        with patch.object(self.c.voice,'wake',return_value=True) as wake:
+            self.c.wake('hola');QTest.qWait(50)
+            self.assertFalse(self.c.panel.isVisible());self.assertTrue(self.orb.isVisible())
+            wake.assert_called_once_with('hola')

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from . import __version__
 import json
 import os
 import re
@@ -74,7 +75,7 @@ class Runtime:
         config = self.storage.config
         pi_command = config["pi_command"]
         gmail_connected = self.gmail.vault.path.exists()
-        return {"version": "0.3.0", "conversation": self.conversation, "busy": self.busy,
+        return {"version": __version__, "conversation": self.conversation, "busy": self.busy,
             "session": self.sessions.get(self.conversation),
             "pi": {"connected": bool(self.pi and self.pi.process.poll() is None),
                 "available": bool(shutil.which(pi_command[0]) or Path(pi_command[0]).is_file()),
@@ -339,6 +340,7 @@ class Runtime:
                 raise ValueError("Opción inválida.")
             record["value"] = str(value)
         self.pi.send(record)
+        self.emit("dialog_resolved", {"id":identity})
         return {"ok": True}
 
     def switch_conversation(self, identity=None):

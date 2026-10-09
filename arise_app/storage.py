@@ -17,7 +17,7 @@ DEFAULTS = {
     "wake_model": "", "input_device": None, "output_device": None, "voice_timeout": 60,
     "local_stt_model": "", "local_stt_engine": "auto", "piper_model": "", "piper_command": ["piper"],
     "orb_size": 96, "orb_position": None, "pinned": True, "reduced_motion": False, "orb_animation": "sprite",
-    "onboarding_complete": False,
+    "onboarding_complete": False, "local_barge_in": True, "voice_interrupt_threshold": 800,
     "active_chat": "",
     "gmail_client_file": "",
     "mcp": {

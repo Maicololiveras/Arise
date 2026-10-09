@@ -80,14 +80,33 @@ def make_server(runtime, port=0):
                 elif route == "/api/models/wake/download":
                     from .downloads import download_wake
                     value = {"path": download_wake(runtime.storage.root)}
+                elif route in ("/api/updates/check", "/api/updates/download"):
+                    from .updates import check_update, download_update
+                    from .github_access import github_token, github_opener
+                    opener=github_opener(github_token(runtime.credentials))
+                    manifest=check_update(opener=opener)
+                    if route.endswith('/check'): value={'manifest':manifest}
+                    else:
+                        if not manifest or manifest!=data.get('manifest'): raise ValueError('La versión publicada cambió. Busca actualizaciones otra vez.')
+                        value={'path':str(download_update(manifest,runtime.storage.root,opener=opener))}
+                elif route == '/api/tools/setup-desktop':
+                    from .tool_setup import setup_desktop_tools
+                    value=setup_desktop_tools(runtime)
                 elif route == "/api/connect": value = runtime.connect_pi()
                 elif route == "/api/mcp/connect": value = {"tools": runtime.connect_mcp(data["name"]).tools}
                 elif route == "/api/credential":
                     runtime.credentials.save(data["provider"], data["value"], data.get("persist", True)); value = {"saved": True}
+                    if data['provider']=='github-updates':
+                        from .tool_setup import auto_setup
+                        threading.Thread(target=auto_setup,args=(runtime,),daemon=True).start()
                 elif route == "/api/gmail/connect": runtime.gmail.connect(); value = {"connecting": True}
                 elif route == "/api/gmail/disconnect": runtime.gmail.vault.clear(); value = {"connected": False}
-                elif route == "/api/conversation": value = runtime.switch_conversation(data.get("id"))
-                elif route == "/api/project": value = runtime.select_project(data["path"])
+                elif route == "/api/conversation":
+                    if runtime.voice_service: runtime.voice_service.end_session()
+                    value = runtime.switch_conversation(data.get("id"))
+                elif route == "/api/project":
+                    if runtime.voice_service: runtime.voice_service.end_session()
+                    value = runtime.select_project(data["path"])
                 elif route == "/api/session/command": value = runtime.session_command(data["command"])
                 elif route == "/api/dialog": value = runtime.answer_dialog(data)
                 elif route == "/api/approval": runtime.approve(data["id"], data.get("approved")); value = {"ok": True}

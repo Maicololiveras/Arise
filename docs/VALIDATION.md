@@ -1,4 +1,12 @@
-# Evidencia de validación · ARISE 0.3.0
+# Evidencia de validación · ARISE 0.4.0
+
+2026-10-09: 68 pruebas locales aprobadas (sin fallos/errores/skips), y 2 pruebas Rust Linux. Se incluyen clic/doble clic, orbe persistente, seguimiento del panel, guardado de posición, ocultamiento tras un minuto, wake sin abrir chat, SHA/tamaño/origen de actualizaciones desde main, eliminación de Authorization en redirects, cierre de subprocess/descendiente real y conversación local concurrente con correcciones, interrupciones y respuestas a preguntas de Gentle.
+
+El setup de manos/ojos tiene una prueba con repositorios/catálogos simulados; no se descargó su código privado en esta rama pública ni se utilizó una credencial del usuario. El acceso autenticado y el control real de PC necesitan esa cuenta y su equipo. La nueva voz local se prueba con STT/TTS simulado y el contrato de motores; no demuestra latencia/eco con un micrófono real.
+
+El workflow valida Docker, Windows, el ejecutable congelado y una reinstalación real sobre UI/daemon/Pi en ejecución. Solo publica el instalador y el descriptor de main si todos esos checks pasan. Consultar el run de 0.4.0 antes de atribuirle el resultado de 0.3.0.
+
+## Evidencia previa · ARISE 0.3.0
 
 Fecha: 2026-10-09. Linux local, Python 3.12, Qt 6.10.3 offscreen, Node 24, Pi 1.1.0 y Gentle Shell 4.0.0.
 

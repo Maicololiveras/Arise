@@ -1,5 +1,6 @@
 """Long-lived LF-framed JSON RPC subprocesses; no shell prompt injection."""
 from __future__ import annotations
+from . import __version__
 import json
 import os
 import queue
@@ -36,7 +37,7 @@ class JsonProcess:
         self.process = subprocess.Popen(
             executable_argv(command), cwd=cwd, env=env,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), start_new_session=os.name != "nt",
         )
         threading.Thread(target=self._read, daemon=True).start()
         threading.Thread(target=self._drain_error, daemon=True).start()
@@ -98,13 +99,33 @@ class JsonProcess:
 
     def close(self):
         self.closed = True
-        if self.process.poll() is None:
-            self.process.terminate()
-            try:
-                self.process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait(timeout=3)
+        if os.name == "nt":
+            import psutil
+            descendants=[]
+            if self.process.poll() is None:
+                try: descendants=psutil.Process(self.process.pid).children(recursive=True)
+                except psutil.NoSuchProcess: pass
+                self.process.terminate()
+                try: self.process.wait(timeout=3)
+                except subprocess.TimeoutExpired: self.process.kill(); self.process.wait(timeout=3)
+            for child in descendants:
+                try: child.terminate()
+                except psutil.NoSuchProcess: pass
+            _,alive=psutil.wait_procs(descendants,timeout=3)
+            for child in alive:
+                try: child.kill()
+                except psutil.NoSuchProcess: pass
+            psutil.wait_procs(alive,timeout=3)
+        else:
+            import signal
+            try: os.killpg(self.process.pid,signal.SIGTERM)
+            except ProcessLookupError: pass
+            try: self.process.wait(timeout=3)
+            except subprocess.TimeoutExpired: pass
+            # The process group belongs only to this managed JSONL session.
+            try: os.killpg(self.process.pid,signal.SIGKILL)
+            except ProcessLookupError: pass
+            self.process.wait(timeout=3)
         for pipe in (self.process.stdin, self.process.stdout, self.process.stderr):
             try:
                 pipe.close()
@@ -119,7 +140,7 @@ class McpClient:
         try:
             self.rpc.request({"jsonrpc": "2.0", "method": "initialize", "params": {
                 "protocolVersion": "2024-11-05", "capabilities": {},
-                "clientInfo": {"name": "arise", "version": "0.1.0"},
+                "clientInfo": {"name": "arise", "version": __version__},
             }}, timeout=20)
             self.rpc.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
             self.tools = []

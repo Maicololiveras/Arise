@@ -224,6 +224,7 @@ class VoiceService:
         self.whisper = None
         self.whisper_name = None
         self.reload = threading.Event()
+        self.local_bridge = None; self.local_speaking = threading.Event()
 
     def start(self):
         if self.thread and self.thread.is_alive():
@@ -248,6 +249,7 @@ class VoiceService:
 
     def end_session(self):
         self.active.clear()
+        if self.local_bridge: self.local_bridge.interrupt()
         if self.audio:
             self.audio.interrupt()
 
@@ -353,30 +355,50 @@ class VoiceService:
                 from faster_whisper import WhisperModel
                 self.whisper = WhisperModel(model, device="cpu", compute_type="int8")
             self.whisper_name = (engine, model)
+        from .local_voice import LocalVoiceBridge
+        self.local_bridge = bridge = LocalVoiceBridge(self.runtime,self.audio,self._speak_local,self.active,self.shutdown)
         self.runtime.orb.update("listening", microphone=True)
-        if initial:
-            self._local_task(initial)
-        chunks, silent, started = [], 0, False
-        deadline = time.monotonic() + int(c["voice_timeout"])
+        utterances = queue.Queue(maxsize=3)
+        def transcriber():
+            while bridge.valid():
+                try: pcm = utterances.get(timeout=.1)
+                except queue.Empty: continue
+                try:
+                    text = self.transcribe_local(pcm, engine)
+                    if bridge.valid() and text: bridge.submit(text)
+                except Exception as error: self.runtime.emit("error", {"text":str(error)[:300]})
+        worker=threading.Thread(target=transcriber,daemon=True,name="arise-local-stt");worker.start()
+        if initial: bridge.submit(initial)
+        else: bridge.speak("Te escucho.")
+        chunks, silent, voiced, started = [], 0, 0, False
+        preroll=deque(maxlen=10)
+        deadline=time.monotonic()+int(c["voice_timeout"])
         import numpy as np
-        while self.active.is_set() and not self.shutdown.is_set() and time.monotonic() < deadline:
-            pcm = self.audio.read()
-            if not pcm:
-                continue
-            amplitude = np.abs(np.frombuffer(pcm, dtype="<i2").astype(np.float32)).mean()
-            if amplitude > 300:
-                started, silent = True, 0
-                deadline = time.monotonic() + int(c["voice_timeout"])
-            elif started:
-                silent += 1
-            if started:
-                chunks.append(pcm)
-            if started and (silent >= 40 or len(chunks) >= 1500):
-                text = self.transcribe_local(b"".join(chunks), engine)
-                chunks, silent, started = [], 0, False
-                if text:
-                    self.runtime.emit("voice_transcript", {"role": "user", "text": text})
-                    self._local_task(text)
+        try:
+            while bridge.valid():
+                bridge.poll_questions()
+                if self.runtime.busy or self.local_speaking.is_set(): deadline=time.monotonic()+int(c["voice_timeout"])
+                if time.monotonic()>deadline: break
+                pcm=self.audio.read()
+                if not pcm: continue
+                amplitude=np.abs(np.frombuffer(pcm,dtype="<i2").astype(np.float32)).mean()
+                threshold=int(c.get("voice_interrupt_threshold",800)) if self.local_speaking.is_set() else 300
+                if amplitude>threshold:
+                    voiced+=1; silent=0; deadline=time.monotonic()+int(c["voice_timeout"])
+                    if not started and voiced>=4:
+                        started=True; chunks=list(preroll)
+                        if c.get("local_barge_in",True): bridge.interrupt()
+                        self.runtime.orb.update("listening",microphone=True)
+                elif started: silent+=1
+                else: voiced=0
+                if started: chunks.append(pcm)
+                else: preroll.append(pcm)
+                if started and (silent>=25 or len(chunks)>=1500):
+                    try: utterances.put_nowait(b"".join(chunks))
+                    except queue.Full: self.runtime.emit("notice",{"text":"Estoy procesando la voz anterior. Espera un momento."})
+                    chunks,silent,voiced,started=[],0,0,False; preroll.clear()
+        finally:
+            bridge.close(); worker.join(timeout=1); self.local_bridge=None
 
     def transcribe_local(self, pcm, engine):
         if engine == "vosk":
@@ -390,23 +412,20 @@ class VoiceService:
         return " ".join(s.text for s in segments).strip()
 
     def _local_task(self, text):
-        if text.lower().strip() in ("cancela la tarea", "detente", "cancelar"):
-            self.runtime.stop()
-            return
-        task = self.runtime.steer(text)
-        while self.active.is_set() and not self.shutdown.is_set():
-            result = self.runtime.tasks[task["task_id"]]
-            if result["status"] != "running":
-                break
-            self.shutdown.wait(.1)
-        if not self.active.is_set() or self.shutdown.is_set():
-            return
-        reply = result.get("error") or result.get("output")
-        if not reply:
-            return
+        if self.local_bridge: self.local_bridge.submit(text)
+
+    def _speak_local(self, reply, cancel):
+        self.local_speaking.set()
+        try: self._render_local(reply,cancel)
+        finally:
+            self.local_speaking.clear()
+            if self.active.is_set(): self.runtime.orb.update("working" if self.runtime.busy else "listening",microphone=True)
+
+    def _render_local(self, reply, cancel):
+        if cancel.is_set() or not self.active.is_set(): return
         model = self.runtime.storage.config["piper_model"]
         if not model and __import__("os").name == "nt":
-            self._sapi(reply)
+            self._sapi(reply, cancel)
             return
         if not Path(model).is_file():
             raise RuntimeError("Configura un modelo Piper .onnx o deja el campo vacío para usar las voces de Windows.")
@@ -414,24 +433,28 @@ class VoiceService:
             filename = str(Path(temporary) / "reply.wav")
             command = [*self.runtime.storage.config["piper_command"], "--model", model, "--output_file", filename]
             process = subprocess.Popen(executable_argv(command), stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            try:
-                process.communicate(reply[:10000].encode("utf-8"), timeout=60)
-            except subprocess.TimeoutExpired:
-                process.kill(); process.communicate()
-                raise RuntimeError("Piper no respondió a tiempo.") from None
+            process.stdin.write(reply[:10000].encode("utf-8")); process.stdin.close()
+            deadline=time.monotonic()+60
+            while process.poll() is None:
+                if cancel.is_set() or not self.active.is_set() or self.shutdown.is_set():
+                    process.kill(); process.wait(timeout=3); return
+                if time.monotonic()>deadline:
+                    process.kill(); process.wait(timeout=3); raise RuntimeError("Piper no respondió a tiempo.")
+                self.shutdown.wait(.05)
             if process.returncode:
                 raise RuntimeError("Piper no pudo generar audio.")
+            if cancel.is_set() or not self.active.is_set(): return
             with wave.open(filename) as wav:
                 if wav.getnchannels() != 1 or wav.getsampwidth() != 2:
                     raise RuntimeError("Piper debe generar PCM mono de 16 bits.")
                 self.audio.play(wav.readframes(wav.getnframes()), rate=wav.getframerate())
             self.runtime.orb.update("speaking", microphone=True)
-            while self.audio.speaking and self.active.is_set() and not self.shutdown.is_set():
+            while self.audio.speaking and self.active.is_set() and not self.shutdown.is_set() and not cancel.is_set():
                 self.shutdown.wait(.05)
-            self.audio.clear_input()  # avoid transcribing ARISE's own local TTS
+            if cancel.is_set(): self.audio.interrupt()
             self.runtime.orb.update("listening", microphone=True)
 
-    def _sapi(self, text):
+    def _sapi(self, text, cancel):
         import pythoncom
         import win32com.client
         pythoncom.CoInitialize()
@@ -442,10 +465,9 @@ class VoiceService:
                 if selected in token.GetDescription().lower(): speech.Voice = token; break
             self.runtime.orb.update("speaking", microphone=True)
             speech.Speak(text[:10000], 1)
-            while speech.Status.RunningState == 2 and self.active.is_set() and not self.shutdown.is_set():
+            while speech.Status.RunningState == 2 and self.active.is_set() and not self.shutdown.is_set() and not cancel.is_set():
                 self.shutdown.wait(.05)
-            if not self.active.is_set() or self.shutdown.is_set(): speech.Speak("", 3)
-            self.audio.clear_input()
+            if not self.active.is_set() or self.shutdown.is_set() or cancel.is_set(): speech.Speak("", 3)
             self.runtime.orb.update("listening", microphone=True)
         finally: pythoncom.CoUninitialize()
 

@@ -1,3 +1,4 @@
+from . import __version__
 """Resident engine with a single-instance lock and authenticated local UI bridge."""
 import argparse
 import base64
@@ -47,7 +48,7 @@ def ping(descriptor):
     try:
         req = urllib.request.Request(descriptor["url"] + "/api/status", headers={"Authorization": "Bearer " + descriptor["token"]})
         with urllib.request.urlopen(req, timeout=1) as result:
-            return json.load(result).get("version") == "0.2.0"
+            return json.load(result).get("version") == __version__
     except Exception: return False
 
 
@@ -123,10 +124,13 @@ def main():
     if not args.no_audio:
         voice.start(); hotkeys.start()
     temporary = root / "daemon.tmp"
-    temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "pid": os.getpid(), "version": "0.3.0"}))
+    temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "pid": os.getpid(), "version": __version__}))
     if os.name != "nt": temporary.chmod(0o600)
     os.replace(temporary, descriptor_path(root))
     runtime.emit("notice", {"text": "Proceso residente activo. Pi y las herramientas se conectan cuando se necesitan."})
+    if getattr(sys,"frozen",False) and not os.getenv("ARISE_SKIP_NETWORK_SETUP"):
+        from .tool_setup import auto_setup
+        threading.Thread(target=auto_setup,args=(runtime,),daemon=True).start()
     try: server.serve_forever(poll_interval=.1)
     except KeyboardInterrupt: pass
     finally:

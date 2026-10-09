@@ -1,3 +1,4 @@
+from . import __version__
 """ARISE application services. Pi alone owns the task execution loop."""
 import json
 import mimetypes
@@ -33,7 +34,7 @@ class Assistant(Runtime):
 
     def status(self):
         result = super().status()
-        result["version"] = "0.2.0"
+        result["version"] = __version__
         result["orb"] = vars(self.orb.value).copy()
         result["voice"] = {"provider": self.storage.config["voice_provider"], "model": self.storage.config["voice_model"],
             "configured": self.storage.config["voice_provider"] == "local" or bool(self.credentials.get(self.storage.config["voice_provider"]))}
@@ -188,9 +189,10 @@ class Assistant(Runtime):
                 raise ValueError("Proveedor de voz no compatible.")
         if changes.get("thinking", self.storage.config["thinking"]) not in ("off", "minimal", "low", "medium", "high", "xhigh"):
             raise ValueError("Esfuerzo inválido.")
-        for key in ("wake_enabled", "pinned", "reduced_motion", "onboarding_complete"):
+        for key in ("wake_enabled", "pinned", "reduced_motion", "onboarding_complete", "local_barge_in"):
             if key in changes and not isinstance(changes[key], bool):
                 raise ValueError(f"{key} debe ser booleano")
         if "orb_size" in changes and (type(changes["orb_size"]) is not int or not 48 <= changes["orb_size"] <= 240):
             raise ValueError("Tamaño entre 48 y 240.")
+        if 'voice_interrupt_threshold' in changes and (type(changes['voice_interrupt_threshold']) is not int or not 300<=changes['voice_interrupt_threshold']<=10000): raise ValueError('Umbral de interrupción entre 300 y 10000.')
         return super().settings(changes)
