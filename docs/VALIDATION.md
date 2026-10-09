@@ -8,7 +8,7 @@ El modelo Vosk español oficial se descargó, cargó con Model/KaldiRecognizer r
 
 El helper Gentle AI 4.0.0 Linux se instaló con el instalador oficial y verificación de sus hashes. npm audit sobre las nuevas dependencias fijadas reportó cero vulnerabilidades en esta revisión; no implica ausencia de riesgos desconocidos.
 
-CI: la revisión anterior pasó Docker/Windows en el run 37941203118. La revisión 0.3.0 ejecuta el mismo pipeline, ahora con 51 tests, Vosk incluido, Whisper CPU/.pt y prueba de carga/importación desde el ejecutable congelado. Consulta el run correspondiente al commit actual para sus resultados; no atribuyas la validación anterior al nuevo paquete.
+CI 0.3.0: [run 37954993176](https://github.com/Maicololiveras/Arise/actions/runs/37954993176), commit e9ebdb308269fe8434b1e6a2f60a2ff5b17ec791. Docker y Windows completados correctamente: 51 pruebas Python en cada entorno y 2 del supervisor Rust en Windows. Se generó ARISE-Setup.exe y pasó la prueba del host Rust → daemon congelado → Pi/Gentle, memoria y renderer Qt. Desde el ejecutable se cargó Vosk, se importaron faster-whisper y OpenAI Whisper y se detectaron 2 voces SAPI; no se abrió el micrófono. [Descargar artefacto Windows](https://github.com/Maicololiveras/Arise/actions/runs/37954993176/artifacts/11628570722) (incluye instalador, portable y resultados). Los commits posteriores de README/GIF/documentación no cambian el código probado.
 
 Docker local no ejecutado: este entorno no tiene Docker. Se usa el contenedor real del workflow de GitHub Actions.
 

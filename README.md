@@ -31,6 +31,8 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 
 ## Instalar y configurar
 
+[Descargar ARISE 0.3.0 para Windows](https://github.com/Maicololiveras/Arise/actions/runs/37954993176/artifacts/11628570722). Descomprime el artefacto y ejecuta `dist/ARISE-Setup.exe`. Incluye la versión portable y resultados de las pruebas.
+
 El build base incluye Pi 1.1.0, Gentle Shell/Gentle AI 4.0.0, Vosk español y los motores Whisper CPU. Los cuatro repos de MCP son privados: para incluirlos desde GitHub Actions configura el secret `ARISE_COMPONENTS_TOKEN` con lectura de esos repos; sin él, se construye el paquete base y puedes detectar/importar las herramientas ya instaladas. La conexión GitHub de ChatGPT no entrega automáticamente su permiso a Actions.
 
 El workflow de Windows genera `dist/ARISE` y, si Inno Setup está disponible, `ARISE-Setup.exe`. El paquete compila la aplicación e incluye Pi/Gentle Shell; con `-WithTools` añade ScreenView, InputControl, Forge y Transcripción. No requiere instalar Python ni Node en la máquina que recibe el paquete.
