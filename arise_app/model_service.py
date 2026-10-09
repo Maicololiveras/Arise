@@ -1,5 +1,6 @@
 """Own an optional local inference process; readiness requires a model catalog."""
 import threading
+import os
 import time
 import urllib.error
 from .processes import JsonProcess
@@ -56,7 +57,13 @@ class ModelService:
         if not reachable and not self.process:
             if not command:
                 raise RuntimeError("El servidor local no está disponible. Inícialo con un modelo cargado o configura su comando de arranque en Voz y audio.")
-            self.process = JsonProcess(command)
+            env = None
+            if os.name == 'nt':
+                from .bundle import application_root
+                env = dict(os.environ)
+                # The portable app already ships the MSVC runtime needed by Qt.
+                env['PATH'] = str(application_root()/'_internal') + os.pathsep + env.get('PATH','')
+            self.process = JsonProcess(command, env=env)
         self.state = "starting"
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:

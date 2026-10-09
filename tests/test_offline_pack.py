@@ -49,6 +49,7 @@ class OfflinePackTests(unittest.TestCase):
                 config=runtime.storage.config
                 self.assertEqual(result['inference'],'passed')
                 self.assertEqual(config['agent_model'],'keep-this')
+                self.assertTrue(config['onboarding_complete'])
                 self.assertFalse(config['wake_enabled'])
                 self.assertTrue(Path(config['local_stt_model']).is_file())
                 self.assertTrue(Path(config['local_server_command'][0]).is_file())

@@ -110,7 +110,7 @@ def _install(runtime, archive):
             sock.bind(('127.0.0.1',0));port = sock.getsockname()[1]
         command = [str(target/manifest['server']), '--model',str(target/'models/dialogue.gguf'),
             '--alias','arise-local','--host','127.0.0.1','--port',str(port),'--ctx-size','8192','--jinja','--n-gpu-layers','0']
-        runtime.settings({'voice_provider':'local','local_stt_engine':'openai-whisper',
+        runtime.settings({'onboarding_complete':True,'voice_provider':'local','local_stt_engine':'openai-whisper',
             'local_stt_model':str(target/'models/small.pt'),'wake_model':str(target/'models'/VOSK_NAME),
             'local_dialogue_enabled':True,'local_dialogue_url':f'http://127.0.0.1:{port}/v1',
             'local_dialogue_model':'arise-local','local_server_command':command})
