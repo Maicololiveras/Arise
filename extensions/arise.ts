@@ -8,7 +8,7 @@ export default function arise(pi: ExtensionAPI) {
   async function api(path: string, body?: unknown, signal?: AbortSignal) {
     const response = await fetch(`${url}/api${path}`, {
       method: body === undefined ? "GET" : "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "X-Arise-Conversation": process.env.ARISE_CONVERSATION || "" },
       body: body === undefined ? undefined : JSON.stringify(body), signal,
     });
     const result = await response.json();

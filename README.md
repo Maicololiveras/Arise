@@ -13,6 +13,8 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 - Panel de 340 × 500 px, conversación, correcciones de tareas, detener y revisión de acciones.
 - Daemon independiente; cerrar el panel no cancela el trabajo. Supervisor de procesos escrito en Rust.
 - Detección de Pi, paquetes Gentle Shell instalados y rutas de configuración existentes.
+- Shell invisible por chat con Pi y Gentle Shell; carpetas chat/chat-0001, chat-0002 y sesiones reanudables con --continue.
+- Proyectos elegidos por carpeta: primer chat en la ruta original; siguientes chats en worktrees Git o copias independientes, con ajustes del agente por chat.
 - Conexión mediante RPC de Pi: sesiones, modelos disponibles, esfuerzo, eventos y diálogos de extensiones.
 - Voz OpenAI Realtime y Gemini Live con adaptadores independientes, audio nativo y delegación a Gentle Shell.
 - Alternativa local: Whisper → Pi → voces Windows SAPI o Piper. Funciona por turnos; no equivale a voz a voz nativa.
@@ -27,6 +29,8 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 
 ## Instalar y configurar
 
+El build base incluye Pi/Gentle Shell. Los cuatro repos de MCP son privados: para incluirlos desde GitHub Actions configura el secret `ARISE_COMPONENTS_TOKEN` con lectura de esos repos; sin él, se construye el paquete base y puedes detectar/importar las herramientas ya instaladas. La conexión GitHub de ChatGPT no entrega automáticamente su permiso a Actions.
+
 El workflow de Windows genera `dist/ARISE` y, si Inno Setup está disponible, `ARISE-Setup.exe`. El paquete compila la aplicación e incluye Pi/Gentle Shell; con `-WithTools` añade ScreenView, InputControl, Forge y Transcripción. No requiere instalar Python ni Node en la máquina que recibe el paquete.
 
 1. Instala ARISE y abre **Configurar ARISE**.
@@ -35,6 +39,12 @@ El workflow de Windows genera `dist/ARISE` y, si Inno Setup está disponible, `A
 4. Prueba la conversación. La suscripción del agente y la API de voz son conexiones distintas; elegir un proveedor en la interfaz no concede acceso a sus modelos.
 5. Conecta las herramientas y, si deseas activación por voz, descarga/selecciona Vosk, ajusta la frase y activa la escucha local. Desactivada, el micrófono permanece cerrado en reposo.
 6. Para Gmail, selecciona un JSON OAuth de Google de tipo Desktop con la API Gmail habilitada y conecta tu cuenta. La distribución pública de ese conector puede requerir verificación por Google.
+
+En el panel, **Carpeta** añade un proyecto y **Nueva** crea otro chat. El selector muestra solo los chats de ese proyecto. Cambiar de chat cancela el trabajo activo, guarda sesión e historial, y cierra sus procesos. Al volver, el launcher invisible `gentle-shell.mjs` reanuda la sesión exacta con `--continue --session`, dentro de su ruta. No se mantienen shells inactivas consumiendo recursos. El cierre usa abort RPC y cierre de pipes, el equivalente funcional a cancelar y salir sin simular teclas en una terminal.
+
+El menú **/** envía `/gentle:profiles`, `/gentle:models`, `/gentle:status` y `/gentle:commands` directamente a la shell activa. Las preguntas de las extensiones se renderizan en la UI. El modelo y los conectores del agente se guardan por chat. Las credenciales y la voz pertenecen al daemon.
+
+El paquete guarda los chats bajo la carpeta `chat` junto al ejecutable; en desarrollo usa la carpeta de datos. Los worktrees conservan su rama y sus archivos al cerrar el chat. Git worktrees copian los cambios no confirmados y archivos no ignorados del proyecto; los archivos ignorados por Git, como node_modules, se regeneran en la nueva ruta si se necesitan.
 
 El programa inicia el daemon automáticamente. Sus menús distinguen **Cerrar panel y orbe** de **Salir de ARISE**, que detiene el motor. La activación y los atajos residen en el daemon. El orbe aparece al abrir la vista; si la vista está cerrada, el daemon puede seguir recibiendo voz y ejecutando tareas.
 

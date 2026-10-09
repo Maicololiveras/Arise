@@ -22,6 +22,8 @@ jobs:
   windows:
     runs-on: windows-latest
     timeout-minutes: 45
+    env:
+      COMPONENTS_AVAILABLE: ${{ secrets.ARISE_COMPONENTS_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -49,26 +51,37 @@ jobs:
       - name: Rust supervisor tests
         run: cargo test --locked --manifest-path host/Cargo.toml
       - uses: actions/checkout@v4
+        if: env.COMPONENTS_AVAILABLE == 'true'
         with:
+          token: ${{ secrets.ARISE_COMPONENTS_TOKEN }}
           repository: Maicololiveras/screenview-mcp
           path: components/screenview-mcp
       - uses: actions/checkout@v4
+        if: env.COMPONENTS_AVAILABLE == 'true'
         with:
+          token: ${{ secrets.ARISE_COMPONENTS_TOKEN }}
           repository: Maicololiveras/inputcontrol-mcp
           path: components/inputcontrol-mcp
       - uses: actions/checkout@v4
+        if: env.COMPONENTS_AVAILABLE == 'true'
         with:
+          token: ${{ secrets.ARISE_COMPONENTS_TOKEN }}
           repository: Maicololiveras/transcripcion-ia
           path: components/transcripcion-ia
       - uses: actions/checkout@v4
+        if: env.COMPONENTS_AVAILABLE == 'true'
         with:
+          token: ${{ secrets.ARISE_COMPONENTS_TOKEN }}
           repository: Maicololiveras/forge-mcp
           path: components/forge-mcp
       - name: Installer compiler
-        run: choco install innosetup --no-progress -y
+        run: choco install innosetup ffmpeg --no-progress -y
       - name: Build native Windows executable, tools and host
-        run: ./scripts/Build-Windows.ps1 -WithTools -ReposRoot ./components
+        run: |
+          if ($env:COMPONENTS_AVAILABLE -eq 'true') { ./scripts/Build-Windows.ps1 -WithTools -ReposRoot ./components }
+          else { ./scripts/Build-Windows.ps1; Write-Host 'Base build includes Pi/Gentle; private MCP repos need ARISE_COMPONENTS_TOKEN.' }
       - name: Real bundled MCP catalog smoke tests
+        if: env.COMPONENTS_AVAILABLE == 'true'
         run: python scripts/smoke_bundle.py dist/ARISE
       - name: Shipped Rust host, frozen daemon and native renderer
         run: python scripts/smoke_frozen.py dist/ARISE

@@ -27,3 +27,9 @@ Las acciones de escritorio de InputControl/Forge se serializan. El control está
 Las credenciales se guardan en DPAPI o durante la sesión en memoria. Pi conserva sus mecanismos de /login y proveedores configurados por el usuario. El modo Work bloquea shell y edición de Pi; Code permite sus herramientas cuando se habilita explícitamente en ajustes.
 
 El puente interno rechaza Origin de navegadores y exige token por petición. El gateway opcional tiene su propia contraseña y cookies; no entrega al navegador el token interno ni las claves de los proveedores.
+
+## Proyectos y shells
+
+SQLite indexa proyectos y chats. Cada carpeta chat contiene session.json, preferences.json, messages.json y session/ con el historial JSONL original de Pi. Solo el chat seleccionado mantiene un proceso RPC. Al suspenderlo se aborta la tarea, se verifica el archivo de sesión, se guarda el modelo actual y se cierran Pi y los MCP. El cliente renderiza exclusivamente eventos del chat elegido; la extensión etiqueta sus solicitudes con el ID del chat para rechazar llamadas de una sesión antigua.
+
+Los nuevos chats usan git worktree con una rama arise/chat-ID. Sin Git se crea una copia. No se borra ni se fusiona un worktree al cerrar un chat. El launcher de Gentle importa Pi en el mismo proceso Node; no añade procesos hijos huérfanos. --continue se combina con el archivo explícito del chat, para no retomar accidentalmente otra conversación.

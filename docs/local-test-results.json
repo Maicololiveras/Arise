@@ -1,8 +1,8 @@
 {
   "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
   "python": "3.12.14",
-  "duration_seconds": 8.423,
-  "tests": 42,
+  "duration_seconds": 9.522,
+  "tests": 45,
   "failures": 0,
   "errors": 0,
   "skipped": 0,
@@ -157,6 +157,18 @@
     },
     {
       "test": "test_pi_real.RealPiTests.test_real_pi_invokes_arise_extension_and_persists_memory",
+      "status": "passed"
+    },
+    {
+      "test": "test_projects.ProjectTests.test_git_worktrees_copy_dirty_files_and_keep_chats_isolated",
+      "status": "passed"
+    },
+    {
+      "test": "test_projects.ProjectTests.test_plain_directory_copies_and_active_chat_survives_restart",
+      "status": "passed"
+    },
+    {
+      "test": "test_projects.ProjectTests.test_switch_aborts_hidden_process_and_checkpoints_chat",
       "status": "passed"
     },
     {

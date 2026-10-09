@@ -12,6 +12,7 @@ from pathlib import Path
 from .processes import JsonProcess, McpClient
 from .gmail import Gmail, remote_json
 from .storage import Storage
+from .projects import ProjectSessions
 
 ROOT = Path(__file__).resolve().parents[1]
 SYSTEM = """Eres ARISE, el asistente personal de Windows de Maix. Responde en español con claridad.
@@ -39,6 +40,7 @@ class Runtime:
         self.mcp = {}
         self.pi = None
         self.pi_state = {}
+        self.pi_commands = set()
         self.pi_epoch = 0
         self.settled = threading.Event()
         self.settled.set()
@@ -49,6 +51,13 @@ class Runtime:
         self.current_task = None
         self.current_message = ""
         self.conversation = self.storage.conversations()[0]["id"] if self.storage.conversations() else self.storage.create_conversation()
+        self.sessions = ProjectSessions(self.storage)
+        saved = self.storage.config.get("active_chat")
+        if saved and self.sessions.get(saved): self.conversation = saved
+        self.storage.config.update(self.sessions.preferences(self.conversation))
+        self.storage.config.update(workspace=self.sessions.get(self.conversation)["workspace"], active_chat=self.conversation)
+        self.storage.save_config(self.storage.config)
+        self.transition_lock = threading.RLock()
         self.gmail = Gmail(self.storage, self.emit)
         self.memory_path = self.storage.root / "memory.json"
 
@@ -66,6 +75,7 @@ class Runtime:
         pi_command = config["pi_command"]
         gmail_connected = self.gmail.vault.path.exists()
         return {"version": "0.2.0", "conversation": self.conversation, "busy": self.busy,
+            "session": self.sessions.get(self.conversation),
             "pi": {"connected": bool(self.pi and self.pi.process.poll() is None),
                 "available": bool(shutil.which(pi_command[0]) or Path(pi_command[0]).is_file()),
                 "state": self.pi_state},
@@ -102,6 +112,9 @@ class Runtime:
             raise ValueError("Modelo o voz inválidos.")
         self.disconnect()
         self.storage.save_config(config)
+        self.sessions.save_preferences(self.conversation)
+        if "workspace" in changes and config["workspace"] != self.sessions.get(self.conversation)["workspace"]:
+            self.select_project(config["workspace"])
         return self.status()
 
     def connect_mcp(self, name):
@@ -123,12 +136,15 @@ class Runtime:
             if self.pi and self.pi.process.poll() is None:
                 return self.pi_state
             config = self.storage.config
-            command = [*config["pi_command"], "--mode", "rpc", "--extension", str(Path(__file__).parent / "resources" / "arise.ts"),
-                "--append-system-prompt", SYSTEM, "--session-dir", str(self.storage.root / "pi-sessions"), *config["pi_extra_args"]]
+            launcher = config["pi_command"]
+            if len(launcher) == 2 and Path(launcher[0]).stem.lower() == "node" and launcher[1].endswith(".js"):
+                launcher = [launcher[0], str(Path(__file__).parent / "resources" / "gentle-shell.mjs"), launcher[1]]
+            command = [*launcher, "--mode", "rpc", "--extension", str(Path(__file__).parent / "resources" / "arise.ts"),
+                "--append-system-prompt", SYSTEM, "--session-dir", str(Path(self.sessions.get(self.conversation)["folder"]) / "session"), *config["pi_extra_args"]]
             row = next(c for c in self.storage.conversations() if c["id"] == self.conversation)
             if row.get("pi_file") and Path(row["pi_file"]).is_file():
-                command += ["--session", row["pi_file"]]
-            env = {**os.environ, "ARISE_URL": self.url, "ARISE_TOKEN": self.token, "PI_TELEMETRY": "0", "ARISE_CODE_ENABLED": "1" if config.get("code_enabled") else "0"}
+                command += ["--continue", "--session", row["pi_file"]]
+            env = {**os.environ, "ARISE_URL": self.url, "ARISE_TOKEN": self.token, "ARISE_CONVERSATION": self.conversation, "PI_TELEMETRY": "0", "ARISE_CODE_ENABLED": "1" if config.get("code_enabled") else "0"}
             self.pi_epoch += 1
             epoch = self.pi_epoch
             if hasattr(self, "credentials"):
@@ -153,6 +169,7 @@ class Runtime:
                 self.pi_state = self.pi.request({"type": "get_state"}, timeout=35).get("data", {})
                 try:
                     commands = self.pi.request({"type": "get_commands"}, timeout=5).get("data", {}).get("commands", [])
+                    self.pi_commands = {c["name"] for c in commands if c.get("source") == "extension"}
                     self.pi_state["gentleVerified"] = any(c.get("name") == "gentle:status" for c in commands)
                 except Exception:
                     self.pi_state["gentleVerified"] = False
@@ -219,6 +236,10 @@ class Runtime:
         self.emit("settled", {})
 
     def prompt(self, text):
+        with self.transition_lock:
+            return self._prompt(text)
+
+    def _prompt(self, text):
         text = str(text).strip()
         if not text or len(text) > 30000:
             raise ValueError("Escribe un mensaje de hasta 30.000 caracteres.")
@@ -237,19 +258,33 @@ class Runtime:
             self.connect_pi()
             self.storage.message(self.conversation, "user", text)
             self.emit("user", {"text": text})
-            result = self.pi.request({"type": "prompt", "message": text})
-            # Pi can create its session file lazily after the first accepted prompt.
-            state = self.pi.request({"type": "get_state"}).get("data", {})
-            state["gentleVerified"] = self.pi_state.get("gentleVerified", False)
-            self.pi_state = state
-            if state.get("sessionFile"):
-                self.storage.set_pi_file(self.conversation, state["sessionFile"])
-            if result.get("data", {}).get("disposition") == "handled":
-                self.finish_task()
+            command_name = text.split()[0][1:] if text.startswith("/") else ""
+            registered = command_name in self.pi_commands
+            process, epoch = self.pi, self.pi_epoch
+            if registered:
+                threading.Thread(target=self._submit_command, args=(text, identity, process, epoch), daemon=True).start()
+            else:
+                self._submit_prompt(text, identity, process, epoch, False)
             return {"task_id": identity}
         except Exception as error:
             self.finish_task(str(error))
             raise
+
+    def _submit_command(self, text, identity, process, epoch):
+        try: self._submit_prompt(text, identity, process, epoch, True)
+        except Exception as error:
+            if epoch == self.pi_epoch and self.current_task == identity:
+                self.finish_task(str(error)); self.emit("error", {"text": str(error)[:300]})
+
+    def _submit_prompt(self, text, identity, process, epoch, registered):
+        result = process.request({"type": "prompt", "message": text}, timeout=600 if registered else 30)
+        state = process.request({"type": "get_state"}).get("data", {})
+        if epoch != self.pi_epoch: return
+        state["gentleVerified"] = self.pi_state.get("gentleVerified", False)
+        self.pi_state = state
+        if state.get("sessionFile"): self.storage.set_pi_file(self.conversation, state["sessionFile"])
+        handled = result.get("data", {}).get("disposition") == "handled" or (registered and not state.get("isStreaming") and not state.get("isCompacting"))
+        if handled and self.current_task == identity: self.finish_task()
 
     def stop(self):
         for dialog in list(self.dialogs):
@@ -294,16 +329,58 @@ class Runtime:
         return {"ok": True}
 
     def switch_conversation(self, identity=None):
-        if self.busy:
-            raise RuntimeError("Detén el trabajo antes de cambiar de conversación.")
-        if identity and not any(c["id"] == identity for c in self.storage.conversations()):
-            raise ValueError("Conversación desconocida.")
-        if self.desktop:
-            self.stop()
-        self.disconnect_pi()
-        self.conversation = identity or self.storage.create_conversation()
-        self.dialogs.clear()
-        return {"id": self.conversation, "messages": self.storage.messages(self.conversation)}
+        with self.transition_lock:
+            if identity == self.conversation: return {"id": identity, "messages": self.storage.messages(identity)}
+            if identity and not self.sessions.get(identity): raise ValueError("Conversación desconocida.")
+            self.suspend_chat()
+            if not identity:
+                project = next(p for p in self.sessions.projects() if p["id"] == self.sessions.get(self.conversation)["project"])
+                identity = self.storage.create_conversation()
+                try: self.sessions.attach(identity, project)
+                except Exception:
+                    with self.storage.lock, self.storage.db: self.storage.db.execute("DELETE FROM conversations WHERE id=?", (identity,))
+                    raise
+            self.conversation = identity
+            self.storage.save_config({**self.storage.config, **self.sessions.preferences(identity), "workspace": self.sessions.get(identity)["workspace"], "active_chat": identity})
+            self.dialogs.clear()
+            self.emit("conversation_changed", {"id": identity})
+            return {"id": identity, "messages": self.storage.messages(identity), "session": self.sessions.get(identity)}
+
+    def suspend_chat(self):
+        if self.busy or self.desktop or self.dialogs: self.stop()
+        row = next(c for c in self.storage.conversations() if c["id"] == self.conversation)
+        if self.pi and self.pi.process.poll() is None:
+            try:
+                state = self.pi.request({"type": "get_state"}, timeout=5).get("data", {})
+                model = state.get("model", {})
+                if model.get("provider") and model.get("id"):
+                    self.storage.config.update(agent_provider=model["provider"], agent_model=model["id"])
+                if state.get("thinkingLevel"): self.storage.config["thinking"] = state["thinkingLevel"]
+                if state.get("sessionFile"):
+                    row["pi_file"] = state["sessionFile"]
+                    self.storage.set_pi_file(self.conversation, row["pi_file"])
+            except Exception: pass
+        self.sessions.checkpoint(self.conversation, row.get("pi_file"))
+        self.disconnect()
+
+    def select_project(self, path):
+        with self.transition_lock:
+            project = self.sessions.project(path)
+            chats = self.sessions.chats(project["id"])
+            if chats: return self.switch_conversation(chats[-1]["id"])
+            self.suspend_chat()
+            identity = self.storage.create_conversation()
+            self.sessions.attach(identity, project, isolated=False)
+            return self.switch_conversation(identity)
+
+    def session_command(self, command):
+        if not isinstance(command, str) or not command.startswith("/") or len(command) > 500:
+            raise ValueError("Escribe un comando de la sesión, por ejemplo /gentle:profiles")
+        return self.prompt(command)
+
+    def project_catalog(self):
+        session = self.sessions.get(self.conversation)
+        return {"projects": self.sessions.projects(), "active": session, "chats": self.sessions.chats(session["project"])}
 
     def tool_catalog(self):
         tools = [
@@ -396,4 +473,4 @@ class Runtime:
 
     def close(self):
         self.stop()
-        self.disconnect()
+        self.suspend_chat()

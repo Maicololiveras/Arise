@@ -19,3 +19,9 @@ Windows: el workflow ejecuta pruebas nativas offscreen, compila el host Rust, co
 Cuentas externas: NO UTILIZADAS. No se llamó a un modelo cloud, no se inició OAuth real y no se envió correo. Los adaptadores están implementados; su validación con credenciales reales y dispositivos debe completarse antes de llamar a esta versión una distribución final.
 
 Pendientes de distribución: certificado de firma, actualización firmada, validación en máquina limpia, pruebas de activación/eco y aprobación OAuth pública de Gmail cuando aplique. La configuración VPS/TLS está documentada, no desplegada.
+
+Actualización de proyectos: 45 pruebas locales, incluyendo worktrees reales con cambios sin commit, cierre de procesos, recuperación del chat activo, reanudación del mismo sessionId de Pi y comando /gentle:status sin invocar al modelo.
+
+CI Windows del run 37938061727: pasaron 42 pruebas y dos pruebas de Rust. El empaquetado con herramientas se detuvo al intentar leer repos privados desde Actions. El build base y la opción ARISE_COMPONENTS_TOKEN separan ese requisito de acceso.
+
+Auditoría npm de Pi 0.85.1: tres findings (dos high y uno moderate) en dependencias fijadas por su shrinkwrap, incluidos undici y brace-expansion. Requieren actualizar Pi y revalidar Gentle/protocolo; no se considera esta versión una distribución final endurecida.

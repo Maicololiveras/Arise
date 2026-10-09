@@ -64,6 +64,22 @@ class RealPiTests(unittest.TestCase):
                 self.assertEqual(len(requests), 2)
                 self.assertIn("arise_call", [t["function"]["name"] for t in requests[0]["tools"]])
                 self.assertEqual([m["role"] for m in runtime.storage.messages(runtime.conversation)], ["user", "assistant"])
+                original = runtime.conversation
+                session_id = runtime.pi_state["sessionId"]
+                old_process = runtime.pi.process
+                runtime.switch_conversation()
+                self.assertIsNotNone(old_process.poll())
+                with patch.dict(os.environ, {"PI_CODING_AGENT_DIR": str(agent), "PI_OFFLINE": "1", "PI_TELEMETRY": "0"}):
+                    runtime.switch_conversation(original)
+                    runtime.connect_pi()
+                self.assertEqual(runtime.pi_state["sessionId"], session_id)
+                self.assertIn("--continue", runtime.pi.process.args)
+                self.assertIn("gentle-shell.mjs", " ".join(runtime.pi.process.args))
+                self.assertEqual(len(runtime.storage.messages(original)), 2)
+                result = runtime.session_command("/gentle:status")
+                self.assertTrue(runtime.settled.wait(10), "El comando de Gentle no terminó")
+                self.assertEqual(runtime.tasks[result["task_id"]]["status"], "done")
+                self.assertEqual(len(requests), 2, "El comando se envió al modelo en lugar de Gentle")
             finally:
                 runtime.close(); runtime.storage.db.close(); bridge.shutdown(); bridge.server_close()
         model.shutdown(); model.server_close()

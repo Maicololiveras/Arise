@@ -82,7 +82,12 @@ class RemoteAssistant:
         result = self.request("config", changes); self.storage.config = self.request("config"); return result
     def steer(self, text): return self.request("prompt", {"text": text})
     def stop(self): return self.request("stop", {})
-    def switch_conversation(self, identity=None): return self.request("conversation", {"id": identity})
+    def switch_conversation(self, identity=None):
+        result = self.request("conversation", {"id": identity}); self.storage.config = self.request("config"); return result
+    def project_catalog(self): return self.request("projects")
+    def select_project(self, path):
+        result = self.request("project", {"path": path}); self.storage.config = self.request("config"); return result
+    def session_command(self, command): return self.request("session/command", {"command": command})
     def answer_dialog(self, data): return self.request("dialog", data)
     def approve(self, identity, approved): return self.request("approval", {"id": identity, "approved": approved})
     def set_desktop(self, enabled): return self.request("desktop", {"enabled": enabled})

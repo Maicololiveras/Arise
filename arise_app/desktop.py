@@ -284,6 +284,13 @@ class Panel(QWidget):
         title = QLabel("ARISE"); title.setObjectName("title"); layout.addWidget(title)
         self.status = QLabel("Oye Arise · Ctrl+Alt+A para hablar"); self.status.setWordWrap(True); layout.addWidget(self.status)
         self.privacy = QLabel("Micrófono apagado · Control apagado"); self.privacy.setWordWrap(True); layout.addWidget(self.privacy)
+        row = QHBoxLayout(); layout.addLayout(row)
+        self.projects = QComboBox(); self.projects.currentIndexChanged.connect(self.select_project); row.addWidget(self.projects, 1)
+        b = QPushButton("Carpeta"); b.clicked.connect(self.open_project); row.addWidget(b)
+        commands = QPushButton("/"); menu = QMenu(commands)
+        for command in ("/gentle:profiles", "/gentle:models", "/gentle:status", "/gentle:commands"):
+            menu.addAction(command, lambda checked=False, value=command: self.controller.background(lambda: self.runtime.session_command(value)))
+        commands.setMenu(menu); row.addWidget(commands)
         self.history = QTextBrowser(); self.history.setOpenExternalLinks(False); layout.addWidget(self.history)
         row = QHBoxLayout(); layout.addLayout(row)
         self.conversations = QComboBox(); self.conversations.setMinimumWidth(80); self.conversations.setMaximumWidth(170); self.conversations.currentIndexChanged.connect(self.select_conversation); row.addWidget(self.conversations)
@@ -300,12 +307,30 @@ class Panel(QWidget):
         self.history.append(f'<p><b style="color:#74F6FF">{html.escape(role)}</b><br>{html.escape(text).replace(chr(10), "<br>")}</p>')
 
     def reload(self):
+        catalog = self.runtime.project_catalog(); self.current_chat = catalog["active"]["conversation"]
         self.history.clear()
-        for message in self.runtime.storage.messages(self.runtime.conversation):
+        for message in self.runtime.storage.messages(self.current_chat):
             self.append("Tú" if message["role"] == "user" else "ARISE", message["text"])
         self.conversations.blockSignals(True); self.conversations.clear()
-        for c in self.runtime.storage.conversations(): self.conversations.addItem(c["title"], c["id"])
-        self.conversations.setCurrentIndex(max(0, self.conversations.findData(self.runtime.conversation))); self.conversations.blockSignals(False)
+        for c in catalog["chats"]: self.conversations.addItem(c["title"], c["id"])
+        self.conversations.setCurrentIndex(max(0, self.conversations.findData(self.current_chat))); self.conversations.blockSignals(False)
+        self.projects.blockSignals(True); self.projects.clear()
+        for p in catalog["projects"]: self.projects.addItem(p["name"], p["path"])
+        active_project = next(p for p in catalog["projects"] if p["id"] == catalog["active"]["project"])
+        self.projects.setCurrentIndex(self.projects.findData(active_project["path"])); self.projects.blockSignals(False)
+        self.projects.setToolTip(catalog["active"]["workspace"])
+
+    def open_project(self):
+        path = QFileDialog.getExistingDirectory(self, "Elegir carpeta del proyecto")
+        if path:
+            self.controller.voice.end_session()
+            self.controller.background(lambda: self.runtime.select_project(path), lambda _: self.reload())
+
+    def select_project(self):
+        path = self.projects.currentData()
+        if path:
+            self.controller.voice.end_session()
+            self.controller.background(lambda: self.runtime.select_project(path), lambda _: self.reload())
 
     def send(self):
         text = self.input.toPlainText().strip()
@@ -416,6 +441,9 @@ class Controller(QObject):
             return
         for event in result["events"]:
             kind, data = event["kind"], event["data"]
+            if kind == "conversation_changed":
+                self.panel.reload(); continue
+            if event.get("conversation") != self.panel.current_chat: continue
             if kind == "orb":
                 active = data["state"] != "idle"
                 self.orb.apply_state({"speaking": data["state"] == "speaking", "listening": data["state"] == "listening",

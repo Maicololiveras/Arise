@@ -1,5 +1,8 @@
 """Relocatable stdio launchers for Python MCP packages."""
 import importlib
+import os
+from pathlib import Path
+os.environ['PATH'] = str(Path(__file__).resolve().parent / 'media') + os.pathsep + os.environ.get('PATH', '')
 import inspect
 import asyncio
 import sys

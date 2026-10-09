@@ -18,6 +18,7 @@ DEFAULTS = {
     "local_stt_model": "small", "piper_model": "", "piper_command": ["piper"],
     "orb_size": 96, "orb_position": None, "pinned": True, "reduced_motion": False, "orb_animation": "sprite",
     "onboarding_complete": False,
+    "active_chat": "",
     "gmail_client_file": "",
     "mcp": {
         "screenview": {"command": ["screenview-mcp"], "enabled": True},

@@ -98,6 +98,7 @@ def main():
     root = Path(args.data_dir); root.mkdir(parents=True, exist_ok=True)
     lock = InstanceLock(root)
     if not lock.acquire(): lock.close(); return 0
+    if getattr(sys, "frozen", False): os.environ.setdefault("ARISE_CHAT_ROOT", str(application_root() / "chat"))
     runtime = Assistant(root)
     found = detect(runtime.storage.config)
     configure_bundle(runtime)

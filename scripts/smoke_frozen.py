@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory(prefix='arise-frozen-') as temporary:
     agent=root/'agent';agent.mkdir()
     (agent/'settings.json').write_text(json.dumps({'packages':[],'telemetry':False}),encoding='utf-8')
     (agent/'models.json').write_text(json.dumps({'providers':{'arise-smoke':{'baseUrl':'http://127.0.0.1:1/v1','api':'openai-completions','apiKey':'fixture-only','models':[{'id':'fixture','input':['text'],'contextWindow':32000,'maxTokens':1000}]}}}),encoding='utf-8')
-    env={**os.environ,'PI_CODING_AGENT_DIR':str(agent),'PI_OFFLINE':'1','QT_QPA_PLATFORM':'offscreen'}
+    env={**os.environ,'PI_CODING_AGENT_DIR':str(agent),'PI_OFFLINE':'1','QT_QPA_PLATFORM':'offscreen','ARISE_CHAT_ROOT':str(root/'chats')}
     engine=package/'ARISE.exe';host=package/'ARISE-host.exe'
     process=subprocess.Popen([str(host),'--engine',str(engine),'--data-dir',str(root/'data')],env=env)
     remote=None
@@ -40,6 +40,7 @@ with tempfile.TemporaryDirectory(prefix='arise-frozen-') as temporary:
         try:process.wait(timeout=15)
         except subprocess.TimeoutExpired:process.terminate();process.wait(timeout=5)
     output=Path('artifacts/frozen-orb.png').resolve();output.parent.mkdir(exist_ok=True)
+    env['ARISE_CHAT_ROOT']=str(root/'renderer-chats')
     result=subprocess.run([str(engine),'--data-dir',str(root/'renderer'),'--screenshot',str(output)],env=env,timeout=30)
     if result.returncode or not output.is_file() or output.stat().st_size<1000:raise RuntimeError('The frozen Qt renderer did not produce its orb')
     report['frozen_qt_renderer']='passed'

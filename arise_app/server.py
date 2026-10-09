@@ -28,6 +28,9 @@ def make_server(runtime, port=0):
                 self.reply({"error": "Los navegadores no tienen acceso a este puente"}, 403); return False
             if not hmac.compare_digest(self.headers.get("Authorization", ""), "Bearer " + runtime.token):
                 self.reply({"error": "Sesión no autorizada"}, 401); return False
+            chat = self.headers.get("X-Arise-Conversation")
+            if chat and chat != runtime.conversation:
+                self.reply({"error": "El chat ya no está activo"}, 409); return False
             return True
 
         def do_GET(self):
@@ -38,6 +41,7 @@ def make_server(runtime, port=0):
                 elif parsed.path == "/api/tools": value = runtime.tool_catalog()
                 elif parsed.path == "/api/config": value = runtime.storage.config
                 elif parsed.path == "/api/conversations": value = {"conversations": runtime.storage.conversations()}
+                elif parsed.path == "/api/projects": value = runtime.project_catalog()
                 elif parsed.path == "/api/messages": value = {"messages": runtime.storage.messages(runtime.conversation)}
                 elif parsed.path == "/api/voice/status": value = {"active": bool(runtime.voice_service and runtime.voice_service.active.is_set()), "muted": bool(runtime.voice_service and runtime.voice_service.muted)}
                 elif parsed.path == "/api/events": value = runtime.events_after(int(urllib.parse.parse_qs(parsed.query).get("after", [0])[0]))
@@ -83,6 +87,8 @@ def make_server(runtime, port=0):
                 elif route == "/api/gmail/connect": runtime.gmail.connect(); value = {"connecting": True}
                 elif route == "/api/gmail/disconnect": runtime.gmail.vault.clear(); value = {"connected": False}
                 elif route == "/api/conversation": value = runtime.switch_conversation(data.get("id"))
+                elif route == "/api/project": value = runtime.select_project(data["path"])
+                elif route == "/api/session/command": value = runtime.session_command(data["command"])
                 elif route == "/api/dialog": value = runtime.answer_dialog(data)
                 elif route == "/api/approval": runtime.approve(data["id"], data.get("approved")); value = {"ok": True}
                 elif route == "/api/desktop": value = runtime.set_desktop(data.get("enabled") is True)

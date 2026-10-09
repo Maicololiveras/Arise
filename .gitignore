@@ -13,4 +13,5 @@ bundle/
 *.spec
 artifacts/
 assets/frames/
+chat/
 *.egg-info/
