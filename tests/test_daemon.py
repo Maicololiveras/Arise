@@ -56,7 +56,7 @@ class DiscoveryTests(unittest.TestCase):
             (folder / "package.json").write_text(json.dumps({"name": "gentle-pi"}))
             (Path(root) / "settings.json").write_text(json.dumps({"packages": [str(folder)]}))
             result = detect({"pi_command": [sys.executable]}, root)
-            self.assertEqual(result["gentle_path"], str(folder))
+            self.assertEqual(Path(result["gentle_path"]), folder.resolve())
             self.assertEqual(result["pi_command"], [sys.executable])
 
     def test_imports_stdio_mcp_and_rejects_embedded_secrets(self):

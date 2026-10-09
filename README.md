@@ -53,6 +53,8 @@ Para compilar:
 
 `ReposRoot` debe contener `screenview-mcp`, `inputcontrol-mcp`, `transcripcion-ia` y `forge-mcp`. Sin `GentlePath`, el build usa `gentle-pi@3.3.0`; con esa opción puedes empaquetar tu fork. Las credenciales no se incluyen en los paquetes.
 
+Compilar el componente nativo de Gentle AI en Windows requiere Go 1.25.10 o posterior en el equipo de build. El instalador de Gentle verifica la versión y el checksum del código publicado. El usuario que instala ARISE recibe el binario compilado y no necesita Go.
+
 ## Pruebas
 
 ```bash

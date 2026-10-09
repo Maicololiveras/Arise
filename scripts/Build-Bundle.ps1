@@ -9,6 +9,8 @@ Copy-Item -LiteralPath (Get-Command node).Source -Destination (Join-Path $nodeRo
 # A clean installation ships Pi and Gentle Shell; existing installs remain detectable.
 @{ private=$true; dependencies=@{'@earendil-works/pi-coding-agent'='0.85.1';'gentle-pi'='3.3.0'} } | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $nodeRoot 'package.json') -Encoding UTF8
 & npm install --prefix $nodeRoot --ignore-scripts --no-audit --no-fund;Check-Exit 'Pi y Gentle Shell'
+& node (Join-Path $PSScriptRoot 'install-gentle-native.mjs') (Join-Path $nodeRoot 'node_modules/gentle-pi')
+Check-Exit 'Gentle AI nativo verificado (Windows requiere Go 1.25.10+)'
 $gentle='@bundle/node/node_modules/gentle-pi'
 if($GentlePath){
     $source=(Resolve-Path -LiteralPath $GentlePath).Path
