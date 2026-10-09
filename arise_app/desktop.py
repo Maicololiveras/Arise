@@ -102,6 +102,8 @@ class Settings(QDialog):
         layout = QVBoxLayout(self)
         title = QLabel("Configura tu ARISE"); title.setObjectName("title"); layout.addWidget(title)
         layout.addWidget(QLabel("Elige voz, conecta el agente y habilita las herramientas que usarás."))
+        quick_setup=QPushButton("Configurar todo desde ZIP")
+        quick_setup.clicked.connect(controller.install_model_pack);layout.addWidget(quick_setup)
         tabs = QTabWidget(); layout.addWidget(tabs)
         self.fields, self.keys, self.mcp = {}, {}, {}
         config = self.runtime.storage.config
@@ -127,7 +129,7 @@ class Settings(QDialog):
             idx = combo.findData(config[key]); combo.setCurrentIndex(max(0, idx)); self.fields[key] = combo; f.addRow(label, combo)
         self.check_field(f, 'local_dialogue_enabled', 'Conversar con un modelo local mientras Gentle trabaja', config['local_dialogue_enabled'])
         self.text_field(f,'local_dialogue_url','Servidor conversacional local',config['local_dialogue_url'])
-        self.text_field(f,'local_server_command','Arranque del servidor (lista JSON; vacío: externo)',json.dumps(config['local_server_command']))
+        self.text_field(f,'local_server_command','Arranque local (JSON)',json.dumps(config['local_server_command']))
         self.text_field(f,'local_dialogue_model','Modelo local (vacío: detectar)',config['local_dialogue_model'])
         self.check_field(f, "local_barge_in", "Permitir interrupciones en voz local", config["local_barge_in"])
         threshold=QSpinBox(); threshold.setRange(300,10000); threshold.setValue(config["voice_interrupt_threshold"]); self.fields["voice_interrupt_threshold"]=threshold; f.addRow("Umbral de interrupción local",threshold)
@@ -139,7 +141,7 @@ class Settings(QDialog):
         self.button(f, "Detectar mis modelos de voz", self.detect_voice_models)
         self.button(f, "Elegir carpeta faster-whisper", lambda: self.pick("local_stt_model", directory=True))
         self.button(f, "Elegir archivo Whisper .pt", lambda: self.pick("local_stt_model"))
-        self.button(f, "Instalar ZIP de modelos de voz", self.install_voice_pack)
+        self.button(f, "Instalar solo modelo de activación", self.install_voice_pack)
         self.button(f, "Elegir modelo Piper", lambda: self.pick("piper_model"))
         self.button(f, "Probar conversación", self.test_voice)
         agent = QWidget(); f = QFormLayout(agent); tabs.addTab(agent, "Agente")
@@ -367,8 +369,8 @@ class Panel(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 12, 14, 10); layout.setSpacing(7)
         title = QLabel("ARISE Assistant"); title.setObjectName("chatTitle"); layout.addWidget(title)
-        self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); layout.addWidget(self.status)
-        self.privacy = QLabel("Micrófono apagado · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); layout.addWidget(self.privacy)
+        self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); self.status.hide()
+        self.privacy = QLabel("Micrófono apagado · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); self.privacy.hide()
         self.history = QTextBrowser(); self.history.setObjectName("chatHistory"); self.history.setOpenExternalLinks(False); layout.addWidget(self.history, 1)
         self.input = ChatInput(); self.input.setPlaceholderText("Escribe a ARISE…"); self.input.setFixedHeight(58)
         self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea"); self.input.submitted.connect(self.send); layout.addWidget(self.input)
@@ -381,6 +383,7 @@ class Panel(QWidget):
         action = QWidgetAction(self.navigation_menu); action.setDefaultWidget(picker); self.navigation_menu.addAction(action)
         self.navigation_menu.addAction(control_icon("plus"), "Nuevo chat", self.new_conversation)
         self.navigation_menu.addAction(control_icon("folder"), "Elegir carpeta…", self.open_project)
+        self.navigation_menu.addAction("Configurar todo desde ZIP…", controller.install_model_pack)
         self.navigation_menu.addAction(control_icon("settings"), "Ajustes…", controller.show_settings)
         menu = self.navigation_menu.addMenu("Comandos de la sesión"); self.commands_menu = menu; self.commands_loading = False
         menu.aboutToShow.connect(self.refresh_commands)
@@ -512,6 +515,27 @@ class Controller(QObject):
         self.reconfigure()
         self.update_busy = False
         if start_voice and getattr(sys, "frozen", False) and not os.getenv("ARISE_SKIP_NETWORK_SETUP"): QTimer.singleShot(1500, self.check_updates)
+
+    def install_model_pack(self, filename=None):
+        if getattr(self,'pack_busy',False): return
+        if not isinstance(filename,str) or not filename:
+            filename=QFileDialog.getOpenFileName(self.panel,"Configurar ARISE desde ZIP",filter="Paquete ARISE (*.zip)")[0]
+        if not filename: return
+        self.pack_busy=True
+        self.show_panel()
+        def operation():
+            if getattr(self.runtime,'is_remote',False):
+                return self.runtime.request('models/offline/install',{'path':filename},timeout=900)
+            from .offline_pack import install_offline_pack
+            return install_offline_pack(self.runtime,filename)
+        def done(result):
+            self.pack_busy=False
+            if getattr(self.runtime,'is_remote',False): self.runtime.storage.config=self.runtime.request('config')
+            if self.settings_window:
+                self.settings_window.close();self.settings_window=None
+            self.reconfigure();self.show_panel()
+        def failed(message): self.pack_busy=False
+        self.background(operation,done,failed)
 
     def background(self, operation, complete=None, failed=None):
         worker = Worker(self); self.workers.append(worker)
@@ -691,6 +715,10 @@ class Controller(QObject):
                     "reason": data["activity"], "state": data["state"], "privacy": data, "speaker": {"understanding": "subagent", "waiting_approval": "approval", "error": "error", "speaking": "human", "working": "working"}.get(data["state"], "orchestrator"),
                     "visible": True})
                 self.panel.status.setText(data["activity"])
+                self.panel.send_button.setToolTip(data["activity"])
+                self.panel.mic_button.setToolTip("Micrófono " + ("activo" if data["microphone"] else "apagado"))
+                self.panel.mic_button.setAccessibleName(self.panel.mic_button.toolTip())
+                self.panel.control.setText("Control del PC " + ("activo" if data["control"] else "apagado"))
                 self.panel.privacy.setText("Micrófono " + ("activo" if data["microphone"] else "apagado") + " · Pantalla " + ("activa" if data["screen"] else "apagada") + " · Control " + ("activo" if data["control"] else "apagado"))
                 self.panel.control.blockSignals(True); self.panel.control.setChecked(data["control"]); self.panel.control.blockSignals(False)
                 self.panel.mic_button.setChecked(data["microphone"] and data["state"] not in ("idle", "wake_detected"))
@@ -807,6 +835,7 @@ def main():
     parser.add_argument("--shutdown", action="store_true", help="Cerrar interfaz, daemon y sus procesos para actualizar")
     parser.add_argument("--background", action="store_true")
     parser.add_argument("--settings", action="store_true")
+    parser.add_argument("--setup-pack", help="Configurar modelos y servidor desde el ZIP offline")
     parser.add_argument("--screenshot", help=argparse.SUPPRESS)
     parser.add_argument("--voice-smoke", help=argparse.SUPPRESS)
     args = parser.parse_args()
@@ -823,7 +852,7 @@ def main():
     address = "ARISE-" + hashlib.sha256(str(Path(args.data_dir).resolve()).encode()).hexdigest()[:20]
     client = QLocalSocket(); client.connectToServer(address)
     if client.waitForConnected(300):
-        client.write(b"settings\n" if args.settings else b"wake\n"); client.flush(); client.waitForBytesWritten(500); return 0
+        client.write(("setup-pack:"+str(Path(args.setup_pack).resolve())+"\n").encode() if args.setup_pack else (b"settings\n" if args.settings else b"wake\n")); client.flush(); client.waitForBytesWritten(500); return 0
     local = QLocalServer()
     if not args.screenshot and not local.listen(address):
         QLocalServer.removeServer(address)
@@ -850,12 +879,14 @@ def main():
             if command == "shutdown": controller.quit_all()
             elif command == "settings": controller.show_settings()
             elif command == "wake": controller.wake()
+            elif command.startswith("setup-pack:"): controller.install_model_pack(command[len("setup-pack:"):])
             sock.disconnectFromServer()
         sock.readyRead.connect(read)
         sock.disconnected.connect(sock.deleteLater)
         if sock.bytesAvailable(): read()
     local.newConnection.connect(connection)
-    if args.settings or not c["onboarding_complete"]: controller.show_settings()
+    if args.setup_pack: QTimer.singleShot(100,lambda:controller.install_model_pack(str(Path(args.setup_pack).resolve())))
+    elif args.settings or not c["onboarding_complete"]: controller.show_settings()
     if args.screenshot:
         QTimer.singleShot(300, lambda: (orb.grab().save(args.screenshot), controller.quit()))
     try: return app.exec()

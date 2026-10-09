@@ -1,3 +1,11 @@
+ARISE Assistant 0.4.1
+
+- Paquete completo Windows con modelos Vosk español, Whisper small, Qwen local y llama.cpp CPU.
+- Configurar todo desde ZIP: verificación, extracción, rutas automáticas y prueba real del servidor local.
+- Cabecera simplificada para dejar más espacio a la conversación.
+- Diagnósticos de procesos, pausa de reintentos de Pi y corrección de instalación en Python embebido.
+- Conserva modelos personalizados anteriores, datos, permisos del micrófono y configuración del agente.
+
 ARISE Assistant 0.4.0
 
 - Orbe persistente; doble clic abre el chat y clic sencillo lo oculta.

@@ -45,7 +45,9 @@ class ModelService:
                 self.state, self.error = "ready", ""
                 return data
         except urllib.error.HTTPError as error:
-            raise RuntimeError(f"Servidor local respondió HTTP {error.code}; revisa autenticación y URL.") from None
+            if error.code != 503:
+                raise RuntimeError(f"Servidor local respondió HTTP {error.code}; revisa autenticación y URL.") from None
+            reachable = True  # llama-server publishes 503 while loading weights.
         except (OSError, urllib.error.URLError):
             pass
         if self.process and self.process.process.poll() is not None:
@@ -68,7 +70,8 @@ class ModelService:
                     self.state, self.error = "ready", ""
                     return data
             except urllib.error.HTTPError as error:
-                raise RuntimeError(f"Servidor local respondió HTTP {error.code}; revisa autenticación y URL.") from None
+                if error.code != 503:
+                    raise RuntimeError(f"Servidor local respondió HTTP {error.code}; revisa autenticación y URL.") from None
             except (OSError, urllib.error.URLError):
                 pass
             self.cancel.wait(.1)

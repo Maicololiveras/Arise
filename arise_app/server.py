@@ -89,6 +89,9 @@ def make_server(runtime, port=0):
                     else:
                         if not manifest or manifest!=data.get('manifest'): raise ValueError('La versión publicada cambió. Busca actualizaciones otra vez.')
                         value={'path':str(download_update(manifest,runtime.storage.root,opener=opener))}
+                elif route == '/api/models/offline/install':
+                    from .offline_pack import install_offline_pack
+                    value=install_offline_pack(runtime,data['path'])
                 elif route == '/api/tools/setup-desktop':
                     from .tool_setup import setup_desktop_tools
                     value=setup_desktop_tools(runtime)

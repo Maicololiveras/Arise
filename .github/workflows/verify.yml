@@ -134,6 +134,17 @@ jobs:
         run: python scripts/smoke_frozen.py dist/ARISE
       - name: Install over running ARISE and preserve user data
         run: python scripts/smoke_installer.py
+      - name: Prepare complete offline model pack
+        run: python scripts/prepare_offline_pack.py --cache offline-cache --output dist/ARISE-Models-Windows.zip
+      - name: Validate offline install and real local inference in frozen daemon
+        run: python scripts/smoke_offline_pack.py
+      - name: Package one-click Windows ZIP
+        run: python scripts/build_complete_zip.py --app dist/ARISE --models dist/ARISE-Models-Windows.zip --output complete/ARISE-Windows-Complete.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ARISE-Windows-Complete
+          compression-level: 0
+          path: complete/ARISE-Windows-Complete.zip
       - uses: actions/upload-artifact@v4
         if: always()
         with:

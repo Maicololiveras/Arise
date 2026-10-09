@@ -1,3 +1,37 @@
+# Paquete completo Windows · 0.4.1
+
+Descarga el artefacto `ARISE-Windows-Complete` de la ejecución validada. Extrae
+el ZIP de GitHub y después `ARISE-Windows-Complete.zip` en una carpeta permanente.
+Abre **Configurar ARISE.cmd**. Se cierra la instancia anterior y se abre la nueva.
+La aplicación prepara los modelos automáticamente; no necesita Python, Node ni
+LM Studio instalados. También existe **Configurar todo desde ZIP** en Ajustes.
+
+El paquete de modelos incluye Vosk español, OpenAI Whisper `small.pt`,
+Qwen2.5-1.5B-Instruct Q4_K_M y llama.cpp b10991 para Windows x64 CPU. La voz de
+salida usa SAPI de Windows. Los pesos, fuentes, hashes y licencias viajan dentro
+del paquete. El build descarga de fuentes oficiales fijadas y verifica SHA-256;
+la instalación comprueba todos los archivos antes de usarlos. Esto no es firma
+Authenticode. El modelo conversacional es pequeño; no se presenta como sustituto
+de modelos grandes para tareas complejas.
+
+Los modelos se instalan en la carpeta de datos ARISE, bajo `offline/<id>`.
+No se sobrescriben tus modelos anteriores. Si la prueba falla, se restauran los
+ajustes previos y se elimina la instalación incompleta. Conserva los permisos de
+micrófono y control de escritorio; pulsa micrófono para hablar. Mantén la carpeta
+de la aplicación portable. Necesitas espacio para el ZIP y la copia extraída.
+
+La configuración del agente Pi y sus cuentas se conserva. Gmail/OAuth y herramientas
+privadas requieren la conexión correspondiente; no se incluyen credenciales en
+el ZIP. ScreenView/InputControl van integrados únicamente si el build ya dispone
+de `ARISE_COMPONENTS_TOKEN`; el paquete de modelos no sustituye esas herramientas.
+
+El workflow prueba instalación desde el ZIP e inferencia local usando el daemon
+congelado de Windows antes de publicar el artefacto completo. El reporte es
+`artifacts/offline-pack-validation.json`. No demuestra precisión del micrófono
+real ni la calidad de todas las delegaciones del modelo.
+
+---
+
 # Voz local y modelos
 
 El instalador incluye Vosk small-es-0.42, faster-whisper 1.2.0, OpenAI Whisper 20250625 y PyTorch 2.8.0 CPU. Windows SAPI genera la voz de respuesta. No hace falta una API de voz para el modo local; el agente de texto usa el proveedor configurado en Pi.
