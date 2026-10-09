@@ -676,7 +676,9 @@ class Controller(QObject):
                 self.runtime.storage.config['mcp'].update(data['mcp'])
                 if self.settings_window:
                     for name,spec in data['mcp'].items():
-                        if name in self.settings_window.mcp: self.settings_window.mcp[name][1].setText(json.dumps(spec['command']))
+                        if name in self.settings_window.mcp:
+                            enabled, command = self.settings_window.mcp[name]
+                            enabled.setChecked(spec.get('enabled',False)); command.setText(json.dumps(spec['command']))
                 continue
             if kind == "conversation_changed":
                 self.close_dialogs(); self.panel.reload(); continue
