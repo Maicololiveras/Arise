@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "0.85.1",
+    "gentle-pi": "3.3.0"
+  }
+}

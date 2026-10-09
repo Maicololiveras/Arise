@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+*.dpapi
+settings.json
+daemon.json
+vendor/node_modules/
+host/target/
+build/
+dist/
+bundle/
+*.spec
+artifacts/
+assets/frames/
+*.egg-info/
