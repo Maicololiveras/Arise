@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-') as temporary:
         if not remote.connect_pi().get('gentleVerified'):raise RuntimeError('Installed Pi/Gentle unavailable')
         remote.call_tool('memory.save',{'text':'Survives installer replacement'})
         old_daemon=psutil.Process(descriptor['pid']);old_children=old_daemon.children(recursive=True)
-        old_ui=[p for p in psutil.process_iter(['exe']) if p.info['exe'] and os.path.samefile(p.info['exe'],install/'ARISE.exe') and p.pid!=descriptor['pid']]
+        old_ui=[p for p in psutil.process_iter(['exe']) if p.info['exe'] and Path(p.info['exe']).name.lower()=='arise.exe' and os.path.samefile(p.info['exe'],install/'ARISE.exe') and p.pid!=descriptor['pid']]
         if not old_ui:raise RuntimeError('Installed UI was not captured for replacement validation')
         chat=install/'chat/chat-keeper/keep.txt';chat.parent.mkdir(parents=True,exist_ok=True);chat.write_text('do not delete',encoding='utf-8')
         obsolete=install/'_internal/arise-obsolete.txt';obsolete.write_text('stale managed file')
