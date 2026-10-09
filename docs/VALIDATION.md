@@ -6,6 +6,14 @@ El setup de manos/ojos tiene una prueba con repositorios/catálogos simulados; n
 
 El workflow valida Docker, Windows, el ejecutable congelado y una reinstalación real sobre UI/daemon/Pi en ejecución. Solo publica el instalador y el descriptor de main si todos esos checks pasan. Consultar el run de 0.4.0 antes de atribuirle el resultado de 0.3.0.
 
+## CI final · ARISE 0.4.0
+
+[Run 37973490621](https://github.com/Maicololiveras/Arise/actions/runs/37973490621): Docker y Windows aprobados, 74 pruebas Python en cada entorno, 2 Rust Linux y 3 Rust Windows, y 2 pruebas Node de reintento del instalador Gentle. El ejecutable congelado pasó host → daemon → Pi/Gentle, memoria, renderer Qt, Vosk, importación de Whisper y voces SAPI.
+
+El instalador pasó instalación limpia y reemplazo real con UI/daemon/Pi en ejecución: cerró 4 procesos hijos propios, conservó chat y memoria, eliminó el archivo obsoleto de _internal y reabrió 0.4.0. Resultado en windows-installer-validation.json. Se validó el commit e062547fa11cf948f84738228ce2a9c2cb274492. El binario se compiló en 3cd85a6c492a42fc8e7cb5915b9046a1e3242cf9 y se reutilizó después de comprobar vía GitHub que solo cambiaron el script de prueba y el workflow; la aplicación y sus entradas de empaquetado eran idénticas. Las pruebas de Windows, del ejecutable congelado y de reinstalación volvieron a ejecutarse.
+
+[Release v0.4.0](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.0) publicada y [main/updates/windows.json](https://github.com/Maicololiveras/Arise/blob/main/updates/windows.json) confirmado. Instalador 388502656 bytes, SHA-256 b0e51a0dede79c031f4e15635d855663ed6d8f97c43bb23e34bad62d57d301f4, coincide con el digest del asset de GitHub. La descarga autenticada y el control de manos/ojos con la cuenta real siguen requiriendo conectar GitHub en el PC; no se usó una credencial del usuario durante estas pruebas.
+
 ## Evidencia previa · ARISE 0.3.0
 
 Fecha: 2026-10-09. Linux local, Python 3.12, Qt 6.10.3 offscreen, Node 24, Pi 1.1.0 y Gentle Shell 4.0.0.
