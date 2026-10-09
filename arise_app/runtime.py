@@ -263,7 +263,7 @@ class Runtime:
             self.busy = True
             self.settled.clear()
             identity = uuid.uuid4().hex
-            self.tasks[identity] = {"id": identity, "status": "running", "output": "", "error": ""}
+            self.tasks[identity] = {"id": identity, "conversation": self.conversation, "status": "running", "output": "", "error": ""}
             self.current_task = identity
             # Retain bounded voice-call status, not an unbounded in-memory task log.
             while len(self.tasks) > 100:

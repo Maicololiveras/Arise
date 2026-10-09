@@ -1,8 +1,8 @@
 {
   "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
   "python": "3.12.14",
-  "duration_seconds": 16.508,
-  "tests": 73,
+  "duration_seconds": 16.995,
+  "tests": 74,
   "failures": 0,
   "errors": 0,
   "skipped": 0,
@@ -161,6 +161,10 @@
     },
     {
       "test": "test_local_dialogue.DialogueTests.test_model_tools_acknowledge_delegation_and_keep_turn_pairs_on_restart",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_dialogue.DialogueTests.test_task_status_does_not_expose_another_chat",
       "status": "passed"
     },
     {

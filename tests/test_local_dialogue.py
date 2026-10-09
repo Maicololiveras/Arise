@@ -68,3 +68,10 @@ class DialogueTests(unittest.TestCase):
         history=self.runtime.storage.voice_history(self.runtime.conversation)
         self.assertLessEqual(len(json.dumps(history)),21000)
         self.assertEqual(history[0]['role'],'user');self.assertEqual(history[-1]['content'],'x'*4000)
+
+    def test_task_status_does_not_expose_another_chat(self):
+        active=threading.Event();active.set()
+        self.runtime.tasks.update({'other':{'conversation':'other-chat','status':'completed','output':'other result'},'current':{'conversation':self.runtime.conversation,'status':'running','output':''}})
+        bridge=LocalVoiceBridge(self.runtime,SimpleNamespace(interrupt=lambda:None),lambda *a:None,active,threading.Event())
+        try:self.assertEqual([task['id'] for task in bridge.dispatch_front('task_status',{})['tasks']],['current'])
+        finally:bridge.close()

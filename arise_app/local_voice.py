@@ -80,7 +80,7 @@ class LocalVoiceBridge:
     def dispatch_front(self,name,args):
         if not self.valid():raise RuntimeError('La sesión de voz ya no está activa.')
         if name=='task_status':
-            return {'tasks':[{'id':identity,'status':task['status'],'result':task.get('output','')[:1200],'error':task.get('error','')} for identity,task in list(self.runtime.tasks.items())[-5:]]}
+            return {'tasks':[{'id':identity,'status':task['status'],'result':task.get('output','')[:1200],'error':task.get('error','')} for identity,task in list(self.runtime.tasks.items()) if task.get('conversation')==self.conversation][-5:]}
         if name=='stop_task':
             with getattr(self.runtime,'transition_lock',nullcontext()):
                 if not self.valid():raise RuntimeError('La sesión de voz ya no está activa.')
