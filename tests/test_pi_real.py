@@ -52,7 +52,7 @@ class RealPiTests(unittest.TestCase):
                 "gentle_path": str(CLI.parents[3] / "gentle-pi")})
             bridge = make_server(runtime); threading.Thread(target=bridge.serve_forever, daemon=True).start()
             try:
-                with patch.dict(os.environ, {"PI_CODING_AGENT_DIR": str(agent), "PI_OFFLINE": "1", "PI_TELEMETRY": "0"}):
+                with patch.dict(os.environ, {"PI_CODING_AGENT_DIR": str(agent), "PI_OFFLINE": "1", "PI_TELEMETRY": "0", "GENTLE_PI_CONFIG_HOME": str(Path(root)/"gentle-config")}):
                     task = runtime.prompt("Guarda una nota")["task_id"]
                 self.assertTrue(runtime.settled.wait(20), "Pi no completó su ejecución")
                 result = runtime.tasks[task]
@@ -63,23 +63,37 @@ class RealPiTests(unittest.TestCase):
                 self.assertEqual(notes[0]["text"], "Nota desde Pi real")
                 self.assertEqual(len(requests), 2)
                 self.assertIn("arise_call", [t["function"]["name"] for t in requests[0]["tools"]])
-                self.assertEqual([m["role"] for m in runtime.storage.messages(runtime.conversation)], ["user", "assistant"])
+                self.assertEqual([m["role"] for m in runtime.storage.messages(runtime.conversation) if m["role"] != "system"], ["user", "assistant"])
                 original = runtime.conversation
                 session_id = runtime.pi_state["sessionId"]
                 old_process = runtime.pi.process
                 runtime.switch_conversation()
                 self.assertIsNotNone(old_process.poll())
-                with patch.dict(os.environ, {"PI_CODING_AGENT_DIR": str(agent), "PI_OFFLINE": "1", "PI_TELEMETRY": "0"}):
+                with patch.dict(os.environ, {"PI_CODING_AGENT_DIR": str(agent), "PI_OFFLINE": "1", "PI_TELEMETRY": "0", "GENTLE_PI_CONFIG_HOME": str(Path(root)/"gentle-config")}):
                     runtime.switch_conversation(original)
                     runtime.connect_pi()
                 self.assertEqual(runtime.pi_state["sessionId"], session_id)
                 self.assertIn("--continue", runtime.pi.process.args)
                 self.assertIn("gentle-shell.mjs", " ".join(runtime.pi.process.args))
-                self.assertEqual(len(runtime.storage.messages(original)), 2)
+                self.assertEqual(len([m for m in runtime.storage.messages(original) if m["role"] != "system"]), 2)
                 result = runtime.session_command("/gentle:status")
                 self.assertTrue(runtime.settled.wait(10), "El comando de Gentle no terminó")
                 self.assertEqual(runtime.tasks[result["task_id"]]["status"], "done")
                 self.assertEqual(len(requests), 2, "El comando se envió al modelo en lugar de Gentle")
+
+                for command, choice, title in (("/gentle:profiles", "Cerrar", "Perfiles de Gentle"), ("/gentle:models", "Cancelar", "Modelos de Gentle")):
+                    task = runtime.session_command(command)
+                    deadline = time.monotonic() + 10
+                    while not runtime.dialogs and time.monotonic() < deadline: time.sleep(.01)
+                    self.assertTrue(runtime.dialogs, command + " no mostró un diálogo nativo")
+                    dialog = next(iter(runtime.dialogs.values()))
+                    self.assertIn(title, dialog["title"])
+                    self.assertIn(choice, dialog["options"])
+                    runtime.answer_dialog({"id": dialog["id"], "value": choice})
+                    self.assertTrue(runtime.settled.wait(10), command + " no cerró su diálogo")
+                    self.assertEqual(runtime.tasks[task["task_id"]]["status"], "done")
+                    self.assertEqual(len(requests), 2)
+
             finally:
                 runtime.close(); runtime.storage.db.close(); bridge.shutdown(); bridge.server_close()
         model.shutdown(); model.server_close()

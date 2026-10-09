@@ -1,7 +1,7 @@
 {
   "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
   "python": "3.12.14",
-  "duration_seconds": 9.522,
+  "duration_seconds": 10.3,
   "tests": 45,
   "failures": 0,
   "errors": 0,

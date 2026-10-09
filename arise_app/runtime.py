@@ -161,6 +161,9 @@ class Runtime:
                 if not extension_files:
                     raise ValueError("Gentle Shell no contiene extensiones cargables.")
                 for extension_file in extension_files:
+                    if extension_file.name == "gentle-ai.ts":
+                        from .gentle_ui import extension_for_rpc
+                        extension_file = extension_for_rpc(gentle, self.storage.root)
                     command += ["--extension", str(extension_file)]
                 command += ["--skill", str(gentle / "skills"), "--prompt-template", str(gentle / "prompts"), "--theme", str(gentle / "themes")]
             self.pi = JsonProcess(command, cwd=config["workspace"], env=env,
@@ -221,7 +224,9 @@ class Runtime:
                 self.dialogs[event["id"]] = event
                 self.emit("dialog", event)
             elif event.get("method") == "notify":
-                self.emit("notice", {"text": event.get("message", "")[:1000]})
+                text = event.get("message", "")[:1000]
+                self.storage.message(self.conversation, "system", text)
+                self.emit("notice", {"text": text})
 
     def finish_task(self, error=None):
         with self.lock:

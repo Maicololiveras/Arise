@@ -25,3 +25,7 @@ Actualización de proyectos: 45 pruebas locales, incluyendo worktrees reales con
 CI Windows del run 37938061727: pasaron 42 pruebas y dos pruebas de Rust. El empaquetado con herramientas se detuvo al intentar leer repos privados desde Actions. El build base y la opción ARISE_COMPONENTS_TOKEN separan ese requisito de acceso.
 
 Auditoría npm de Pi 0.85.1: tres findings (dos high y uno moderate) en dependencias fijadas por su shrinkwrap, incluidos undici y brace-expansion. Requieren actualizar Pi y revalidar Gentle/protocolo; no se considera esta versión una distribución final endurecida.
+
+Run [37940044443](https://github.com/Maicololiveras/Arise/actions/runs/37940044443): Docker pasó con 45 pruebas. Windows pasó 45 pruebas y dos de Rust; el build base incluye Pi, Gentle Shell y el helper nativo verificado. Los cuatro repos privados se integran cuando está configurado ARISE_COMPONENTS_TOKEN, o mediante el build local -WithTools.
+
+El test de Pi real verifica también los diálogos RPC de /gentle:profiles y /gentle:models y su cierre, sin consumir un modelo externo.
