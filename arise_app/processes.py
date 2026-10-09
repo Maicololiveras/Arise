@@ -98,7 +98,9 @@ class JsonProcess:
                 self.pending.pop(identity, None)
 
     def close(self):
-        self.closed = True
+        with self.lock:
+            if self.closed: return
+            self.closed = True
         if os.name == "nt":
             import psutil
             descendants=[]

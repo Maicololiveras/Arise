@@ -525,6 +525,7 @@ class Controller(QObject):
         self.wake_requested.emit(initial if isinstance(initial, str) else "")
 
     def _wake(self, initial):
+        self.last_interaction = time.monotonic()
         self.orb.show(); self.orb.raise_(); self.background(lambda:self.voice.wake(initial))
 
     def stop(self): self.stop_requested.emit()
@@ -691,7 +692,9 @@ class Controller(QObject):
                 if kind == "error":
                     self.runtime.orb.update("error")
                     self.tray.setToolTip('ARISE · '+data.get('text','Revisar aviso')[:200])
-            elif kind == "voice_transcript": self.panel.append("Voz · " + data["role"], data["text"])
+            elif kind == "voice_transcript":
+                if data['role']=='user': self.last_interaction=time.monotonic()
+                self.panel.append("Voz · " + data["role"], data["text"])
             elif kind == "input_text": self.panel.input.setPlainText(data["text"]); self.panel.input.setFocus()
             elif kind == "approval": self.approval(data)
             elif kind == "dialog":
