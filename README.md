@@ -1,4 +1,6 @@
-# ARISE
+# ARISE Assistant
+
+![ARISE Assistant — orbe animado](docs/identity/arise-assistant.gif)
 
 Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, panel compacto, voz configurable y un proceso residente independiente de la interfaz. Gentle Shell sobre Pi ejecuta las tareas; la interfaz muestra lo que haces, los resultados y las decisiones que requieren tu intervención.
 
