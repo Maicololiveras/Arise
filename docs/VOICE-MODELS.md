@@ -10,12 +10,14 @@ El build produce ARISE-Voice-Models-es.zip (~40 MB), con modelo Vosk, instruccio
 
 La activación por voz es opcional y queda desactivada hasta que la habilites. Las frases deben reconocerse con Vosk: prueba también una frase española, por ejemplo “hola asistente”, si “Arise” no se reconoce con tu pronunciación. El micrófono cerrado en reposo no puede escuchar una frase de activación.
 
-La conversación local es por turnos: transcripción, tarea del agente y voz. No tiene cancelación acústica de eco ni inferencia GPU en el build CPU. Piper sigue disponible si configuras su ejecutable y un modelo ONNX externo; no viene en este ZIP porque Windows ya aporta SAPI.
+La conversación local transcribe frases y genera voz mientras las tareas de Gentle trabajan en segundo plano. No tiene cancelación acústica de eco ni inferencia GPU en el build CPU. Piper sigue disponible si configuras su ejecutable y un modelo ONNX externo; no viene en este ZIP porque Windows ya aporta SAPI.
 
 
 ## Escucha e interrupciones (0.4.0)
 
-La voz local usa STT (Vosk/Whisper), el modelo elegido en Pi/Gentle y TTS (SAPI/Piper). No es un modelo end-to-end speech-to-speech. Puedes usar también un modelo local del agente mediante un proveedor configurado en Pi (por ejemplo tu servidor local compatible).
+La voz local usa STT (Vosk/Whisper), un interlocutor local compatible con OpenAI y TTS (SAPI/Piper). No es un modelo end-to-end speech-to-speech. En Voz y audio configura la URL del servidor (por defecto LM Studio en http://127.0.0.1:1235/v1) y el modelo cargado; sin nombre usa el primero anunciado. El servidor y sus pesos deben estar instalados y en ejecución: el instalador no descarga un LLM. Solo admite una dirección local. La credencial opcional se guarda protegida.
+
+El interlocutor mantiene contexto por chat, conversa mientras Gentle trabaja y delega instrucciones con llamadas de herramientas. Consulta estados reales y anuncia resultados confirmados; la notificación de resultado no puede lanzar más tareas. El proveedor del agente de trabajo sigue siendo el configurado en Pi. Si el servidor local no está disponible al iniciar la conversación, la voz usa directamente Gentle; vuelve a iniciar la voz para intentar el interlocutor otra vez.
 
 La captura no espera a que termine una tarea ni a que acabe la salida hablada. VAD delimita frases con unos 500 ms de silencio; STT y delegación se procesan fuera de la captura. Al hablar se interrumpe la salida de voz, y el nuevo texto llega como instrucción/corrección a la sesión actual de Gentle. `deja de hablar` corta solo audio; `cancela la tarea` detiene el trabajo. El historial de Pi y el chat se conserva; la siguiente instrucción puede pedir continuar. Un cambio de chat descarta respuestas habladas tardías de la sesión anterior.
 

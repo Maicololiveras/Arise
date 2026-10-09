@@ -18,6 +18,7 @@ DEFAULTS = {
     "local_stt_model": "", "local_stt_engine": "auto", "piper_model": "", "piper_command": ["piper"],
     "orb_size": 96, "orb_position": None, "pinned": True, "reduced_motion": False, "orb_animation": "sprite",
     "onboarding_complete": False, "local_barge_in": True, "voice_interrupt_threshold": 800,
+    "local_dialogue_enabled": True, "local_dialogue_url": "http://127.0.0.1:1235/v1", "local_dialogue_model": "",
     "active_chat": "",
     "gmail_client_file": "",
     "mcp": {
@@ -40,6 +41,7 @@ class Storage:
         CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY,title TEXT,created REAL,pi_file TEXT);
         CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY,conversation TEXT,role TEXT,text TEXT,created REAL);
         CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY,payload TEXT,created REAL);
+        CREATE TABLE IF NOT EXISTS voice_turns(id INTEGER PRIMARY KEY AUTOINCREMENT,conversation TEXT,payload TEXT,created REAL);
         """)
         self.config_path = self.root / "settings.json"
         self.config = json.loads(json.dumps(DEFAULTS))
@@ -78,6 +80,20 @@ class Storage:
             if role == "user":
                 self.db.execute("UPDATE conversations SET title=? WHERE id=? AND title='Nueva conversación'", (text[:45], conversation))
         return identity
+
+    def voice_history(self, conversation):
+        with self.lock:
+            rows=self.db.execute('SELECT payload FROM voice_turns WHERE conversation=? ORDER BY id DESC LIMIT 8',(conversation,)).fetchall()
+            selected=[];size=0
+            for row in rows:
+                if selected and size+len(row['payload'])>20000:break
+                selected.append(row);size+=len(row['payload'])
+            return [message for row in reversed(selected) for message in json.loads(row['payload'])]
+
+    def save_voice_turn(self, conversation, turn):
+        with self.lock, self.db:
+            self.db.execute('INSERT INTO voice_turns(conversation,payload,created) VALUES(?,?,?)',(conversation,json.dumps(turn,ensure_ascii=False),time.time()))
+            self.db.execute('DELETE FROM voice_turns WHERE conversation=? AND id NOT IN (SELECT id FROM voice_turns WHERE conversation=? ORDER BY id DESC LIMIT 8)',(conversation,conversation))
 
     def set_pi_file(self, conversation, filename):
         with self.lock, self.db:

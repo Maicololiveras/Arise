@@ -18,7 +18,7 @@ class Credentials:
         return saved.get(provider, "")
 
     def save(self, provider, value, persist=True):
-        if provider not in (*ENV, "github-updates") or not isinstance(value, str) or len(value) > 4096:
+        if provider not in (*ENV, "github-updates", "local-dialogue") or not isinstance(value, str) or len(value) > 4096:
             raise ValueError("Proveedor o clave inválidos")
         if persist:
             data = self.vault.read() or {}

@@ -1,8 +1,8 @@
 {
   "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
   "python": "3.12.14",
-  "duration_seconds": 14.125,
-  "tests": 68,
+  "duration_seconds": 16.508,
+  "tests": 73,
   "failures": 0,
   "errors": 0,
   "skipped": 0,
@@ -148,6 +148,22 @@
       "status": "passed"
     },
     {
+      "test": "test_local_dialogue.DialogueTests.test_external_endpoint_is_rejected_and_results_cannot_invoke_tools",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_dialogue.DialogueTests.test_history_is_bounded_without_orphaning_tool_results",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_dialogue.DialogueTests.test_interlocutor_talks_while_gentle_runs_and_reports_confirmed_result",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_dialogue.DialogueTests.test_model_tools_acknowledge_delegation_and_keep_turn_pairs_on_restart",
+      "status": "passed"
+    },
+    {
       "test": "test_local_live.LocalLiveTests.test_correction_while_task_runs_uses_same_task_and_latest_reply",
       "status": "passed"
     },
@@ -157,6 +173,10 @@
     },
     {
       "test": "test_local_live.LocalLiveTests.test_native_gentle_question_is_answered_by_voice_not_model",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_live.LocalLiveTests.test_stale_front_cannot_cancel_the_new_chat",
       "status": "passed"
     },
     {

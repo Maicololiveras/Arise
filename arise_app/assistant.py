@@ -189,7 +189,7 @@ class Assistant(Runtime):
                 raise ValueError("Proveedor de voz no compatible.")
         if changes.get("thinking", self.storage.config["thinking"]) not in ("off", "minimal", "low", "medium", "high", "xhigh"):
             raise ValueError("Esfuerzo inválido.")
-        for key in ("wake_enabled", "pinned", "reduced_motion", "onboarding_complete", "local_barge_in"):
+        for key in ("wake_enabled", "pinned", "reduced_motion", "onboarding_complete", "local_barge_in", "local_dialogue_enabled"):
             if key in changes and not isinstance(changes[key], bool):
                 raise ValueError(f"{key} debe ser booleano")
         if "orb_size" in changes and (type(changes["orb_size"]) is not int or not 48 <= changes["orb_size"] <= 240):

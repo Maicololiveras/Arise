@@ -15,7 +15,7 @@ class LocalLiveTests(unittest.TestCase):
     def setUp(self):
         self.active=threading.Event();self.active.set();self.shutdown=threading.Event()
         self.calls=[];self.events=[];self.spoken=[];self.speaking=threading.Event();self.cancelled=threading.Event()
-        self.runtime=SimpleNamespace(conversation='chat-one',tasks={},dialogs={},emit=lambda kind,data:self.events.append((kind,data)),stop=lambda:self.calls.append('stop'))
+        self.runtime=SimpleNamespace(conversation='chat-one',storage=SimpleNamespace(config={'local_dialogue_enabled':False}),tasks={},dialogs={},emit=lambda kind,data:self.events.append((kind,data)),stop=lambda:self.calls.append('stop'))
         def steer(text):
             self.calls.append(text);self.runtime.tasks.setdefault('task-one',{'status':'running','output':'','error':''});return {'task_id':'task-one','steering':len(self.calls)>1}
         self.runtime.steer=steer
@@ -50,3 +50,7 @@ class LocalLiveTests(unittest.TestCase):
         wait_for(lambda:bool(self.spoken));self.assertIn('Opción 2: Proyecto dos',self.spoken[0])
         self.bridge.submit('opción dos');wait_for(lambda:bool(answers))
         self.assertEqual(answers[0],{'id':'choice','value':'Proyecto dos'});self.assertEqual(self.calls,[])
+    def test_stale_front_cannot_cancel_the_new_chat(self):
+        self.runtime.conversation='chat-two'
+        with self.assertRaises(RuntimeError):self.bridge.dispatch_front('stop_task',{})
+        self.assertEqual(self.calls,[])

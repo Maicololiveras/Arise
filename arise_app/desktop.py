@@ -125,6 +125,9 @@ class Settings(QDialog):
                 if device[capability]:
                     combo.addItem(device["name"], device["id"])
             idx = combo.findData(config[key]); combo.setCurrentIndex(max(0, idx)); self.fields[key] = combo; f.addRow(label, combo)
+        self.check_field(f, 'local_dialogue_enabled', 'Conversar con un modelo local mientras Gentle trabaja', config['local_dialogue_enabled'])
+        self.text_field(f,'local_dialogue_url','Servidor conversacional local',config['local_dialogue_url'])
+        self.text_field(f,'local_dialogue_model','Modelo local (vacío: detectar)',config['local_dialogue_model'])
         self.check_field(f, "local_barge_in", "Permitir interrupciones en voz local", config["local_barge_in"])
         threshold=QSpinBox(); threshold.setRange(300,10000); threshold.setValue(config["voice_interrupt_threshold"]); self.fields["voice_interrupt_threshold"]=threshold; f.addRow("Umbral de interrupción local",threshold)
         self.check_field(f, "wake_enabled", "Escuchar 'Oye Arise' localmente", config["wake_enabled"])
@@ -152,7 +155,7 @@ class Settings(QDialog):
         self.button(f, "Detectar Pi y Gentle Shell", self.detect_agent)
         f.addRow(QLabel("Dejar proveedor/modelo vacíos conserva la selección existente de Pi."))
         keys = QWidget(); f = QFormLayout(keys); tabs.addTab(keys, "Credenciales")
-        for provider in ("openai", "gemini", "anthropic", "github-updates"):
+        for provider in ("openai", "gemini", "anthropic", "github-updates", "local-dialogue"):
             entry = QLineEdit(); entry.setEchoMode(QLineEdit.Password); entry.setPlaceholderText("Dejar vacío conserva la clave existente")
             self.keys[provider] = entry; f.addRow(provider, entry)
         f.addRow(QLabel("GitHub: acceso a actualizaciones y herramientas privadas. Se detecta también una sesión existente de gh."))
@@ -413,7 +416,7 @@ class Panel(QWidget):
         catalog = self.runtime.project_catalog(); self.current_chat = catalog["active"]["conversation"]
         self.history.clear()
         for message in self.runtime.storage.messages(self.current_chat):
-            self.append("Tú" if message["role"] == "user" else "ARISE", message["text"])
+            self.append({"user":"Tú","voice_user":"Voz · Tú","voice_assistant":"Voz · ARISE"}.get(message["role"],"ARISE"), message["text"])
         self.conversations.blockSignals(True); self.conversations.clear()
         for c in catalog["chats"]: self.conversations.addItem(c["title"], c["id"])
         self.conversations.setCurrentIndex(max(0, self.conversations.findData(self.current_chat))); self.conversations.blockSignals(False)

@@ -19,7 +19,7 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 - Proyectos elegidos por carpeta: primer chat en la ruta original; siguientes chats en worktrees Git o copias independientes, con ajustes del agente por chat.
 - Conexión mediante RPC de Pi: sesiones, modelos disponibles, esfuerzo, eventos y diálogos de extensiones.
 - Voz OpenAI Realtime y Gemini Live con adaptadores independientes, audio nativo y delegación a Gentle Shell.
-- Voz local con captura continua, interrupciones de audio y correcciones en la misma sesión: Vosk, faster-whisper o OpenAI Whisper → Pi → voces Windows SAPI o Piper. Detección de modelos existentes; los archivos .pt y las carpetas CTranslate2 usan motores separados.
+- Voz local con captura continua, interrupciones de audio y correcciones en la misma sesión: Vosk/Whisper → interlocutor local compatible con OpenAI → SAPI/Piper; Gentle trabaja por separado. URL y modelo configurables, contexto por chat y fallback directo a Pi si el servidor local no está disponible. Detección de modelos existentes; los archivos .pt y las carpetas CTranslate2 usan motores separados.
 - Vosk español incluido en el instalador y ZIP de modelos separado. Activación local configurable, micrófono y Ctrl+Alt+A.
 - Ctrl+Alt+Esc para cancelar tareas y revocar el control.
 - MCP stdio, importación de configuraciones, catálogo real y contenido de imagen preservado para modelos con visión.
