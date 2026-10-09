@@ -152,7 +152,7 @@ class HttpTests(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as caught: self.get("/api/status")
         self.assertEqual(caught.exception.code, 401)
         with self.get("/api/status", {"Authorization": "Bearer " + self.runtime.token}) as result:
-            self.assertEqual(json.load(result)["version"], "0.2.0")
+            self.assertEqual(json.load(result)["version"], "0.3.0")
 
     def test_host_and_cross_origin_denied(self):
         for headers in ({"Host": "evil.example"}, {"Origin": "https://evil.example"}):

@@ -1,31 +1,19 @@
-# Evidencia de validación
+# Evidencia de validación · ARISE 0.3.0
 
-Fecha: 2026-10-09. Plataforma local: Linux, Python 3.12, Qt 6.10.3 offscreen, Node 24, Pi 0.85.1 y Rust 1.90.0.
+Fecha: 2026-10-09. Linux local, Python 3.12, Qt 6.10.3 offscreen, Node 24, Pi 1.1.0 y Gentle Shell 4.0.0.
 
-La suite tiene pruebas de RPC y MCP, Pi real con modelo local simulado, widgets Qt, daemon separado, transporte WebSocket de ambos adaptadores, límites de audio, persistencia, importación de configuración, protección de rutas, adjuntos y confirmación de Gmail, gateway autenticado y extracción segura de modelos.
+50 pruebas locales: cero fallos, errores o skips. Informe completo en local-test-results.json. Incluye Pi/Gentle reales con proveedor HTTP local simulado, sesiones y worktrees, crear/aplicar perfil, guardar modelos/esfuerzo, paleta, agentes, estadísticas, diagnóstico y comandos locales sin consumo adicional del modelo. El teclado nativo verifica Enter, Shift+Enter y altura útil del chat. Las pruebas de voz cloud usan servidores WebSocket locales simulados; las de formatos locales verifican el contrato de cada motor.
 
-Los resultados locales completos se encuentran en `docs/local-test-results.json`. `scripts/test.py` produce un nuevo informe en artifacts para cada ejecución y falla si falta el test con Pi real.
+El modelo Vosk español oficial se descargó, cargó con Model/KaldiRecognizer reales y procesó PCM de silencio. El ZIP se instaló con su manifiesto SHA-256 y pasó la comprobación de integridad ZIP. No es una prueba de precisión con voz humana. No se accedió a los archivos Whisper de la máquina del usuario; se implementó su detección por las rutas y formatos de su captura.
 
-Rust: dos pruebas del supervisor pasan; el binario Linux se compiló en release. La compilación Windows se realiza en CI.
+El helper Gentle AI 4.0.0 Linux se instaló con el instalador oficial y verificación de sus hashes. npm audit sobre las nuevas dependencias fijadas reportó cero vulnerabilidades en esta revisión; no implica ausencia de riesgos desconocidos.
 
-Las imágenes de panel/orbe/ajustes se capturaron de los widgets nativos reales, con audio apagado. Son evidencia del renderer y layout en Qt/Linux; no prueban la transparencia de Windows.
+CI: la revisión anterior pasó Docker/Windows en el run 37941203118. La revisión 0.3.0 ejecuta el mismo pipeline, ahora con 50 tests, Vosk incluido, Whisper CPU/.pt y prueba de carga/importación desde el ejecutable congelado. Consulta el run correspondiente al commit actual para sus resultados; no atribuyas la validación anterior al nuevo paquete.
 
-Docker en GitHub Actions: PASÓ el 2026-10-09, run [37937629886](https://github.com/Maicololiveras/Arise/actions/runs/37937629886). Se construyó el host Rust (dos pruebas) y se ejecutaron 42 pruebas en el contenedor: cero fallos, errores o skips.
+Docker local no ejecutado: este entorno no tiene Docker. Se usa el contenedor real del workflow de GitHub Actions.
 
-Docker local: NO EJECUTADO. El entorno no tiene Docker y `unshare -Ur` falla con Operation not permitted. No se sustituyó ese resultado por una afirmación de Docker exitoso. La rama incluye un job que ejecuta `docker compose run --build --rm tests` en GitHub Actions.
+Las imágenes panel.png, orb.png y settings.png son capturas de widgets Qt reales en Linux. No prueban transparencia, escalas ni dispositivos en Windows. El smoke Windows comprueba host Rust, daemon congelado, motor Pi/Gentle, renderer Qt, modelo Vosk, importación de Whisper/faster-whisper y disponibilidad de SAPI sin abrir el micrófono.
 
-Windows: el workflow ejecuta pruebas nativas offscreen, compila el host Rust, construye el paquete con sus componentes y comprueba initialize/tools/list de los MCP integrados. Consulta el estado de ese workflow para su resultado; los casos de audio y escritorio interactivo continúan en WINDOWS-CHECK.md.
+Los cuatro MCP privados requieren ARISE_COMPONENTS_TOKEN para que Actions los incluya; su catálogo se verifica únicamente en ese build. Sin el secret se entrega la base y se pueden detectar/importar herramientas instaladas.
 
-Cuentas externas: NO UTILIZADAS. No se llamó a un modelo cloud, no se inició OAuth real y no se envió correo. Los adaptadores están implementados; su validación con credenciales reales y dispositivos debe completarse antes de llamar a esta versión una distribución final.
-
-Pendientes de distribución: certificado de firma, actualización firmada, validación en máquina limpia, pruebas de activación/eco y aprobación OAuth pública de Gmail cuando aplique. La configuración VPS/TLS está documentada, no desplegada.
-
-Actualización de proyectos: 45 pruebas locales, incluyendo worktrees reales con cambios sin commit, cierre de procesos, recuperación del chat activo, reanudación del mismo sessionId de Pi y comando /gentle:status sin invocar al modelo.
-
-CI Windows del run 37938061727: pasaron 42 pruebas y dos pruebas de Rust. El empaquetado con herramientas se detuvo al intentar leer repos privados desde Actions. El build base y la opción ARISE_COMPONENTS_TOKEN separan ese requisito de acceso.
-
-Auditoría npm de Pi 0.85.1: tres findings (dos high y uno moderate) en dependencias fijadas por su shrinkwrap, incluidos undici y brace-expansion. Requieren actualizar Pi y revalidar Gentle/protocolo; no se considera esta versión una distribución final endurecida.
-
-Run [37940044443](https://github.com/Maicololiveras/Arise/actions/runs/37940044443): Docker pasó con 45 pruebas. Windows pasó 45 pruebas y dos de Rust; el build base incluye Pi, Gentle Shell y el helper nativo verificado. Los cuatro repos privados se integran cuando está configurado ARISE_COMPONENTS_TOKEN, o mediante el build local -WithTools.
-
-El test de Pi real verifica también los diálogos RPC de /gentle:profiles y /gentle:models y su cierre, sin consumir un modelo externo.
+Cuentas externas no utilizadas. Pendientes en un equipo real: micrófono/altavoz, reconocimiento de la frase elegida, eco e interrupción, calidad/velocidad con los Whisper del usuario, OAuth/Gmail, control de escritorio y funcionamiento en Windows limpio. No hay cancelación acústica de eco ni prueba de voz GPU. Certificado de firma y actualizador firmado no incluidos. VPS/TLS documentado, no desplegado.

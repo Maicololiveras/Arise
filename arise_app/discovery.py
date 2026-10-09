@@ -33,6 +33,20 @@ def gentle_valid(path):
     except (OSError, ValueError): return False
 
 
+def installed_pi_version(command):
+    for part in command or []:
+        path = Path(part)
+        if not path.is_file(): continue
+        for parent in list(path.resolve().parents)[:4]:
+            package = parent / 'package.json'
+            if not package.is_file(): continue
+            try:
+                data = json.loads(package.read_text(encoding='utf-8'))
+                if data.get('name') == '@earendil-works/pi-coding-agent': return data.get('version')
+            except (ValueError, OSError): pass
+    return None
+
+
 def detect(config, agent_dir=None):
     agent_dir = Path(agent_dir or os.getenv("PI_CODING_AGENT_DIR", Path.home() / ".pi/agent"))
     pi = resolve_pi(config.get("pi_command"))

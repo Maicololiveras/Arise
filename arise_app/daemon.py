@@ -106,6 +106,16 @@ def main():
     if found.get("gentle_installed_package") and not found.get("gentle_path"):
         changes["gentle_path"] = ""
     if changes: runtime.settings(changes)
+    # An old globally installed Pi must not replace the compatible bundled engine.
+    from .discovery import installed_pi_version
+    selected_gentle = Path(runtime.storage.config['gentle_path']) / 'package.json'
+    version = installed_pi_version(runtime.storage.config['pi_command'])
+    if selected_gentle.is_file() and version and tuple(int(n) for n in version.split('.')[:3]) < (0,99,1):
+        if json.loads(selected_gentle.read_text(encoding='utf-8')).get('version') == '4.0.0':
+            bundle = application_root() / 'bundle'; manifest = bundle / 'manifest.json'
+            if manifest.is_file():
+                command = json.loads(manifest.read_text(encoding='utf-8-sig'))['pi_command']
+                runtime.settings({'pi_command':[str(bundle/v[8:]) if v.startswith('@bundle/') else v for v in command]})
     server = make_server(runtime)
     voice = VoiceService(runtime)
     runtime.voice_service = voice
@@ -113,7 +123,7 @@ def main():
     if not args.no_audio:
         voice.start(); hotkeys.start()
     temporary = root / "daemon.tmp"
-    temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "pid": os.getpid(), "version": "0.2.0"}))
+    temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "pid": os.getpid(), "version": "0.3.0"}))
     if os.name != "nt": temporary.chmod(0o600)
     os.replace(temporary, descriptor_path(root))
     runtime.emit("notice", {"text": "Proceso residente activo. Pi y las herramientas se conectan cuando se necesitan."})

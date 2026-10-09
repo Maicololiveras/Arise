@@ -5,7 +5,8 @@ import time
 import unittest
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, Qt
+from unittest.mock import patch
 from PySide6.QtTest import QTest
 from arise_app.assistant import Assistant
 from arise_app.desktop import Controller, Settings
@@ -47,3 +48,18 @@ class NativeTests(unittest.TestCase):
         self.r.call_tool("memory.save",{"text":"Después de cerrar orbe"})
         self.assertTrue(self.r.memory_path.exists())
         self.assertFalse(self.c.closed)
+
+    def test_enter_sends_shift_enter_adds_line_and_chat_has_space(self):
+        panel = self.c.panel; panel.show(); QTest.qWait(30)
+        self.assertGreater(panel.history.height(), 300)
+        sent = []
+        with patch.object(self.r, "steer", side_effect=lambda text:sent.append(text)):
+            panel.input.setFocus(); QTest.keyClicks(panel.input, "hola")
+            QTest.keyClick(panel.input, Qt.Key_Return, Qt.ShiftModifier)
+            self.assertEqual(panel.input.toPlainText(), "hola\n")
+            QTest.keyClicks(panel.input, "arise"); QTest.keyClick(panel.input, Qt.Key_Return)
+            QTest.qWait(80)
+            self.assertEqual(sent, ["hola\narise"])
+            self.assertEqual(panel.input.toPlainText(), "")
+        self.assertEqual(panel.mic_button.toolTip(), "Hablar con ARISE")
+        self.assertEqual(panel.windowTitle(), "ARISE Assistant")

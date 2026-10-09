@@ -44,5 +44,9 @@ with tempfile.TemporaryDirectory(prefix='arise-frozen-') as temporary:
     result=subprocess.run([str(engine),'--data-dir',str(root/'renderer'),'--screenshot',str(output)],env=env,timeout=30)
     if result.returncode or not output.is_file() or output.stat().st_size<1000:raise RuntimeError('The frozen Qt renderer did not produce its orb')
     report['frozen_qt_renderer']='passed'
+    output=Path('artifacts/frozen-voice.json').resolve()
+    result=subprocess.run([str(engine),'--voice-smoke',str(output)],env=env,timeout=60)
+    if result.returncode or not output.is_file(): raise RuntimeError('The shipped offline voice engines/model failed')
+    report['frozen_voice_engines']=json.loads(output.read_text(encoding='utf-8'))
 Path('artifacts/frozen-application.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
 print(json.dumps(report,indent=2))

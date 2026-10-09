@@ -11,11 +11,11 @@ from pathlib import Path
 
 DEFAULTS = {
     "workspace": "", "pi_command": ["pi"], "pi_extra_args": [],
-    "voice_model": "gpt-realtime-2.1", "voice": "marin", "voice_provider": "openai",
+    "voice_model": "local", "voice": "Windows default", "voice_provider": "local",
     "code_enabled": False, "agent_provider": "", "agent_model": "", "thinking": "medium", "gentle_path": "",
     "wake_enabled": False, "wake_phrases": ["oye arise", "hey arise", "hola arise"],
     "wake_model": "", "input_device": None, "output_device": None, "voice_timeout": 60,
-    "local_stt_model": "small", "piper_model": "", "piper_command": ["piper"],
+    "local_stt_model": "", "local_stt_engine": "auto", "piper_model": "", "piper_command": ["piper"],
     "orb_size": 96, "orb_position": None, "pinned": True, "reduced_motion": False, "orb_animation": "sprite",
     "onboarding_complete": False,
     "active_chat": "",

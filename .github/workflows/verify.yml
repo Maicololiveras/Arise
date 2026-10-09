@@ -21,7 +21,7 @@ jobs:
           path: artifacts/test-results.json
   windows:
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       COMPONENTS_AVAILABLE: ${{ secrets.ARISE_COMPONENTS_TOKEN != '' }}
     steps:

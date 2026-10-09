@@ -18,7 +18,10 @@ Estos casos requieren un Windows con escritorio, micrófono y cuentas de prueba.
 - [ ] Cancelar envío; después autorizar un borrador y verificar que se envió una sola vez.
 - [ ] Cortar red durante una acción y verificar el resultado externo antes de repetirla.
 - [ ] Reiniciar daemon con tarea activa: queda interrumpida, no se reproduce.
-- [ ] Probar SAPI/Whisper locales y, si se configura, un ejecutable y modelo Piper compatibles.
+- [ ] Detectar base.pt/small.pt y carpetas base/medium/tiny; elegir cada motor compatible.
+- [ ] Probar Enter/Shift+Enter, menú inferior y micrófono del chat ampliado.
+- [ ] Crear/aplicar/fijar perfiles con Gentle 4.0.0 y guardar modelos por agente.
+- [ ] Probar SAPI/Vosk/Whisper locales y, si se configura, un ejecutable y modelo Piper compatibles.
 - [ ] Instalar/desinstalar y verificar arranque opcional con Windows.
 
 La firma Authenticode y un canal de actualizaciones firmado requieren el certificado del distribuidor. Este repositorio no incluye certificados ni presenta builds sin firma como firmados.

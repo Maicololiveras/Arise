@@ -94,6 +94,48 @@ class RealPiTests(unittest.TestCase):
                     self.assertEqual(runtime.tasks[task["task_id"]]["status"], "done")
                     self.assertEqual(len(requests), 2)
 
+                def answer_next(choice, contains=None):
+                    deadline = time.monotonic() + 10
+                    while not runtime.dialogs and time.monotonic() < deadline: time.sleep(.01)
+                    self.assertTrue(runtime.dialogs, "No llegó el diálogo para " + choice)
+                    dialog = next(iter(runtime.dialogs.values()))
+                    if contains: self.assertIn(contains, dialog["title"])
+                    if dialog["method"] == "select": self.assertIn(choice, dialog["options"])
+                    runtime.answer_dialog({"id":dialog["id"], "value":choice})
+                    return dialog
+
+                task = runtime.session_command("/gentle:profiles")
+                answer_next("Crear perfil"); answer_next("arise-fixture")
+                answer_next("Cerrar")
+                self.assertTrue(runtime.settled.wait(10))
+                profile_files = list((Path(root)/"gentle-config").rglob("*profiles*.json"))
+                self.assertTrue(any("arise-fixture" in p.read_text() for p in profile_files), "El perfil no se guardó")
+                task = runtime.session_command("/gentle:profiles")
+                answer_next("Aplicar perfil"); answer_next("arise-fixture"); answer_next("Cerrar")
+                self.assertTrue(runtime.settled.wait(10))
+
+                task = runtime.session_command("/gentle:models")
+                answer_next("Todos los agentes"); answer_next("Modelo personalizado"); answer_next("arise-test/arise-test")
+                answer_next("low"); answer_next("Guardar")
+                self.assertTrue(runtime.settled.wait(10), "El modelo por agente no se guardó")
+                model_files = list((Path(root)/"gentle-config").rglob("*models*.json"))
+                self.assertTrue(any('arise-test/arise-test' in p.read_text() and 'low' in p.read_text() for p in model_files))
+
+                for command, choices in (("/gentle:commands", ["Cerrar"]), ("/gentle:agents", ["Cerrar"]),
+                                         ("/gentle:stats", ["7d", "project"]), ("/gentle:vim", ["status"]),
+                                         ("/gentle:background-subagents", ["status"])):
+                    task = runtime.session_command(command)
+                    for choice in choices: answer_next(choice)
+                    self.assertTrue(runtime.settled.wait(10), command)
+                    self.assertEqual(runtime.tasks[task["task_id"]]["status"], "done")
+                for command in ("/gentle:doctor", "/gentle:usage", "/gentle:changes"):
+                    task = runtime.session_command(command)
+                    self.assertTrue(runtime.settled.wait(15), command)
+                    self.assertEqual(runtime.tasks[task["task_id"]]["status"], "done")
+                self.assertEqual(len(requests), 2, "Un comando local consumió el modelo")
+                with self.assertRaises(ValueError): runtime.session_command("/gentle:inexistente")
+                self.assertEqual(len(requests), 2)
+
             finally:
                 runtime.close(); runtime.storage.db.close(); bridge.shutdown(); bridge.server_close()
         model.shutdown(); model.server_close()

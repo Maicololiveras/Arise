@@ -20,6 +20,7 @@ class FakeAudio:
 class VoiceTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.temp=tempfile.TemporaryDirectory(); self.r=Assistant(self.temp.name); self.audio=FakeAudio(); self.active=threading.Event(); self.active.set()
+        self.r.storage.config.update({"voice_provider":"openai","voice_model":"fixture-realtime","voice":"marin"})
     async def asyncTearDown(self): self.r.close(); self.r.storage.db.close(); self.temp.cleanup()
 
     async def test_openai_websocket_handshake_audio_interrupt_and_delegation(self):

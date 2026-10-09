@@ -22,9 +22,12 @@ if($GentlePath){
 $manifest=@{
     pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/cli.js')
     gentle_path=$gentle
-    versions=@{pi='0.85.1';gentle='3.3.0';arise='0.2.0'}
+    wake_model='@bundle/models/vosk-model-small-es-0.42'
+    versions=@{pi='1.1.0';gentle='4.0.0';arise='0.3.0';vosk='small-es-0.42'}
     mcp=@{}
 }
+& python (Join-Path $PSScriptRoot 'prepare_voice_pack.py') --destination $bundle --output (Join-Path (Split-Path $Target -Parent) 'ARISE-Voice-Models-es.zip')
+Check-Exit 'Modelo Vosk español integrado y ZIP de voz'
 if($WithTools){
     if(-not $ReposRoot){throw '-WithTools requiere -ReposRoot con screenview-mcp, inputcontrol-mcp, transcripcion-ia y forge-mcp'}
     $repos=(Resolve-Path -LiteralPath $ReposRoot).Path

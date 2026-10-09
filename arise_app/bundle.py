@@ -34,4 +34,8 @@ def configure_bundle(runtime):
         if tools:
             changes["mcp"] = {**runtime.storage.config["mcp"], **tools}
         runtime.settings(changes)
+    else:
+        # Supply missing offline voice data on upgrades without replacing choices.
+        missing = {key: value for key, value in changes.items() if key == "wake_model" and not runtime.storage.config.get(key)}
+        if missing: runtime.settings(missing)
     return {"bundled": True, "components": data.get("versions", {})}

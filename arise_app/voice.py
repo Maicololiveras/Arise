@@ -338,11 +338,21 @@ class VoiceService:
         self._close_audio()
 
     def _local(self, initial):
-        from faster_whisper import WhisperModel
+        from .models import resolve_stt
         c = self.runtime.storage.config
-        if self.whisper_name != c["local_stt_model"]:
-            self.whisper = WhisperModel(c["local_stt_model"], device="cpu", compute_type="int8")
-            self.whisper_name = c["local_stt_model"]
+        engine, model = resolve_stt(c)
+        if self.whisper_name != (engine, model):
+            if engine == "vosk":
+                from vosk import Model, KaldiRecognizer, SetLogLevel
+                SetLogLevel(-1); self.whisper = KaldiRecognizer(Model(model), 16000)
+            elif engine == "openai-whisper":
+                try: import whisper
+                except ImportError: raise RuntimeError("Esta instalación no incluye el motor OpenAI Whisper para archivos .pt.") from None
+                self.whisper = whisper.load_model(model, device="cpu")
+            else:
+                from faster_whisper import WhisperModel
+                self.whisper = WhisperModel(model, device="cpu", compute_type="int8")
+            self.whisper_name = (engine, model)
         self.runtime.orb.update("listening", microphone=True)
         if initial:
             self._local_task(initial)
@@ -362,13 +372,22 @@ class VoiceService:
             if started:
                 chunks.append(pcm)
             if started and (silent >= 40 or len(chunks) >= 1500):
-                samples = np.frombuffer(b"".join(chunks), dtype="<i2").astype(np.float32) / 32768
-                segments, info = self.whisper.transcribe(samples, language="es", vad_filter=True)
-                text = " ".join(s.text for s in segments).strip()
+                text = self.transcribe_local(b"".join(chunks), engine)
                 chunks, silent, started = [], 0, False
                 if text:
                     self.runtime.emit("voice_transcript", {"role": "user", "text": text})
                     self._local_task(text)
+
+    def transcribe_local(self, pcm, engine):
+        if engine == "vosk":
+            self.whisper.Reset(); self.whisper.AcceptWaveform(pcm)
+            return json.loads(self.whisper.FinalResult()).get("text", "").strip()
+        import numpy as np
+        samples = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768
+        if engine == "openai-whisper":
+            return self.whisper.transcribe(samples, language="es", fp16=False).get("text", "").strip()
+        segments, _ = self.whisper.transcribe(samples, language="es", vad_filter=True)
+        return " ".join(s.text for s in segments).strip()
 
     def _local_task(self, text):
         if text.lower().strip() in ("cancela la tarea", "detente", "cancelar"):

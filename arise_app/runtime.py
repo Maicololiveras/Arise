@@ -74,7 +74,7 @@ class Runtime:
         config = self.storage.config
         pi_command = config["pi_command"]
         gmail_connected = self.gmail.vault.path.exists()
-        return {"version": "0.2.0", "conversation": self.conversation, "busy": self.busy,
+        return {"version": "0.3.0", "conversation": self.conversation, "busy": self.busy,
             "session": self.sessions.get(self.conversation),
             "pi": {"connected": bool(self.pi and self.pi.process.poll() is None),
                 "available": bool(shutil.which(pi_command[0]) or Path(pi_command[0]).is_file()),
@@ -136,6 +136,12 @@ class Runtime:
             if self.pi and self.pi.process.poll() is None:
                 return self.pi_state
             config = self.storage.config
+            if config.get('gentle_path'):
+                from .discovery import installed_pi_version
+                package = json.loads((Path(config['gentle_path']) / 'package.json').read_text(encoding='utf-8'))
+                version = installed_pi_version(config['pi_command'])
+                if package.get('version') == '4.0.0' and version and tuple(int(n) for n in version.split('.')[:3]) < (0,99,1):
+                    raise RuntimeError('Gentle 4.0.0 necesita Pi 0.99.1 o superior. Usa el motor integrado o actualiza tu Pi.')
             launcher = config["pi_command"]
             if len(launcher) == 2 and Path(launcher[0]).stem.lower() == "node" and launcher[1].endswith(".js"):
                 launcher = [launcher[0], str(Path(__file__).parent / "resources" / "gentle-shell.mjs"), launcher[1]]
@@ -144,7 +150,7 @@ class Runtime:
             row = next(c for c in self.storage.conversations() if c["id"] == self.conversation)
             if row.get("pi_file") and Path(row["pi_file"]).is_file():
                 command += ["--continue", "--session", row["pi_file"]]
-            env = {**os.environ, "ARISE_URL": self.url, "ARISE_TOKEN": self.token, "ARISE_CONVERSATION": self.conversation, "PI_TELEMETRY": "0", "ARISE_CODE_ENABLED": "1" if config.get("code_enabled") else "0"}
+            env = {**os.environ, "ARISE_URL": self.url, "ARISE_TOKEN": self.token, "ARISE_CONVERSATION": self.conversation, "PI_TELEMETRY": "0", "GENTLE_SHELL_INTERACTIVE_HOST": "1", "ARISE_CODE_ENABLED": "1" if config.get("code_enabled") else "0"}
             self.pi_epoch += 1
             epoch = self.pi_epoch
             if hasattr(self, "credentials"):
@@ -158,12 +164,12 @@ class Runtime:
                 if not (gentle / "package.json").is_file() or not (gentle / "extensions").is_dir():
                     raise ValueError("gentle_path debe apuntar al paquete Gentle Shell completo.")
                 extension_files = sorted(p for p in (gentle / "extensions").iterdir() if p.suffix in (".ts", ".js", ".mjs"))
+                extension_files.extend(p / 'index.ts' for p in (gentle / 'extensions').iterdir() if p.is_dir() and (p / 'index.ts').is_file())
                 if not extension_files:
                     raise ValueError("Gentle Shell no contiene extensiones cargables.")
                 for extension_file in extension_files:
-                    if extension_file.name == "gentle-ai.ts":
-                        from .gentle_ui import extension_for_rpc
-                        extension_file = extension_for_rpc(gentle, self.storage.root)
+                    from .gentle_ui import extension_for_rpc
+                    extension_file = extension_for_rpc(gentle, self.storage.root, extension_file)
                     command += ["--extension", str(extension_file)]
                 command += ["--skill", str(gentle / "skills"), "--prompt-template", str(gentle / "prompts"), "--theme", str(gentle / "themes")]
             self.pi = JsonProcess(command, cwd=config["workspace"], env=env,
@@ -224,9 +230,11 @@ class Runtime:
                 self.dialogs[event["id"]] = event
                 self.emit("dialog", event)
             elif event.get("method") == "notify":
-                text = event.get("message", "")[:1000]
+                text = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', event.get("message", ""))[:30000]
                 self.storage.message(self.conversation, "system", text)
                 self.emit("notice", {"text": text})
+            elif event.get("method") == "set_editor_text":
+                self.emit("input_text", {"text": str(event.get("text", ""))[:30000]})
 
     def finish_task(self, error=None):
         with self.lock:
@@ -381,7 +389,12 @@ class Runtime:
     def session_command(self, command):
         if not isinstance(command, str) or not command.startswith("/") or len(command) > 500:
             raise ValueError("Escribe un comando de la sesión, por ejemplo /gentle:profiles")
-        return self.prompt(command)
+        with self.transition_lock:
+            self.connect_pi()
+            name = command.split()[0][1:]
+            if name not in self.pi_commands:
+                raise ValueError("Este comando no está registrado en la sesión activa. Abre el menú de comandos para ver los disponibles.")
+            return self.prompt(command)
 
     def project_catalog(self):
         session = self.sessions.get(self.conversation)

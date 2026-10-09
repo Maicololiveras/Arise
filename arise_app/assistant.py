@@ -181,6 +181,8 @@ class Assistant(Runtime):
         return {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}], "isError": False}
 
     def settings(self, changes):
+        if changes.get("local_stt_engine", self.storage.config["local_stt_engine"]) not in ("auto", "vosk", "faster-whisper", "openai-whisper"):
+            raise ValueError("Motor de transcripción no compatible.")
         for key in ("voice_provider",):
             if changes.get(key, self.storage.config[key]) not in ("openai", "gemini", "local"):
                 raise ValueError("Proveedor de voz no compatible.")

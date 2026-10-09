@@ -8,12 +8,12 @@ import sys
 import threading
 import time
 from pathlib import Path
-from PySide6.QtCore import Qt, QTimer, QObject, Signal, QEvent, QPoint
+from PySide6.QtCore import Qt, QTimer, QObject, Signal, QEvent, QPoint, QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import (QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QPushButton, QLineEdit, QTextBrowser, QTextEdit, QComboBox, QCheckBox, QTabWidget,
-    QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QSpinBox, QDialogButtonBox, QInputDialog)
+    QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QSpinBox, QDialogButtonBox, QInputDialog, QWidgetAction, QScrollArea)
 from .orb import build_orb
 from .assistant import Assistant
 from .audio import Audio
@@ -29,6 +29,12 @@ QLineEdit,QTextEdit,QTextBrowser,QComboBox,QSpinBox {background:#10283C;border:1
 QPushButton {background:#14394A;border:1px solid #2F6878;border-radius:7px;padding:9px 16px;}
 QPushButton:hover {background:#205368;} QPushButton:disabled {color:#7292A8;}
 QLabel#title {font-size:24px;font-weight:700;color:#74F6FF;}
+QLabel#chatTitle {font-size:18px;font-weight:600;color:#EDF8FF;}
+QLabel#chatStatus,QLabel#chatPrivacy {font-size:11px;color:#9DB3C7;}
+QTextBrowser#chatHistory {background:transparent;border:0;padding:3px;}
+QPushButton#iconButton {padding:6px;border:0;background:transparent;border-radius:8px;}
+QPushButton#iconButton:hover {background:#17364C;}
+QPushButton#iconButton:checked {background:#205368;border:1px solid #74F6FF;}
 QTabWidget::pane {border:1px solid #25445B;} QTabBar::tab {padding:12px;background:#10283C;}
 QTabBar::tab:selected {color:#74F6FF;background:#17364C;}
 QCheckBox {padding:5px;} QMenu {background:#10283C;}
@@ -45,6 +51,35 @@ class Worker(QObject):
             except Exception as error:
                 self.failed.emit(str(error)[:600])
         threading.Thread(target=run, daemon=True).start()
+
+
+class ChatInput(QTextEdit):
+    submitted = Signal()
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter) and not event.modifiers() & Qt.ShiftModifier:
+            self.submitted.emit()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
+
+
+def control_icon(name):
+    """One vector icon family, independent of platform emoji fonts."""
+    paths = {
+        "menu": '<path d="M4 6h16M4 12h16M4 18h16"/>',
+        "folder": '<path d="M3 7V5h7l2 2h9v13H3Z"/>',
+        "settings": '<path d="m9 3-.5 3-2 1-2.8-1-2 3 2.3 2v2L1.7 15l2 3 2.8-1 2 1 .5 3h4l.5-3 2-1 2.8 1 2-3-2.3-2v-2l2.3-2-2-3-2.8 1-2-1-.5-3Z"/><circle cx="11" cy="12" r="3"/>',
+        "send": '<path d="m3 3 18 9-18 9 3-9ZM6 12h15"/>',
+        "mic": '<rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>',
+        "stop": '<rect x="5" y="5" width="14" height="14" rx="2"/>',
+        "plus": '<path d="M12 4v16M4 12h16"/>',
+    }
+    from PySide6.QtSvg import QSvgRenderer
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="#B9D6E7" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + paths[name] + '</g></svg>'
+    pix = QPixmap(24, 24); pix.fill(Qt.transparent)
+    painter = QPainter(pix); QSvgRenderer(svg.encode()).render(painter); painter.end()
+    return QIcon(pix)
 
 
 def icon():
@@ -74,7 +109,9 @@ class Settings(QDialog):
         self.fields["voice_provider"] = QComboBox(); self.fields["voice_provider"].addItems(["openai", "gemini", "local"])
         self.fields["voice_provider"].setCurrentText(config["voice_provider"])
         f.addRow("Proveedor", self.fields["voice_provider"])
-        for key, label in (("voice_model", "Modelo de voz"), ("voice", "Voz"), ("wake_model", "Modelo Vosk (carpeta)"), ("local_stt_model", "Modelo Whisper local"), ("piper_model", "Modelo Piper (.onnx)")):
+        self.fields["local_stt_engine"] = QComboBox(); self.fields["local_stt_engine"].addItems(["auto", "vosk", "faster-whisper", "openai-whisper"])
+        self.fields["local_stt_engine"].setCurrentText(config["local_stt_engine"]); f.addRow("Motor local", self.fields["local_stt_engine"])
+        for key, label in (("voice_model", "Modelo de voz"), ("voice", "Voz"), ("wake_model", "Modelo Vosk (carpeta)"), ("local_stt_model", "Modelo local (.pt o carpeta)"), ("piper_model", "Modelo Piper (.onnx)")):
             self.text_field(f, key, label, config[key])
         self.fields["voice_provider"].currentTextChanged.connect(self.provider_changed)
         devices = []
@@ -93,6 +130,10 @@ class Settings(QDialog):
         f.addRow(QLabel("Con auriculares puedes interrumpir la voz en la nube. La voz local funciona por turnos."))
         self.button(f, "Elegir carpeta Vosk", lambda: self.pick("wake_model", directory=True))
         self.button(f, "Descargar activación local en español", self.download_wake)
+        self.button(f, "Detectar mis modelos de voz", self.detect_voice_models)
+        self.button(f, "Elegir carpeta faster-whisper", lambda: self.pick("local_stt_model", directory=True))
+        self.button(f, "Elegir archivo Whisper .pt", lambda: self.pick("local_stt_model"))
+        self.button(f, "Instalar ZIP de modelos de voz", self.install_voice_pack)
         self.button(f, "Elegir modelo Piper", lambda: self.pick("piper_model"))
         self.button(f, "Probar conversación", self.test_voice)
         agent = QWidget(); f = QFormLayout(agent); tabs.addTab(agent, "Agente")
@@ -139,6 +180,10 @@ class Settings(QDialog):
         autostart.setEnabled(os.name == "nt" and getattr(sys, "frozen", False))
         autostart.setChecked(self.autostart_enabled()); self.autostart = autostart; f.addRow(autostart)
         self.button(f, "Abrir carpeta de datos", controller.open_data)
+        pages = [(tabs.widget(i), tabs.tabText(i)) for i in range(tabs.count())]
+        while tabs.count(): tabs.removeTab(0)
+        for page, label in pages:
+            scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setWidget(page); tabs.addTab(scroll, label)
         self.message = QLabel(""); self.message.setWordWrap(True); layout.addWidget(self.message)
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Close)
         buttons.button(QDialogButtonBox.Save).setText("Guardar"); buttons.button(QDialogButtonBox.Close).setText("Cerrar")
@@ -226,6 +271,27 @@ class Settings(QDialog):
             self.fields["wake_model"].setText(path); self.message.setText("Modelo descargado. Activa la escucha local y guarda los ajustes.")
         self.controller.background(operation, done)
 
+    def detect_voice_models(self):
+        from .models import discover_voice_models
+        models = discover_voice_models(roots=[Path(r"D:\Transcripcion con ia\whisper_models"), Path.home() / ".cache/huggingface/hub", self.runtime.storage.root / "models"])
+        if not models:
+            self.message.setText("No se encontraron modelos locales. Selecciona una carpeta o instala el ZIP de voz."); return
+        labels = [item["engine"] + " · " + item["path"] for item in models]
+        label, ok = QInputDialog.getItem(self, "Tus modelos de voz", "Elegir modelo existente", labels, 0, False)
+        if ok:
+            selected = models[labels.index(label)]
+            self.fields["local_stt_engine"].setCurrentText(selected["engine"])
+            self.fields["local_stt_model"].setText(selected["path"])
+            self.fields["voice_provider"].setCurrentText("local")
+            if selected["engine"] == "vosk": self.fields["wake_model"].setText(selected["path"])
+            self.message.setText("Modelo seleccionado. Guarda los ajustes para usarlo.")
+
+    def install_voice_pack(self):
+        filename = QFileDialog.getOpenFileName(self, "Instalar modelos de voz", filter="ZIP (*.zip)")[0]
+        if not filename: return
+        from .downloads import install_voice_pack
+        self.controller.background(lambda: install_voice_pack(filename, self.runtime.storage.root), lambda path: self.fields["wake_model"].setText(path))
+
     def detect_agent(self):
         from .discovery import detect
         found = detect(self.runtime.storage.config)
@@ -279,29 +345,53 @@ class Settings(QDialog):
 class Panel(QWidget):
     def __init__(self, controller):
         super().__init__(); self.controller = controller; self.runtime = controller.runtime
-        self.setWindowTitle("ARISE · Conversación"); self.resize(340, 500); self.setMinimumSize(300, 380); self.setMaximumWidth(440); self.setStyleSheet(STYLE)
+        self.setWindowTitle("ARISE Assistant"); self.resize(360, 540); self.setMinimumSize(320, 400); self.setMaximumWidth(520); self.setStyleSheet(STYLE)
         layout = QVBoxLayout(self)
-        title = QLabel("ARISE"); title.setObjectName("title"); layout.addWidget(title)
-        self.status = QLabel("Oye Arise · Ctrl+Alt+A para hablar"); self.status.setWordWrap(True); layout.addWidget(self.status)
-        self.privacy = QLabel("Micrófono apagado · Control apagado"); self.privacy.setWordWrap(True); layout.addWidget(self.privacy)
-        row = QHBoxLayout(); layout.addLayout(row)
-        self.projects = QComboBox(); self.projects.currentIndexChanged.connect(self.select_project); row.addWidget(self.projects, 1)
-        b = QPushButton("Carpeta"); b.clicked.connect(self.open_project); row.addWidget(b)
-        commands = QPushButton("/"); menu = QMenu(commands)
+        layout.setContentsMargins(14, 12, 14, 10); layout.setSpacing(7)
+        title = QLabel("ARISE Assistant"); title.setObjectName("chatTitle"); layout.addWidget(title)
+        self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); layout.addWidget(self.status)
+        self.privacy = QLabel("Micrófono apagado · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); layout.addWidget(self.privacy)
+        self.history = QTextBrowser(); self.history.setObjectName("chatHistory"); self.history.setOpenExternalLinks(False); layout.addWidget(self.history, 1)
+        self.input = ChatInput(); self.input.setPlaceholderText("Escribe a ARISE…"); self.input.setFixedHeight(58)
+        self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea"); self.input.submitted.connect(self.send); layout.addWidget(self.input)
+        row = QHBoxLayout(); row.setSpacing(3); layout.addLayout(row)
+        self.navigation = self.icon_button(row, "menu", "Proyectos, chats y comandos")
+        self.navigation_menu = QMenu(self.navigation)
+        picker = QWidget(); pick_layout = QFormLayout(picker); pick_layout.setContentsMargins(10, 8, 10, 8)
+        self.projects = QComboBox(); self.projects.currentIndexChanged.connect(self.select_project); pick_layout.addRow("Proyecto", self.projects)
+        self.conversations = QComboBox(); self.conversations.currentIndexChanged.connect(self.select_conversation); pick_layout.addRow("Chat", self.conversations)
+        action = QWidgetAction(self.navigation_menu); action.setDefaultWidget(picker); self.navigation_menu.addAction(action)
+        self.navigation_menu.addAction(control_icon("plus"), "Nuevo chat", self.new_conversation)
+        self.navigation_menu.addAction(control_icon("folder"), "Elegir carpeta…", self.open_project)
+        self.navigation_menu.addAction(control_icon("settings"), "Ajustes…", controller.show_settings)
+        menu = self.navigation_menu.addMenu("Comandos de la sesión"); self.commands_menu = menu; self.commands_loading = False
+        menu.aboutToShow.connect(self.refresh_commands)
         for command in ("/gentle:profiles", "/gentle:models", "/gentle:status", "/gentle:commands"):
             menu.addAction(command, lambda checked=False, value=command: self.controller.background(lambda: self.runtime.session_command(value)))
-        commands.setMenu(menu); row.addWidget(commands)
-        self.history = QTextBrowser(); self.history.setOpenExternalLinks(False); layout.addWidget(self.history)
-        row = QHBoxLayout(); layout.addLayout(row)
-        self.conversations = QComboBox(); self.conversations.setMinimumWidth(80); self.conversations.setMaximumWidth(170); self.conversations.currentIndexChanged.connect(self.select_conversation); row.addWidget(self.conversations)
-        for label, callback in (("Nueva", self.new_conversation), ("Ajustes", controller.show_settings)):
-            b = QPushButton(label); b.clicked.connect(callback); row.addWidget(b)
-        self.input = QTextEdit(); self.input.setPlaceholderText("Pídele algo a ARISE…"); self.input.setMaximumHeight(58); layout.addWidget(self.input)
-        row = QHBoxLayout(); layout.addLayout(row)
-        for label, callback in (("Enviar", self.send), ("Hablar", controller.wake), ("Detener", controller.stop)):
-            b = QPushButton(label); b.clicked.connect(lambda checked=False, cb=callback: cb()); row.addWidget(b)
-        self.control = QCheckBox("Permitir control del PC"); self.control.toggled.connect(self.toggle_control); layout.addWidget(self.control)
+        self.control = QCheckBox("Permitir control del PC"); self.control.toggled.connect(self.toggle_control)
+        permission = QWidgetAction(self.navigation_menu); permission.setDefaultWidget(self.control); self.navigation_menu.addAction(permission)
+        self.navigation.setMenu(self.navigation_menu)
+        self.folder_button = self.icon_button(row, "folder", "Elegir carpeta del proyecto", self.open_project)
+        self.icon_button(row, "settings", "Ajustes", controller.show_settings)
+        row.addStretch(1)
+        self.icon_button(row, "stop", "Detener voz y tarea", controller.stop)
+        self.send_button = self.icon_button(row, "send", "Enviar · Enter", self.send)
+        self.mic_button = self.icon_button(row, "mic", "Hablar con ARISE", self.toggle_voice)
+        self.mic_button.setCheckable(True)
         self.reload()
+
+    @staticmethod
+    def icon_button(row, name, label, callback=None):
+        button = QPushButton(); button.setObjectName("iconButton"); button.setIcon(control_icon(name)); button.setIconSize(QSize(20, 20))
+        button.setFixedSize(34, 34); button.setToolTip(label); button.setAccessibleName(label)
+        if callback: button.clicked.connect(lambda checked=False: callback())
+        row.addWidget(button); return button
+
+    def toggle_voice(self):
+        def operation():
+            if self.controller.voice.active.is_set(): self.controller.voice.end_session()
+            else: self.controller.voice.wake()
+        self.controller.background(operation)
 
     def append(self, role, text):
         self.history.append(f'<p><b style="color:#74F6FF">{html.escape(role)}</b><br>{html.escape(text).replace(chr(10), "<br>")}</p>')
@@ -319,6 +409,29 @@ class Panel(QWidget):
         active_project = next(p for p in catalog["projects"] if p["id"] == catalog["active"]["project"])
         self.projects.setCurrentIndex(self.projects.findData(active_project["path"])); self.projects.blockSignals(False)
         self.projects.setToolTip(catalog["active"]["workspace"])
+        self.folder_button.setToolTip("Carpeta: " + catalog["active"]["workspace"])
+        self.navigation.setToolTip(active_project["name"] + " · " + self.conversations.currentText())
+
+    def refresh_commands(self):
+        if self.commands_loading: return
+        self.commands_loading = True; chat = self.current_chat
+        def operation():
+            self.runtime.connect_pi()
+            return self.runtime.pi.request({"type":"get_commands"}).get("data", {}).get("commands", [])
+        def done(commands):
+            self.commands_loading = False
+            if chat != self.current_chat: return
+            self.commands_menu.clear()
+            for command in sorted((c for c in commands if c.get("source") == "extension"), key=lambda c:c["name"]):
+                name = "/" + command["name"]
+                action = self.commands_menu.addAction(name, lambda checked=False, value=name:self.run_command(value))
+                action.setToolTip(command.get("description", ""))
+        self.controller.background(operation, done, failed=lambda _:setattr(self, "commands_loading", False))
+
+    def run_command(self, text):
+        if text == "/gentle:customize":
+            self.controller.show_settings(); return
+        self.controller.background(lambda:self.runtime.session_command(text))
 
     def open_project(self):
         path = QFileDialog.getExistingDirectory(self, "Elegir carpeta del proyecto")
@@ -335,7 +448,9 @@ class Panel(QWidget):
     def send(self):
         text = self.input.toPlainText().strip()
         if text:
-            self.input.clear(); self.controller.background(lambda: self.runtime.steer(text))
+            self.input.clear()
+            if text.startswith("/"): self.run_command(text)
+            else: self.controller.background(lambda: self.runtime.steer(text))
 
     def select_conversation(self):
         identity = self.conversations.currentData()
@@ -374,10 +489,11 @@ class Controller(QObject):
         if start_voice: self.voice.start()
         self.reconfigure()
 
-    def background(self, operation, complete=None):
+    def background(self, operation, complete=None, failed=None):
         worker = Worker(self); self.workers.append(worker)
         worker.finished.connect(lambda result: complete(result) if complete else None)
         worker.failed.connect(lambda text: self.runtime.emit("error", {"text": text}))
+        if failed: worker.failed.connect(failed)
         def cleanup(*_):
             if worker in self.workers: self.workers.remove(worker)
             worker.deleteLater()
@@ -387,12 +503,12 @@ class Controller(QObject):
         self.wake_requested.emit(initial if isinstance(initial, str) else "")
 
     def _wake(self, initial):
-        self.orb.show(); self.orb.raise_(); self.voice.wake(initial)
+        self.orb.show(); self.orb.raise_(); self.background(lambda:self.voice.wake(initial))
 
     def stop(self): self.stop_requested.emit()
 
     def _stop(self):
-        self.voice.end_session(); self.background(self.runtime.stop)
+        self.background(lambda:(self.voice.end_session(),self.runtime.stop()))
 
     def toggle_mute(self): self.voice.mute(not self.voice.muted)
 
@@ -452,12 +568,14 @@ class Controller(QObject):
                 self.panel.status.setText(data["activity"])
                 self.panel.privacy.setText("Micrófono " + ("activo" if data["microphone"] else "apagado") + " · Pantalla " + ("activa" if data["screen"] else "apagada") + " · Control " + ("activo" if data["control"] else "apagado"))
                 self.panel.control.blockSignals(True); self.panel.control.setChecked(data["control"]); self.panel.control.blockSignals(False)
+                self.panel.mic_button.setChecked(data["microphone"] and data["state"] not in ("idle", "wake_detected"))
             elif kind in ("user", "assistant_end", "notice", "error"):
                 self.panel.append({"user": "Tú", "assistant_end": "ARISE", "notice": "Aviso", "error": "Revisar"}[kind], data.get("text", ""))
                 if kind == "error":
                     self.runtime.orb.update("error")
                     self.show_panel()
             elif kind == "voice_transcript": self.panel.append("Voz · " + data["role"], data["text"])
+            elif kind == "input_text": self.panel.input.setPlainText(data["text"]); self.panel.input.setFocus()
             elif kind == "approval": self.approval(data)
             elif kind == "dialog": self.dialog(data)
 
@@ -475,6 +593,13 @@ class Controller(QObject):
         except ValueError: pass
 
     def dialog(self, data):
+        if data["method"] == "editor":
+            dialog = QDialog(self.panel); dialog.setWindowTitle(data.get("title", "ARISE")); dialog.resize(560, 400)
+            layout = QVBoxLayout(dialog); editor = QTextEdit(); editor.setPlainText(str(data.get("prefill", ""))); layout.addWidget(editor)
+            buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel); layout.addWidget(buttons)
+            buttons.accepted.connect(dialog.accept); buttons.rejected.connect(dialog.reject)
+            dialog.finished.connect(lambda result:self.background(lambda:self.runtime.answer_dialog({"id":data["id"],"cancelled":result != QDialog.Accepted,"value":editor.toPlainText()})))
+            dialog.finished.connect(dialog.deleteLater); dialog.open(); return
         dialog = QInputDialog(self.panel); dialog.setWindowTitle(data.get("title", "ARISE")); dialog.setLabelText(data.get("message", data.get("title", "Tu respuesta")))
         method = data["method"]
         if method in ("select", "confirm"):
@@ -540,7 +665,13 @@ def main():
     parser.add_argument("--background", action="store_true")
     parser.add_argument("--settings", action="store_true")
     parser.add_argument("--screenshot", help=argparse.SUPPRESS)
+    parser.add_argument("--voice-smoke", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.voice_smoke:
+        from .bundle import application_root
+        from .models import probe_packaged_voice
+        Path(args.voice_smoke).write_text(json.dumps(probe_packaged_voice(application_root()), indent=2), encoding='utf-8')
+        return 0
     app = QApplication.instance() or QApplication(sys.argv); app.setApplicationName("ARISE"); app.setWindowIcon(icon()); app.setQuitOnLastWindowClosed(False)
     import hashlib
     address = "ARISE-" + hashlib.sha256(str(Path(args.data_dir).resolve()).encode()).hexdigest()[:20]

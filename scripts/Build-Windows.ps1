@@ -4,10 +4,11 @@ $root = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $root
 function Check-Exit([string]$step) { if ($LASTEXITCODE -ne 0) { throw "$step falló ($LASTEXITCODE)" } }
 if ($env:OS -ne 'Windows_NT') { throw 'Este build necesita Windows x64.' }
-& python -m pip install '.[build,local]'; Check-Exit 'Dependencias de build'
+& python -m pip install 'torch==2.8.0' --index-url https://download.pytorch.org/whl/cpu; Check-Exit 'Whisper CPU'
+& python -m pip install '.[build,local,whisper]'; Check-Exit 'Dependencias de build'
 & cargo test --locked --manifest-path host/Cargo.toml; Check-Exit 'Tests Rust'
 & cargo build --release --locked --manifest-path host/Cargo.toml; Check-Exit 'Supervisor Rust'
-& python -m PyInstaller --noconfirm --clean --windowed --onedir --name ARISE --collect-all faster_whisper --collect-all ctranslate2 --collect-all vosk --collect-all sounddevice --add-data 'web;web' --add-data 'assets;assets' --add-data 'arise_app/resources;arise_app/resources' run.py
+& python -m PyInstaller --noconfirm --clean --windowed --onedir --name ARISE --collect-all faster_whisper --collect-all ctranslate2 --collect-all whisper --collect-all vosk --collect-all sounddevice --add-data 'web;web' --add-data 'assets;assets' --add-data 'arise_app/resources;arise_app/resources' run.py
 Check-Exit 'Aplicación nativa'
 $target = Join-Path $root 'dist\ARISE'
 Copy-Item -LiteralPath 'host\target\release\arise-host.exe' -Destination (Join-Path $target 'ARISE-host.exe')
