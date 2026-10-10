@@ -195,6 +195,8 @@ class Assistant(Runtime):
         for key in ("voice_provider",):
             if changes.get(key, self.storage.config[key]) not in ("openai", "gemini", "local", "forge-local", "forge-openai"):
                 raise ValueError("Proveedor de voz no compatible.")
+        if changes.get('voice_task_engine',self.storage.config.get('voice_task_engine','gentle')) not in ('gentle','local-dialogue'):
+            raise ValueError('Motor de conversación no compatible.')
         if changes.get('local_profile',self.storage.config['local_profile']) not in ('auto','light','standard'):
             raise ValueError('Perfil local no compatible.')
         if changes.get('local_tts',self.storage.config['local_tts']) not in ('forge','system'):

@@ -120,7 +120,7 @@ def main():
     if getattr(sys,"frozen",False) and not os.getenv("ARISE_SKIP_NETWORK_SETUP"):
         from .tool_setup import auto_setup
         threading.Thread(target=auto_setup,args=(runtime,),daemon=True).start()
-    if runtime.storage.config.get('local_dialogue_enabled') and runtime.storage.config.get('local_server_command'):
+    if runtime.storage.config.get('voice_task_engine','gentle') == 'local-dialogue' and runtime.storage.config.get('local_dialogue_enabled') and runtime.storage.config.get('local_server_command'):
         def warm_local_model():
             try:
                 from .local_dialogue import LocalDialogue
