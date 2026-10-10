@@ -1,0 +1,308 @@
+{
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+  "python": "3.12.14",
+  "duration_seconds": 16.995,
+  "tests": 74,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "records": [
+    {
+      "test": "test_arise.HttpTests.test_api_requires_session_token",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.HttpTests.test_host_and_cross_origin_denied",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.HttpTests.test_post_json_memory_journey",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.ProtocolTests.test_mcp_initialize_and_real_catalog",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.ProtocolTests.test_rpc_correlates_concurrent_requests",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.RuntimeTests.test_agent_end_is_not_completion",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.RuntimeTests.test_bom_config_from_powershell_loads",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.RuntimeTests.test_cancel_then_send_second_message",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.RuntimeTests.test_chat_end_to_end_against_protocol_fixture",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.RuntimeTests.test_conversation_history_isolated",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.RuntimeTests.test_desktop_requires_ui_enable",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.RuntimeTests.test_gmail_cannot_send",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.RuntimeTests.test_gmail_draft_uses_draft_endpoint",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.RuntimeTests.test_memory_persists_without_provider",
+      "status": "passed"
+    },
+    {
+      "test": "test_arise.RuntimeTests.test_scoped_files_traversal_and_symlink",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AssistantTests.test_credentials_session_never_written_to_config_or_events",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AssistantTests.test_denied_send_has_no_side_effect",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AssistantTests.test_file_write_read_and_path_boundary",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AssistantTests.test_gmail_attachment_roundtrip",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AssistantTests.test_send_requires_approval_and_is_not_replayed",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AssistantTests.test_settings_reject_invalid_provider_and_size",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AssistantTests.test_state_tracks_task_and_releases_capture_indicator",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AssistantTests.test_stop_releases_pending_approval_and_revokes_control",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AssistantTests.test_voice_constructor_opens_no_microphone",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AudioTests.test_capture_bound_and_muted_capture",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AudioTests.test_resample_and_interruption_playback_position",
+      "status": "passed"
+    },
+    {
+      "test": "test_assistant.AudioTests.test_wake_boundary_and_payload",
+      "status": "passed"
+    },
+    {
+      "test": "test_daemon.DaemonTests.test_incomplete_tasks_are_not_replayed_after_restart",
+      "status": "passed"
+    },
+    {
+      "test": "test_daemon.DaemonTests.test_separate_daemon_survives_client_close_and_stops_cleanly",
+      "status": "passed"
+    },
+    {
+      "test": "test_daemon.DiscoveryTests.test_detects_gentle_from_existing_pi_settings_without_running_package",
+      "status": "passed"
+    },
+    {
+      "test": "test_daemon.DiscoveryTests.test_imports_stdio_mcp_and_rejects_embedded_secrets",
+      "status": "passed"
+    },
+    {
+      "test": "test_downloads.DownloadTests.test_voice_zip_installs_and_tampered_manifest_is_rejected",
+      "status": "passed"
+    },
+    {
+      "test": "test_downloads.DownloadTests.test_zip_path_traversal_rejected",
+      "status": "passed"
+    },
+    {
+      "test": "test_gateway.GatewayTests.test_authentication_csrf_and_remote_prompt",
+      "status": "passed"
+    },
+    {
+      "test": "test_gateway.GatewayTests.test_rejects_non_https_public_access",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_dialogue.DialogueTests.test_external_endpoint_is_rejected_and_results_cannot_invoke_tools",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_dialogue.DialogueTests.test_history_is_bounded_without_orphaning_tool_results",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_dialogue.DialogueTests.test_interlocutor_talks_while_gentle_runs_and_reports_confirmed_result",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_dialogue.DialogueTests.test_model_tools_acknowledge_delegation_and_keep_turn_pairs_on_restart",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_dialogue.DialogueTests.test_task_status_does_not_expose_another_chat",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_live.LocalLiveTests.test_correction_while_task_runs_uses_same_task_and_latest_reply",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_live.LocalLiveTests.test_interrupt_audio_preserves_task_and_new_chat_drops_late_audio",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_live.LocalLiveTests.test_native_gentle_question_is_answered_by_voice_not_model",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_live.LocalLiveTests.test_stale_front_cannot_cancel_the_new_chat",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_live.LocalLiveTests.test_stop_audio_and_stop_task_are_distinct",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_models.LocalModelTests.test_auto_uses_packaged_vosk_when_no_whisper_files_exist",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_models.LocalModelTests.test_detects_user_formats_and_resolves_existing_models_without_downloads",
+      "status": "passed"
+    },
+    {
+      "test": "test_local_models.LocalModelTests.test_local_transcription_preserves_each_engine_contract",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_closing_orb_keeps_application_services_alive",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_compact_panel_orb_and_actual_state_updates",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_double_click_opens_single_click_hides_without_voice",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_enter_sends_shift_enter_adds_line_and_chat_has_space",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_idle_hides_chat_after_minute_and_typing_resets_timer",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_panel_follows_orb_position_is_saved_and_offscreen_is_clamped",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_rpc_editor_returns_multiline_text_and_chat_change_closes_dialog",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_settings_save_and_clamp_position",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_unpinned_legacy_config_cannot_hide_persistent_orb",
+      "status": "passed"
+    },
+    {
+      "test": "test_native_ui.NativeTests.test_voice_wake_does_not_open_chat",
+      "status": "passed"
+    },
+    {
+      "test": "test_pi_real.RealPiTests.test_real_pi_invokes_arise_extension_and_persists_memory",
+      "status": "passed"
+    },
+    {
+      "test": "test_process_tree.ProcessTreeTests.test_owned_grandchild_is_closed_with_json_process",
+      "status": "passed"
+    },
+    {
+      "test": "test_projects.ProjectTests.test_git_worktrees_copy_dirty_files_and_keep_chats_isolated",
+      "status": "passed"
+    },
+    {
+      "test": "test_projects.ProjectTests.test_plain_directory_copies_and_active_chat_survives_restart",
+      "status": "passed"
+    },
+    {
+      "test": "test_projects.ProjectTests.test_switch_aborts_hidden_process_and_checkpoints_chat",
+      "status": "passed"
+    },
+    {
+      "test": "test_tool_setup.ToolSetupTests.test_github_credential_is_not_injected_into_pi_environment",
+      "status": "passed"
+    },
+    {
+      "test": "test_tool_setup.ToolSetupTests.test_private_components_configure_owned_runtime_and_real_catalog_contract",
+      "status": "passed"
+    },
+    {
+      "test": "test_updates.UpdateTests.test_authenticated_request_refuses_non_github_endpoint",
+      "status": "passed"
+    },
+    {
+      "test": "test_updates.UpdateTests.test_checks_main_with_numeric_version_order_and_shows_notes",
+      "status": "passed"
+    },
+    {
+      "test": "test_updates.UpdateTests.test_download_verifies_hash_size_and_executable_before_commit",
+      "status": "passed"
+    },
+    {
+      "test": "test_updates.UpdateTests.test_private_redirect_strips_token_from_asset_host",
+      "status": "passed"
+    },
+    {
+      "test": "test_updates.UpdateTests.test_untrusted_url_or_hash_never_launches",
+      "status": "passed"
+    },
+    {
+      "test": "test_voice.VoiceTests.test_duplicate_tool_call_executes_once",
+      "status": "passed"
+    },
+    {
+      "test": "test_voice.VoiceTests.test_gemini_websocket_audio_and_tool_response",
+      "status": "passed"
+    },
+    {
+      "test": "test_voice.VoiceTests.test_openai_websocket_handshake_audio_interrupt_and_delegation",
+      "status": "passed"
+    },
+    {
+      "test": "test_voice.VoiceTests.test_provider_rejection_never_becomes_connected",
+      "status": "passed"
+    }
+  ],
+  "cloud_accounts_used": false
+}
