@@ -18,7 +18,7 @@ COPY vendor/package*.json vendor/
 RUN npm ci --prefix vendor --ignore-scripts --no-audit --no-fund
 COPY web/ web/
 COPY tests/ tests/
-COPY scripts/test.py scripts/build_complete_zip.py scripts/
+COPY scripts/test.py scripts/build_complete_zip.py scripts/prepare_gentle_installer.py scripts/
 COPY --from=host /src/target/release/arise-host /app/ARISE-host
 ENV QT_QPA_PLATFORM=offscreen PI_OFFLINE=1 PI_TELEMETRY=0 ARISE_TEST_REPORT=/results/test-results.json
 CMD ["python", "scripts/test.py"]
