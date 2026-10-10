@@ -1,3 +1,9 @@
+## 0.4.6
+
+- Recupera instalaciones de Gentle terminadas fuera del asistente: detecta el paquete global pnpm, valida su Pi asociado y reutiliza el home del lanzador.
+- Incluye scripts/Repair-GentleConnection.ps1 para corregir una instalacion existente con copia de ajustes, sin copiar credenciales.
+- El fallo de compilacion Go del instalador original sigue pendiente de diagnostico; esta correccion trata la conexion de ARISE.
+
 ## 0.4.5 — Preparación privada del instalador de Gentle
 
 - Crea automáticamente una carpeta de preparación nueva dentro del perfil, con propietario igual al usuario actual y ACL privada. No cambia propietario ni permisos de AppData, del perfil o de carpetas existentes.

@@ -323,6 +323,8 @@ class Settings(QDialog):
     def detect_agent(self):
         from .discovery import detect
         found = detect(self.runtime.storage.config)
+        if found.get("gentle_agent_home"):
+            self.runtime.settings({key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel")})
         if found["pi_command"]: self.fields["pi_command"].setText(json.dumps(found["pi_command"]))
         if found["gentle_path"]: self.fields["gentle_path"].setText(found["gentle_path"])
         self.message.setText("Pi: " + ("detectado" if found["pi_command"] else "no encontrado") + " · Gentle Shell: " + ("detectado" if found["gentle_path"] or found["gentle_installed_package"] else "no encontrado"))

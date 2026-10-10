@@ -102,7 +102,7 @@ def main():
     if getattr(sys, "frozen", False): os.environ.setdefault("ARISE_CHAT_ROOT", str(application_root() / "chat"))
     runtime = Assistant(root)
     found = detect(runtime.storage.config)
-    changes = {key: found[key] for key in ("pi_command", "gentle_path") if found.get(key)}
+    changes = {key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel") if found.get(key)}
     if changes and not runtime.storage.config.get("gentle_agent_home"): runtime.settings(changes)
     # Run after discovery so stale global paths never overwrite the offline fallback.
     configure_bundle(runtime)

@@ -58,7 +58,38 @@ def installed_pi_version(command):
     return None
 
 
+def detect_gentle_installation():
+    """Recover a provisioned pnpm Gentle install after an interrupted wizard."""
+    node = shutil.which("node")
+    pnpm = shutil.which("pnpm")
+    if not pnpm and os.name == "nt":
+        candidate = Path(os.getenv("LOCALAPPDATA", "")) / "pnpm/pnpm.cmd"
+        if candidate.is_file(): pnpm = str(candidate)
+    if not node or not pnpm: return None
+    options = dict(capture_output=True, text=True, encoding="utf-8", timeout=20,
+                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    try:
+        listing = subprocess.run([pnpm, "list", "-g", "--depth", "0", "--json"], **options)
+        if listing.returncode: return None
+        roots = [item.get("dependencies", {}).get("gentle-pi", {}).get("path")
+                 for item in json.loads(listing.stdout)]
+        roots = [root for root in roots if root]
+        if len(roots) != 1 or not gentle_valid(roots[0]): return None
+        probe = Path(__file__).parent / "resources/probe-gentle.mjs"
+        result = subprocess.run([node, str(probe), roots[0]], **options)
+        if result.returncode: return None
+        from .gentle_setup import validate_result
+        return validate_result(json.loads(result.stdout), node)
+    except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired):
+        return None
+
+
 def detect(config, agent_dir=None):
+    if agent_dir is None and not config.get("gentle_agent_home"):
+        recovered = detect_gentle_installation()
+        if recovered:
+            return {**recovered, "agent_dir": recovered["gentle_agent_home"],
+                    "package_sources": [], "model_providers": [], "gentle_installed_package": True}
     agent_dir = Path(agent_dir or config.get("gentle_agent_home") or os.getenv("PI_CODING_AGENT_DIR", Path.home() / ".pi/agent"))
     pi = resolve_pi(config.get("pi_command"))
     candidates = []
