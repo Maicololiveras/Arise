@@ -397,8 +397,7 @@ class Panel(QWidget):
         self.navigation_menu.addAction(control_icon("settings"), "Ajustes…", controller.show_settings)
         menu = self.navigation_menu.addMenu("Comandos de la sesión"); self.commands_menu = menu; self.commands_loading = False
         menu.aboutToShow.connect(self.refresh_commands)
-        for command in ("/gentle:profiles", "/gentle:models", "/gentle:status", "/gentle:commands"):
-            menu.addAction(command, lambda checked=False, value=command: self.controller.background(lambda: self.runtime.session_command(value)))
+        menu.addAction("Abre este menú para consultar los comandos disponibles").setEnabled(False)
         self.control = QCheckBox("Permitir control del PC"); self.control.toggled.connect(self.toggle_control)
         permission = QWidgetAction(self.navigation_menu); permission.setDefaultWidget(self.control); self.navigation_menu.addAction(permission)
         self.navigation.setMenu(self.navigation_menu)
@@ -446,6 +445,8 @@ class Panel(QWidget):
     def refresh_commands(self):
         if self.commands_loading: return
         self.commands_loading = True; chat = self.current_chat
+        self.commands_menu.clear()
+        self.commands_menu.addAction("Cargando comandos de la sesión…").setEnabled(False)
         def operation():
             self.runtime.connect_pi()
             return self.runtime.pi.request({"type":"get_commands"}).get("data", {}).get("commands", [])
