@@ -85,6 +85,14 @@ class Assistant(Runtime):
             raise RuntimeError("El control real del escritorio requiere Windows.")
         if not enabled:
             return self.stop()
+        # Reconnect after settings/chat changes; permission alone used to leave
+        # an empty catalog even when the desktop dependencies were installed.
+        for name in ("screenview", "inputcontrol"):
+            if self.storage.config["mcp"].get(name, {}).get("enabled"):
+                try:
+                    self.connect_mcp(name)
+                except Exception as error:
+                    self.emit("error", {"text": f"{name}: no se pudo conectar. {str(error)[:300]}"})
         self.desktop = True
         self.orb.update(control=True)
         return self.status()

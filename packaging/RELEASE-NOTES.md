@@ -1,3 +1,10 @@
+## 0.4.7
+
+- Guardar ajustes sin cambiar MCP ni carpeta conserva los clientes y catalogos verificados.
+- Activar el escritorio reconecta ScreenView e InputControl habilitados y muestra fallos de conexion.
+- El catalogo incluye el estado configurado/conectado de cada MCP.
+- Nuevo chat desde una subcarpeta Git copia solo esa carpeta, sin exigir la raiz del repositorio.
+
 ## 0.4.6
 
 - Recupera instalaciones de Gentle terminadas fuera del asistente: detecta el paquete global pnpm, valida su Pi asociado y reutiliza el home del lanzador.
