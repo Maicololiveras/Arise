@@ -1,3 +1,4 @@
+from . import __version__
 """Resident engine with a single-instance lock and authenticated local UI bridge."""
 import argparse
 import base64
@@ -47,7 +48,7 @@ def ping(descriptor):
     try:
         req = urllib.request.Request(descriptor["url"] + "/api/status", headers={"Authorization": "Bearer " + descriptor["token"]})
         with urllib.request.urlopen(req, timeout=1) as result:
-            return json.load(result).get("version") == "0.2.0"
+            return json.load(result).get("version") == __version__
     except Exception: return False
 
 
@@ -101,11 +102,10 @@ def main():
     if getattr(sys, "frozen", False): os.environ.setdefault("ARISE_CHAT_ROOT", str(application_root() / "chat"))
     runtime = Assistant(root)
     found = detect(runtime.storage.config)
+    changes = {key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel") if found.get(key)}
+    if changes and not runtime.storage.config.get("gentle_agent_home"): runtime.settings(changes)
+    # Run after discovery so stale global paths never overwrite the offline fallback.
     configure_bundle(runtime)
-    changes = {key: found[key] for key in ("pi_command", "gentle_path") if found.get(key)}
-    if found.get("gentle_installed_package") and not found.get("gentle_path"):
-        changes["gentle_path"] = ""
-    if changes: runtime.settings(changes)
     server = make_server(runtime)
     voice = VoiceService(runtime)
     runtime.voice_service = voice
@@ -113,10 +113,22 @@ def main():
     if not args.no_audio:
         voice.start(); hotkeys.start()
     temporary = root / "daemon.tmp"
-    temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "pid": os.getpid(), "version": "0.2.0"}))
+    temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "pid": os.getpid(), "version": __version__}))
     if os.name != "nt": temporary.chmod(0o600)
     os.replace(temporary, descriptor_path(root))
     runtime.emit("notice", {"text": "Proceso residente activo. Pi y las herramientas se conectan cuando se necesitan."})
+    if getattr(sys,"frozen",False) and not os.getenv("ARISE_SKIP_NETWORK_SETUP"):
+        from .tool_setup import auto_setup
+        threading.Thread(target=auto_setup,args=(runtime,),daemon=True).start()
+    if runtime.storage.config.get('voice_task_engine','gentle') == 'local-dialogue' and runtime.storage.config.get('local_dialogue_enabled') and runtime.storage.config.get('local_server_command'):
+        def warm_local_model():
+            try:
+                from .local_dialogue import LocalDialogue
+                LocalDialogue(runtime)
+                runtime.emit('notice', {'text': 'Servidor conversacional local disponible.'})
+            except Exception as error:
+                runtime.emit('notice', {'text': str(error)[:300]})
+        threading.Thread(target=warm_local_model, daemon=True).start()
     try: server.serve_forever(poll_interval=.1)
     except KeyboardInterrupt: pass
     finally:

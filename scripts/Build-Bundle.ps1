@@ -12,6 +12,9 @@ Copy-Item -LiteralPath (Join-Path $root 'vendor/package-lock.json') -Destination
 & npm ci --prefix $nodeRoot --ignore-scripts --no-audit --no-fund;Check-Exit 'Pi y Gentle Shell'
 & node (Join-Path $PSScriptRoot 'install-gentle-native.mjs') (Join-Path $nodeRoot 'node_modules/gentle-pi')
 Check-Exit 'Gentle AI nativo verificado (Windows requiere Go 1.25.10+)'
+# Ship npm for private-tool provisioning on PCs without any Node installation.
+& npm install --prefix $nodeRoot --ignore-scripts --no-save --package-lock=false --no-audit --no-fund 'npm@11.10.0'
+Check-Exit 'npm integrado para instalación automática de herramientas'
 $gentle='@bundle/node/node_modules/gentle-pi'
 if($GentlePath){
     $source=(Resolve-Path -LiteralPath $GentlePath).Path
@@ -20,17 +23,14 @@ if($GentlePath){
     $gentle='@bundle/gentle-shell'
 }
 $manifest=@{
-    pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/cli.js')
+    pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     gentle_path=$gentle
-    versions=@{pi='0.85.1';gentle='3.3.0';arise='0.2.0'}
+    wake_model='@bundle/models/vosk-model-small-es-0.42'
+    versions=@{pi='1.1.0';gentle='4.0.0';arise='0.4.8';vosk='small-es-0.42'}
     mcp=@{}
 }
-if($WithTools){
-    if(-not $ReposRoot){throw '-WithTools requiere -ReposRoot con screenview-mcp, inputcontrol-mcp, transcripcion-ia y forge-mcp'}
-    $repos=(Resolve-Path -LiteralPath $ReposRoot).Path
-    foreach($name in @('screenview-mcp','inputcontrol-mcp','transcripcion-ia','forge-mcp')){
-        if(-not(Test-Path -LiteralPath (Join-Path $repos $name))){throw "Falta $name"}
-    }
+& python (Join-Path $PSScriptRoot 'prepare_voice_pack.py') --destination $bundle --output (Join-Path (Split-Path $Target -Parent) 'ARISE-Voice-Models-es.zip')
+Check-Exit 'Modelo Vosk español integrado y ZIP de voz'
     # Embedded Python is relocatable; pip-generated .exe launchers are deliberately avoided.
     $pythonRoot=Join-Path $bundle 'python';New-Item -ItemType Directory -Path $pythonRoot -Force | Out-Null
     $archive=Join-Path $env:TEMP ('arise-python-'+[guid]::NewGuid()+'.zip')
@@ -38,8 +38,6 @@ if($WithTools){
     Expand-Archive -LiteralPath $archive -DestinationPath $pythonRoot;Remove-Item -LiteralPath $archive
     @('python312.zip','.','Lib\site-packages','import site') | Set-Content -LiteralPath (Join-Path $pythonRoot 'python312._pth') -Encoding ASCII
     $site=Join-Path $pythonRoot 'Lib\site-packages'
-    & python -m pip install --target $site ("{0}[windows]" -f (Join-Path $repos 'screenview-mcp')) ("{0}[windows]" -f (Join-Path $repos 'inputcontrol-mcp')) ("{0}[local]" -f (Join-Path $repos 'transcripcion-ia'))
-    Check-Exit 'MCP Python'
     $ffmpeg=$null
     if($env:ChocolateyInstall){$ffmpeg=Get-ChildItem -LiteralPath (Join-Path $env:ChocolateyInstall 'lib/ffmpeg') -Filter ffmpeg.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1}
     if(-not $ffmpeg){$command=Get-Command ffmpeg.exe -ErrorAction SilentlyContinue;if($command){$ffmpeg=Get-Item -LiteralPath $command.Source}}
@@ -47,6 +45,17 @@ if($WithTools){
     $media=Join-Path $bundle 'media';New-Item -ItemType Directory -Path $media -Force | Out-Null
     foreach($exe in @('ffmpeg.exe','ffprobe.exe')){Copy-Item -LiteralPath (Join-Path $ffmpeg.DirectoryName $exe) -Destination $media}
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'mcp_entry.py') -Destination (Join-Path $bundle 'mcp_entry.py')
+    & python -m pip install --target $site "pip==25.2" "setuptools==80.9.0" "wheel==0.45.1"
+    Check-Exit "Runtime pip de herramientas"
+
+if($WithTools){
+    if(-not $ReposRoot){throw '-WithTools requiere -ReposRoot con screenview-mcp, inputcontrol-mcp, transcripcion-ia y forge-mcp'}
+    $repos=(Resolve-Path -LiteralPath $ReposRoot).Path
+    foreach($name in @('screenview-mcp','inputcontrol-mcp','transcripcion-ia','forge-mcp')){
+        if(-not(Test-Path -LiteralPath (Join-Path $repos $name))){throw "Falta $name"}
+    }
+    & python -m pip install --target $site ("{0}[windows]" -f (Join-Path $repos 'screenview-mcp')) ("{0}[windows]" -f (Join-Path $repos 'inputcontrol-mcp')) ("{0}[local]" -f (Join-Path $repos 'transcripcion-ia'))
+    Check-Exit 'MCP Python'
     foreach($row in @(@('screenview','screenview_mcp.server:main'),@('inputcontrol','inputcontrol_mcp.server:main'),@('transcripcion','transcripcion_mcp.server:main'))){
         $manifest.mcp[$row[0]]=@{command=@('@bundle/python/python.exe','@bundle/mcp_entry.py',$row[1]);enabled=$true}
     }
@@ -63,5 +72,9 @@ if($WithTools){
     & (Join-Path $pythonRoot 'python.exe') -c 'import screenview_mcp.server, inputcontrol_mcp.server, transcripcion_mcp.server'
     Check-Exit 'Imports reales de MCP en Python integrado'
 }
+& python (Join-Path $PSScriptRoot 'prepare_gentle_installer.py') --destination (Join-Path $bundle 'gentle-installer')
+Check-Exit 'Instalador oficial de Gentle (estable/main)'
+$ghRoot=Join-Path $bundle 'gh';New-Item -ItemType Directory -Path $ghRoot -Force | Out-Null
+Copy-Item -LiteralPath (Get-Command gh.exe).Source -Destination (Join-Path $ghRoot 'gh.exe')
 $manifest | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $bundle 'manifest.json') -Encoding UTF8
 Write-Host "Bundle preparado en $bundle"
