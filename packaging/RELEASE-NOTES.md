@@ -1,5 +1,7 @@
 ## 0.4.7
 
+- Canales separados: QA recibe actualizaciones de qa; produccion de main. El canal queda incorporado en el instalador.
+
 - Guardar ajustes sin cambiar MCP ni carpeta conserva los clientes y catalogos verificados.
 - Activar el escritorio reconecta ScreenView e InputControl habilitados y muestra fallos de conexion.
 - El catalogo incluye el estado configurado/conectado de cada MCP.
