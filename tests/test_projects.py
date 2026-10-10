@@ -40,6 +40,26 @@ class ProjectTests(unittest.TestCase):
                 self.assertEqual(r.storage.config['agent_model'],'second-model')
             finally:r.close();r.storage.db.close()
 
+    def test_subdirectory_chat_copies_only_selected_folder(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);repo=root/'repo';repo.mkdir()
+            subprocess.run(['git','-C',str(repo),'init'],check=True,capture_output=True)
+            selected=repo/'selected';selected.mkdir()
+            (selected/'inside.txt').write_text('inside')
+            (repo/'outside.txt').write_text('outside')
+            r=Assistant(root/'data')
+            try:
+                old=r.select_project(str(selected))['id']
+                new=r.switch_conversation()['id']
+                session=r.sessions.get(new)
+                self.assertNotEqual(old,new)
+                self.assertEqual(session['kind'],'copy')
+                workspace=Path(session['workspace'])
+                self.assertEqual((workspace/'inside.txt').read_text(),'inside')
+                self.assertFalse((workspace/'outside.txt').exists())
+                self.assertEqual(r.storage.messages(new),[])
+            finally:r.close();r.storage.db.close()
+
     def test_plain_directory_copies_and_active_chat_survives_restart(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);source=root/'plain';source.mkdir();(source/'data.txt').write_text('same')
