@@ -59,9 +59,8 @@ class ProjectSessions:
             if isolated and project_count:
                 workspace=folder/'workspace'
                 probe=self.git(source,'rev-parse','--show-toplevel',check=False) if shutil.which('git') else None
-                if probe and probe.returncode==0:
-                    repository=Path(probe.stdout.decode().strip()).resolve()
-                    if repository!=source:raise ValueError('Elige la raíz del repositorio para crear worktrees')
+                repository=Path(probe.stdout.decode().strip()).resolve() if probe and probe.returncode==0 else None
+                if repository==source:
                     branch='arise/chat-'+conversation[:12]
                     self.git(source,'worktree','add','-b',branch,str(workspace),'HEAD')
                     kind='worktree'
