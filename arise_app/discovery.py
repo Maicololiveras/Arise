@@ -69,7 +69,11 @@ def detect_gentle_installation():
     options = dict(capture_output=True, text=True, encoding="utf-8", timeout=20,
                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     try:
-        listing = subprocess.run([pnpm, "list", "-g", "--depth", "0", "--json"], **options)
+        listing_env = dict(os.environ)
+        if os.name == "nt":
+            pnpm_bin = str(Path(os.getenv("LOCALAPPDATA", "")) / "pnpm/bin")
+            listing_env["PATH"] = pnpm_bin + os.pathsep + listing_env.get("PATH", "")
+        listing = subprocess.run([pnpm, "list", "-g", "--depth", "0", "--json"], env=listing_env, **options)
         if listing.returncode: return None
         roots = [item.get("dependencies", {}).get("gentle-pi", {}).get("path")
                  for item in json.loads(listing.stdout)]

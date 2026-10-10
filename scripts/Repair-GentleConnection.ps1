@@ -17,8 +17,16 @@ if (!$pnpm) {
     if (!(Test-Path -LiteralPath $candidate)) { throw 'No se encontro pnpm.' }
     $pnpmPath = $candidate
 } else { $pnpmPath = $pnpm.Source }
-$listing = & $pnpmPath list -g --depth 0 --json
-if ($LASTEXITCODE -ne 0) { throw 'No se pudo consultar pnpm.' }
+# pnpm 11 validates global-bin-dir even for a read-only global listing.
+# Scope the PATH adjustment to this command; do not change the user's PATH.
+$previousPath = $env:Path
+try {
+    $pnpmBin = Join-Path $env:LOCALAPPDATA 'pnpm\bin'
+    $env:Path = "$pnpmBin;$previousPath"
+    $listing = & $pnpmPath list -g --depth 0 --json
+    $listingExitCode = $LASTEXITCODE
+} finally { $env:Path = $previousPath }
+if ($listingExitCode -ne 0) { throw 'No se pudo consultar pnpm.' }
 $packages = @($listing | ConvertFrom-Json)
 $gentle = @($packages | ForEach-Object { $_.dependencies.'gentle-pi'.path } | Where-Object { $_ })
 if ($gentle.Count -ne 1) { throw 'No se encontro una instalacion unica de Gentle.' }
