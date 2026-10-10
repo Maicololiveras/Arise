@@ -10,7 +10,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from arise_app.downloads import safe_extract
 
 URL='https://github.com/Gentleman-Programming/gentle-shell/releases/download/v4.0.0/gentle-shell-installer-windows.zip'
-SHA256='284db237b6c13206b4648c9050d37b246f22ef448dfa76118529b135214f765c'
+SHA256='889c8eb870d1bc55fdbf3abb2d7604cedee3f38c9b777349d49adc3c7fc1f25b'
 
 def adapt_bootstrap(entry):
     """Use ARISE's private staging parent; retain every upstream ACL check."""
@@ -41,8 +41,8 @@ def prepare(destination):
     destination=Path(destination)
     with tempfile.TemporaryDirectory() as temporary:
         archive=Path(temporary)/'installer.zip'
-        with urllib.request.urlopen(URL,timeout=60) as response,archive.open('wb') as output:
-            shutil.copyfileobj(response,output)
+        pinned=Path(__file__).resolve().parents[1]/'vendor/gentle-installer/windows-v4.0.0-889c8eb8.zip'
+        shutil.copyfile(pinned,archive)
         if hashlib.sha256(archive.read_bytes()).hexdigest()!=SHA256:
             raise RuntimeError('El instalador de Gentle no coincide con el SHA-256 publicado.')
         extracted=Path(temporary)/'extracted';safe_extract(archive,extracted)

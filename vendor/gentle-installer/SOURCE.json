@@ -1,0 +1,9 @@
+{
+  "repository": "Gentleman-Programming/gentle-shell",
+  "release": "v4.0.0",
+  "asset_id": 628358078,
+  "url": "https://github.com/Gentleman-Programming/gentle-shell/releases/download/v4.0.0/gentle-shell-installer-windows.zip",
+  "sha256": "889c8eb870d1bc55fdbf3abb2d7604cedee3f38c9b777349d49adc3c7fc1f25b",
+  "asset_updated_at": "2026-10-10T15:54:33Z",
+  "note": "Unmodified upstream archive. ARISE adapters are applied only during build."
+}
