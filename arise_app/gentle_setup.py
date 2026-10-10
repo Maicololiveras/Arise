@@ -2,6 +2,7 @@
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import threading
 import time
@@ -9,6 +10,25 @@ from pathlib import Path
 from .bundle import application_root
 
 LOCK=threading.Lock()
+
+def wait_for_installer(process, result_file, log_file, timeout):
+    deadline=time.monotonic()+timeout
+    while not result_file.is_file():
+        code=process.poll()
+        if code is not None:
+            # The result reporter writes atomically; allow its final rename.
+            if result_file.is_file():break
+            tail=''
+            try:
+                with log_file.open('rb') as stream:
+                    stream.seek(0,2);size=stream.tell();stream.seek(max(0,size-8192))
+                    tail=stream.read().decode('utf-8',errors='replace')
+            except OSError:pass
+            reason=' Los permisos de la carpeta temporal fueron rechazados (acl-mask).' if 'acl-mask' in tail else ''
+            raise RuntimeError(f'El instalador de Gentle terminó (código {code}) sin confirmar la instalación.{reason} Diagnóstico: {log_file}')
+        if time.monotonic()>=deadline:
+            raise RuntimeError(f'El instalador sigue abierto sin confirmar. Revisa su ventana antes de reintentar. Diagnóstico: {log_file}')
+        time.sleep(.5)
 
 def validate_result(result, node):
     if result.get('status')!='ready':
@@ -41,12 +61,14 @@ def install_gentle(runtime, timeout=3600):
         job=Path(tempfile.mkdtemp(prefix='gentle-',dir=jobs))
         shutil.copytree(source,job,dirs_exist_ok=True)
         runtime.emit('notice',{'text':'Se abrirá el instalador oficial. Elige versión estable o último main y confirma su plan. ARISE verificará el resultado.'})
-        os.startfile(str(job/'scripts/bootstrap.cmd'),cwd=str(job))
-        deadline=time.monotonic()+timeout
         result_file=job/'arise-result.json'
-        while not result_file.is_file():
-            if time.monotonic()>=deadline:raise RuntimeError('No se recibió confirmación del instalador. Puedes volver a abrirlo para continuar.')
-            time.sleep(.5)
+        log_file=job/'bootstrap.log'
+        command=str(Path(os.environ['SystemRoot'])/'System32/cmd.exe')
+        with log_file.open('wb') as log:
+            process=subprocess.Popen([command,'/d','/c','bootstrap.cmd'],cwd=str(job/'scripts'),
+                stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
+            runtime.emit('notice',{'text':f'Preparando Gentle. El asistente se abrirá en el navegador. Diagnóstico: {log_file}'})
+            wait_for_installer(process,result_file,log_file,timeout)
         result=json.loads(result_file.read_text(encoding='utf-8'))
         changes=validate_result(result,bundle/'node/node.exe')
         with runtime.transition_lock:

@@ -5,13 +5,39 @@ import unittest
 import zipfile
 from pathlib import Path
 from unittest.mock import patch
-from arise_app.gentle_setup import validate_result
+from arise_app.gentle_setup import validate_result, wait_for_installer
+from scripts.prepare_gentle_installer import adapt_bootstrap
 from arise_app.bundle import configure_bundle
 from arise_app.github_access import github_opener, gh_executable
 import test_provisioning
 from scripts.build_complete_zip import build
 
 class GentleSetupTests(unittest.TestCase):
+    def test_bootstrap_profile_staging_preserves_validation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            entry=Path(temp)/'bootstrap.cmd'
+            original='set ROOT=%LOCALAPPDATA%\n$env:LOCALAPPDATA $env:LOCALAPPDATA $env:LOCALAPPDATA\ncheck acl-mask ancestor-reparse private-owner\n'
+            entry.write_text(original)
+            adapt_bootstrap(entry)
+            self.assertEqual(entry.read_text(),original.replace('%LOCALAPPDATA%','%USERPROFILE%').replace('$env:LOCALAPPDATA','$env:USERPROFILE'))
+            with self.assertRaises(RuntimeError):adapt_bootstrap(entry)
+
+    def test_failed_installer_reports_exit_and_acl_without_waiting_an_hour(self):
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);log=root/'bootstrap.log';log.write_text('private storage failed. Reason: acl-mask')
+            process=Mock();process.poll.return_value=1
+            with self.assertRaisesRegex(RuntimeError,'código 1.*acl-mask'):
+                wait_for_installer(process,root/'result.json',log,3600)
+
+    def test_success_result_is_accepted_while_wizard_remains_open(self):
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as temp:
+            result=Path(temp)/'result.json';result.write_text('{}')
+            process=Mock()
+            wait_for_installer(process,result,Path(temp)/'log',3600)
+            process.poll.assert_not_called()
+
     def test_both_channels_adopt_the_cli_declared_by_gentle_pi(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);pi=root/'configured-pi';gentle=root/'gentle';home=root/'agent'
