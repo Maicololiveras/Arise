@@ -115,7 +115,7 @@ def install_forge(bundle, tools, opener):
         raise RuntimeError('Falta Node/npm integrado para Forge. Usa el nuevo ZIP completo de ARISE.')
     base='https://api.github.com/repos/Maicololiveras/forge-mcp'
     # Pin the reviewed voice-capable build; never install an older default-branch Forge.
-    commit='a1fc2f440c6b3c5288838bbe9fc5e2f1ad3ba6c5'
+    commit='079cbd9acaa33def7de52596c5eff10ae65013d8'
     destination=tools/('forge-'+uuid.uuid4().hex)
     try:
         with tempfile.TemporaryDirectory(dir=tools,prefix='forge-source-') as temporary:

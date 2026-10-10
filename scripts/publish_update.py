@@ -24,7 +24,12 @@ if existing.returncode==0:raise RuntimeError('Version already published; increme
 complete=Path('release/complete/ARISE-Windows-Complete.zip')
 if not complete.is_file(): raise RuntimeError('Complete ZIP artifact missing')
 flags=['--prerelease','--latest=false'] if channel=='qa' else ['--latest']
-gh('release','create',tag,str(setup),str(checksum),str(complete),'--repo',REPO,'--target',commit,'--title','ARISE '+channel+' '+__version__,'--notes-file','packaging/RELEASE-NOTES.md',*flags)
+assets=[str(setup),str(checksum)]
+if complete.stat().st_size < 2*1024**3: assets.append(str(complete))
+else:
+    with open('packaging/RELEASE-NOTES.md','a') as output:
+        output.write('\nZIP completo: https://github.com/'+REPO+'/actions/runs/'+os.environ['GITHUB_RUN_ID']+' (artefacto ARISE-Windows-Complete).\n')
+gh('release','create',tag,*assets,'--repo',REPO,'--target',commit,'--title','ARISE '+channel+' '+__version__,'--notes-file','packaging/RELEASE-NOTES.md',*flags)
 release=json.loads(gh('api',f'repos/{REPO}/releases/tags/{tag}'))
 asset=next(a for a in release['assets'] if a['name']=='ARISE-Setup.exe')
 manifest={'schema':1,'channel':channel,'version':__version__,'notes':notes[:12000],'installer_url':asset['browser_download_url'],'asset_id':asset['id'],'sha256':digest,'size':asset['size'],'source_commit':commit}

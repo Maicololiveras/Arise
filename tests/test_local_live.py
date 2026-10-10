@@ -25,6 +25,15 @@ class LocalLiveTests(unittest.TestCase):
                 if cancel.wait(2):self.cancelled.set()
         self.bridge=LocalVoiceBridge(self.runtime,SimpleNamespace(interrupt=lambda:None),say,self.active,self.shutdown)
     def tearDown(self):self.bridge.close()
+    def test_default_voice_uses_gentle_even_with_local_front_enabled(self):
+        from unittest.mock import patch
+        self.runtime.storage.config['local_dialogue_enabled']=True
+        with patch('arise_app.local_dialogue.LocalDialogue') as small_model:
+            self.bridge.submit('puedes mirar mi pantalla')
+            wait_for(lambda:bool(self.calls))
+            small_model.assert_not_called()
+        self.assertEqual(self.calls,['puedes mirar mi pantalla'])
+
     def test_correction_while_task_runs_uses_same_task_and_latest_reply(self):
         self.bridge.submit('crea el proyecto');wait_for(lambda:len(self.calls)==1)
         self.bridge.submit('mejor en la otra carpeta');wait_for(lambda:len(self.calls)==2)

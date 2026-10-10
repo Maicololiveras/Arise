@@ -29,7 +29,7 @@ class DialogueTests(unittest.TestCase):
             def reply(self,data):
                 raw=json.dumps(data).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
         self.server=ThreadingHTTPServer(('127.0.0.1',0),Handler);self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
-        self.runtime.storage.config.update({'local_dialogue_enabled':True,'local_dialogue_url':f'http://127.0.0.1:{self.server.server_port}/v1','local_dialogue_model':''})
+        self.runtime.storage.config.update({'voice_task_engine':'local-dialogue','local_dialogue_enabled':True,'local_dialogue_url':f'http://127.0.0.1:{self.server.server_port}/v1','local_dialogue_model':''})
     def tearDown(self):self.server.shutdown();self.server.server_close();self.thread.join();self.runtime.close();self.runtime.storage.db.close();self.temp.cleanup()
     def test_model_tools_acknowledge_delegation_and_keep_turn_pairs_on_restart(self):
         dialogue=LocalDialogue(self.runtime);calls=[]

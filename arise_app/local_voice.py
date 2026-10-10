@@ -62,7 +62,7 @@ class LocalVoiceBridge:
                 if self.answer_question(text): continue
                 if not self.front_attempted or (not self.front and time.monotonic() >= self.front_retry_after):
                     self.front_attempted=True
-                    if self.runtime.storage.config.get('local_dialogue_enabled',False):
+                    if self.runtime.storage.config.get('voice_task_engine','gentle') == 'local-dialogue' and self.runtime.storage.config.get('local_dialogue_enabled',False):
                         try:
                             from .local_dialogue import LocalDialogue
                             self.front=LocalDialogue(self.runtime)

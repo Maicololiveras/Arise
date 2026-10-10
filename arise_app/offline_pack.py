@@ -26,6 +26,14 @@ def probe_voice(root, light=False):
     wake = vosk.Model(str(root/'models'/VOSK_NAME))
     del wake
     gc.collect()
+    if (root/'tts/piper/piper.exe').is_file():
+        import subprocess, wave
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory)/'voice.wav'
+            subprocess.run([str(root/'tts/piper/piper.exe'),'--model',str(root/'models/es_MX-ald-medium.onnx'),'--output_file',str(output)],input='Hola, soy ARISE.\n'.encode(),capture_output=True,check=True,timeout=60,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+            with wave.open(str(output)) as audio:
+                if audio.getnframes()<1000 or audio.getnchannels()!=1:raise RuntimeError('La voz neuronal no generó audio válido.')
+
 
 
 def _relative(name):
@@ -80,6 +88,12 @@ def extract_verified(archive, destination):
         if stream.read(2) != b'MZ': raise ValueError('Servidor Windows inválido.')
     with (destination/'models/dialogue.gguf').open('rb') as stream:
         if stream.read(4) != b'GGUF': raise ValueError('Modelo conversacional inválido.')
+    if manifest.get('piper'):
+        if manifest['piper']!='tts/piper/piper.exe' or manifest.get('piper_model')!='models/es_MX-ald-medium.onnx':
+            raise ValueError('Rutas Piper no compatibles.')
+        for name in (manifest['piper'],manifest['piper_model'],manifest['piper_model']+'.json'):
+            if name not in files:raise ValueError('Paquete Piper incompleto.')
+        if (destination/manifest['piper']).read_bytes()[:2]!=b'MZ':raise ValueError('Piper Windows inválido.')
     return manifest
 
 
@@ -113,7 +127,8 @@ def _install(runtime, archive):
             sock.bind(('127.0.0.1',0));port = sock.getsockname()[1]
         command = [str(target/manifest['server']), '--model',str(target/'models/dialogue.gguf'),
             '--alias','arise-local','--host','127.0.0.1','--port',str(port),'--ctx-size','4096' if light else '8192','--jinja','--n-gpu-layers','0']
-        runtime.settings({'onboarding_complete':True,'voice_provider':'local','local_stt_engine':'vosk' if light else 'openai-whisper',
+        speech = {'piper_command':[str(target/manifest['piper'])], 'piper_model':str(target/manifest['piper_model']), 'local_tts':'forge', 'voice':'Piper es-MX Ald'} if manifest.get('piper') else {}
+        runtime.settings({**speech, 'voice_task_engine':'gentle', 'onboarding_complete':True,'voice_provider':'local','local_stt_engine':'vosk' if light else 'openai-whisper',
             'local_stt_model':str(target/'models/small.pt'),'wake_model':str(target/'models'/VOSK_NAME),
             'local_dialogue_enabled':True,'local_dialogue_url':f'http://127.0.0.1:{port}/v1',
             'local_dialogue_model':'arise-local','local_server_command':command})
@@ -126,6 +141,7 @@ def _install(runtime, archive):
             'messages':[{'role':'user','content':'Responde solamente: Listo.'}], 'max_tokens':16,'temperature':0},timeout=90)
         if not result.get('choices',[{}])[0].get('message',{}).get('content'):
             raise RuntimeError('El modelo local no devolvió una respuesta de prueba.')
+        runtime.model_service.close()  # Optional dialogue model stays unloaded during normal Gentle voice.
         runtime.emit('notice',{'text':'Configuración local completada ('+('ligera, CPU y Vosk' if light else 'CPU y Whisper')+'). Usa el botón de micrófono para hablar.'})
         return {'installed':True,'path':str(target),'model':'arise-local','inference':'passed'}
     except Exception:

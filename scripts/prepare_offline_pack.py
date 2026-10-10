@@ -13,6 +13,10 @@ from arise_app.downloads import download_wake, safe_extract
 QWEN_REV = 'a615a81362316d7b9f5a7a9c4313adfdf9b54588'
 WHISPER_SHA = '9ecf779972d90ba49c06d968637d720dd632c55bbf19d441fb42bf17a411e794'
 SOURCES = {
+    'piper.zip': ('https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip', 'f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea'),
+    'models/es_MX-ald-medium.onnx': ('https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/es/es_MX/ald/medium/es_MX-ald-medium.onnx', '019b3803293c93e34a206dd2e53a3889209a514e786fd7144f7b70196c579b63'),
+    'models/es_MX-ald-medium.onnx.json': ('https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/es/es_MX/ald/medium/es_MX-ald-medium.onnx.json', 'efab736e62e5321dd5d063d1b46e63c59ce655419816355b81d025c1a8d6b03c'),
+    'licenses/PIPER-VOICE-MODEL-CARD.txt': ('https://huggingface.co/rhasspy/piper-voices/resolve/375a0fe641dea077c2a47b4e9a056d6da521eed3/es/es_MX/ald/medium/MODEL_CARD', '1f0694ceb3f1e78c1e2ee0e2d5da40f19f965bc638e1b4fb4fca9bdca420d713'),
     'models/small.pt': (f'https://openaipublic.azureedge.net/main/whisper/models/{WHISPER_SHA}/small.pt', WHISPER_SHA),
     'models/dialogue.gguf': (f'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/{QWEN_REV}/qwen2.5-1.5b-instruct-q4_k_m.gguf', '6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e'),
     'llama.zip': ('https://github.com/ggml-org/llama.cpp/releases/download/b10991/llama-b10991-bin-win-cpu-x64.zip', '8f1b7bcc1df032bb0c5759e3db5c67969f20c6f061aa0efec70de7bfa00fbf37'),
@@ -45,23 +49,29 @@ def prepare(root, output):
     for relative, (url, expected) in SOURCES.items():
         download(url, root/relative, expected)
     safe_extract(root/'llama.zip', root/'server')
+    safe_extract(root/'piper.zip', root/'tts')
     executable = list((root/'server').rglob('llama-server.exe'))
     if len(executable) != 1:
         raise RuntimeError('llama-server.exe missing or ambiguous')
     download_wake(root)
     licenses = {
+        'PIPER-LICENSE.txt': 'https://raw.githubusercontent.com/rhasspy/piper/2023.11.14-2/LICENSE.md',
+        'ESPEAK-NG-COPYING.txt': 'https://raw.githubusercontent.com/espeak-ng/espeak-ng/1.51/COPYING',
+        'ONNXRUNTIME-LICENSE.txt': 'https://raw.githubusercontent.com/microsoft/onnxruntime/v1.14.1/LICENSE',
+        'PIPER-PHONEMIZE-LICENSE.txt': 'https://raw.githubusercontent.com/rhasspy/piper-phonemize/2023.11.14-2/LICENSE.md',
         'QWEN-LICENSE.txt': f'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/{QWEN_REV}/LICENSE',
         'WHISPER-LICENSE.txt': 'https://raw.githubusercontent.com/openai/whisper/v20250625/LICENSE',
         'LLAMA-LICENSE.txt': 'https://raw.githubusercontent.com/ggml-org/llama.cpp/b10991/LICENSE',
     }
     for name,url in licenses.items(): download(url,root/'licenses'/name)
     shutil.copy2(Path(__file__).resolve().parents[1]/'arise_app/resources/VOSK-LICENSE.txt',root/'licenses/VOSK-LICENSE.txt')
-    files = {p.relative_to(root).as_posix(): digest(p) for directory in ('models','server','licenses') for p in sorted((root/directory).rglob('*')) if p.is_file()}
+    files = {p.relative_to(root).as_posix(): digest(p) for directory in ('models','server','licenses','tts') for p in sorted((root/directory).rglob('*')) if p.is_file()}
     manifest = {'format':'arise-offline-pack-v1', 'platform':'windows-x64', 'files':files,
+        'piper':'tts/piper/piper.exe', 'piper_model':'models/es_MX-ald-medium.onnx',
         'server':executable[0].relative_to(root).as_posix(), 'sources':{k:{'url':v[0],'sha256':v[1]} for k,v in SOURCES.items()}}
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary=output.with_suffix('.tmp')
-    with zipfile.ZipFile(temporary, 'w', zipfile.ZIP_STORED, allowZip64=True) as archive:
+    with zipfile.ZipFile(temporary, 'w', zipfile.ZIP_DEFLATED, compresslevel=1, allowZip64=True) as archive:
         archive.writestr('manifest.json',json.dumps(manifest,indent=2))
         for relative in files: archive.write(root/relative,relative)
     temporary.replace(output)

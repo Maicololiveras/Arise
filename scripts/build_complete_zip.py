@@ -23,7 +23,7 @@ def build(application, models, output):
             'El instalador actualiza ARISE en su carpeta existente, cierra sus procesos y conserva conversaciones y configuracion. '
             'Despues abre ARISE desde Inicio. Puedes borrar el ZIP tras completar la configuracion.\n\n'
             'Incluye modelos Vosk espanol, Whisper small, Qwen2.5-1.5B-Instruct Q4_K_M y llama.cpp Windows CPU. '
-            'La voz de salida usa Windows SAPI.\n\n'
+            'Voz neuronal Piper es-MX Ald gestionada por Forge. Con 8 GB se elige CPU y Vosk. La conversacion usa el mismo Gentle del chat; su proveedor puede ser local o remoto.\n\n'
             'Incluye GitHub CLI (gh). Para manos y ojos necesitas una sesion gh auth login con acceso a los repositorios privados, '
             'o conectar GitHub en Credenciales. ARISE descarga e instala los MCP y verifica sus catalogos. '
             'No se incluyen credenciales ni codigo privado. Los proveedores del agente y Gmail requieren sus propias cuentas.\n')

@@ -430,7 +430,7 @@ class VoiceService:
 
     def _render_local(self, reply, cancel):
         if cancel.is_set() or not self.active.is_set(): return
-        if self.runtime.storage.config.get('local_tts','forge')=='forge':
+        if self.runtime.storage.config.get('local_tts','forge')=='forge' and not self.runtime.storage.config.get('piper_model'):
             from .forge_voice import voice_command, speak
             try: voice_command(self.runtime)
             except RuntimeError:
@@ -450,17 +450,23 @@ class VoiceService:
         with tempfile.TemporaryDirectory() as temporary:
             filename = str(Path(temporary) / "reply.wav")
             command = [*self.runtime.storage.config["piper_command"], "--model", model, "--output_file", filename]
-            process = subprocess.Popen(executable_argv(command), stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            process.stdin.write(reply[:10000].encode("utf-8")); process.stdin.close()
-            deadline=time.monotonic()+60
-            while process.poll() is None:
-                if cancel.is_set() or not self.active.is_set() or self.shutdown.is_set():
-                    process.kill(); process.wait(timeout=3); return
-                if time.monotonic()>deadline:
-                    process.kill(); process.wait(timeout=3); raise RuntimeError("Piper no respondió a tiempo.")
-                self.shutdown.wait(.05)
-            if process.returncode:
-                raise RuntimeError("Piper no pudo generar audio.")
+            if self.runtime.storage.config.get('local_tts','forge') == 'forge':
+                from .forge_voice import synthesize
+                executable = executable_argv(self.runtime.storage.config['piper_command'])
+                if len(executable) != 1: raise RuntimeError('Piper requiere la ruta directa al ejecutable.')
+                if not synthesize(self.runtime,reply,executable[0],model,filename,cancel,self.active,self.shutdown): return
+            else:
+                process = subprocess.Popen(executable_argv(command), stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                process.stdin.write(reply[:10000].encode("utf-8")); process.stdin.close()
+                deadline=time.monotonic()+60
+                while process.poll() is None:
+                    if cancel.is_set() or not self.active.is_set() or self.shutdown.is_set():
+                        process.kill(); process.wait(timeout=3); return
+                    if time.monotonic()>deadline:
+                        process.kill(); process.wait(timeout=3); raise RuntimeError("Piper no respondió a tiempo.")
+                    self.shutdown.wait(.05)
+                if process.returncode:
+                    raise RuntimeError("Piper no pudo generar audio.")
             if cancel.is_set() or not self.active.is_set(): return
             with wave.open(filename) as wav:
                 if wav.getnchannels() != 1 or wav.getsampwidth() != 2:

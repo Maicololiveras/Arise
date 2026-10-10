@@ -131,7 +131,7 @@ class Settings(QDialog):
             idx = combo.findData(config[key]); combo.setCurrentIndex(max(0, idx)); self.fields[key] = combo; f.addRow(label, combo)
         f.addRow(QLabel("local: modo ligero sin GPU. forge-local: voz a voz nativa con servidor local compatible. forge-openai: voz a voz en línea."))
         self.text_field(f,'forge_voice_url','Servidor de voz a voz local',config['forge_voice_url'])
-        for key,label,choices in [('local_profile','Perfil de memoria',['auto','light','standard']),('local_tts','Salida de voz local',['forge','system'])]:
+        for key,label,choices in [('voice_task_engine','Motor de conversación',['gentle','local-dialogue']),('local_profile','Perfil de memoria',['auto','light','standard']),('local_tts','Salida de voz local',['forge','system'])]:
             combo=QComboBox();combo.addItems(choices);combo.setCurrentText(config[key]);self.fields[key]=combo;f.addRow(label,combo)
         self.check_field(f, 'local_dialogue_enabled' , 'Conversar con un modelo local mientras Gentle trabaja', config['local_dialogue_enabled'])
         self.text_field(f,'local_dialogue_url','Servidor conversacional local',config['local_dialogue_url'])
@@ -559,7 +559,10 @@ class Controller(QObject):
             if self.settings_window:
                 self.settings_window.close();self.settings_window=None
             self.reconfigure();self.show_panel()
-            self.install_gentle()
+            from .discovery import command_available, gentle_valid
+            config=self.runtime.storage.config
+            if not (config.get("gentle_agent_home") and gentle_valid(config.get("gentle_path", "")) and command_available(config.get("pi_command"))):
+                self.install_gentle()
         def failed(message): self.pack_busy=False
         self.background(operation,done,failed)
 

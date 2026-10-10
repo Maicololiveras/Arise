@@ -14,6 +14,10 @@ def voice_command(runtime):
         raise RuntimeError('Instala o repara Forge para activar su voz.')
     entry=Path(command[1]).parent.parent/'voice/forge-voice.js'
     if not entry.is_file():raise RuntimeError('Actualiza Forge: esta versión no incluye el puente de voz.')
+    if runtime.storage.config.get('piper_model'):
+        try: ready=json.loads((entry.parent/'capabilities.json').read_text()).get('neural_piper') is True
+        except (OSError,ValueError): ready=False
+        if not ready: raise RuntimeError('Actualiza Forge desde Instalar y reparar dependencias para usar la voz neuronal.')
     return [command[0],str(entry)]
 
 
@@ -30,6 +34,24 @@ def speak(runtime,text,voice,cancel,active,shutdown):
                     return
                 shutdown.wait(.05)
             future.result()
+    finally:process.close()
+
+
+def synthesize(runtime, text, executable, model, output, cancel, active, shutdown):
+    """Forge owns the neural synthesizer; ARISE owns interruptible playback."""
+    import concurrent.futures
+    process=JsonProcess(voice_command(runtime),cwd=runtime.storage.config['workspace'])
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future=pool.submit(process.request,{'type':'synthesize','text':text[:10000],
+                'executable':str(executable),'model':str(model),'output':str(output)},70)
+            while not future.done():
+                if cancel.is_set() or not active.is_set() or shutdown.is_set():
+                    process.request({'type':'cancel'},timeout=3)
+                    return False
+                shutdown.wait(.05)
+            future.result()
+            return True
     finally:process.close()
 
 

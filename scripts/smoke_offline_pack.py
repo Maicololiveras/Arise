@@ -30,7 +30,9 @@ with tempfile.TemporaryDirectory(prefix='arise-offline-smoke-') as temporary:
         assert result['inference']=='passed',result
         config=remote.request('config')
         assert Path(config['local_stt_model']).is_file()
-        assert remote.status()['model_service']['state']=='ready'
+        assert remote.status()['model_service']['state']=='stopped'
+        assert config['voice_task_engine']=='gentle'
+        assert Path(config['piper_model']).is_file()
         report={'one_click_install':result,'frozen_daemon':'passed','local_inference':'passed','platform':'windows-x64'}
         Path('artifacts/offline-pack-validation.json').write_text(json.dumps(report,indent=2))
     finally:

@@ -1,3 +1,4 @@
+import os
 """Authenticated loopback bridge for the Pi extension; no browser UI or CORS."""
 import hmac
 import json
@@ -92,6 +93,9 @@ def make_server(runtime, port=0):
                 elif route == '/api/models/offline/install':
                     from .offline_pack import install_offline_pack
                     value=install_offline_pack(runtime,data['path'])
+                    if not os.environ.get('ARISE_SKIP_NETWORK_SETUP'):
+                        from .tool_setup import auto_setup
+                        threading.Thread(target=auto_setup,args=(runtime,),daemon=True).start()
                 elif route == '/api/tools/setup-desktop':
                     from .tool_setup import setup_desktop_tools
                     value=setup_desktop_tools(runtime)
