@@ -16,12 +16,13 @@ LOCK = threading.Lock()
 LIMIT = 4 * 1024**3
 
 
-def probe_voice(root):
+def probe_voice(root, light=False):
     import gc
-    import whisper
     import vosk
-    voice = whisper.load_model(str(root/'models/small.pt'), device='cpu')
-    del voice
+    if not light:
+        import whisper
+        voice = whisper.load_model(str(root/'models/small.pt'), device='cpu')
+        del voice
     wake = vosk.Model(str(root/'models'/VOSK_NAME))
     del wake
     gc.collect()
@@ -105,12 +106,14 @@ def _install(runtime, archive):
             manifest = extract_verified(archive,temporary)
             shutil.move(temporary,str(target))
         runtime.emit('notice',{'text':'Comprobando los modelos de voz…'})
-        probe_voice(target)
+        from .hardware import local_profile
+        light=local_profile(runtime.storage.config)=='light'
+        probe_voice(target,light)
         with socket.socket() as sock:
             sock.bind(('127.0.0.1',0));port = sock.getsockname()[1]
         command = [str(target/manifest['server']), '--model',str(target/'models/dialogue.gguf'),
-            '--alias','arise-local','--host','127.0.0.1','--port',str(port),'--ctx-size','8192','--jinja','--n-gpu-layers','0']
-        runtime.settings({'onboarding_complete':True,'voice_provider':'local','local_stt_engine':'openai-whisper',
+            '--alias','arise-local','--host','127.0.0.1','--port',str(port),'--ctx-size','4096' if light else '8192','--jinja','--n-gpu-layers','0']
+        runtime.settings({'onboarding_complete':True,'voice_provider':'local','local_stt_engine':'vosk' if light else 'openai-whisper',
             'local_stt_model':str(target/'models/small.pt'),'wake_model':str(target/'models'/VOSK_NAME),
             'local_dialogue_enabled':True,'local_dialogue_url':f'http://127.0.0.1:{port}/v1',
             'local_dialogue_model':'arise-local','local_server_command':command})
@@ -123,7 +126,7 @@ def _install(runtime, archive):
             'messages':[{'role':'user','content':'Responde solamente: Listo.'}], 'max_tokens':16,'temperature':0},timeout=90)
         if not result.get('choices',[{}])[0].get('message',{}).get('content'):
             raise RuntimeError('El modelo local no devolvió una respuesta de prueba.')
-        runtime.emit('notice',{'text':'Configuración local completada: activación, Whisper y conversación local disponibles. Usa el botón de micrófono para hablar.'})
+        runtime.emit('notice',{'text':'Configuración local completada ('+('ligera, CPU y Vosk' if light else 'CPU y Whisper')+'). Usa el botón de micrófono para hablar.'})
         return {'installed':True,'path':str(target),'model':'arise-local','inference':'passed'}
     except Exception:
         if changed:

@@ -36,7 +36,9 @@ class LocalDialogue:
         self.history=runtime.storage.voice_history(self.conversation)
         self.tools=[{'type':'function','function':tool} for tool in TOOLS]+[STATUS_TOOL]
         self.seen={}
-        data=runtime.model_service.ensure(lambda:self.request('models',timeout=2),config.get('local_server_command',[])).get('data',[])
+        from .hardware import server_command, local_profile
+        self.light=local_profile(config)=='light'
+        data=runtime.model_service.ensure(lambda:self.request('models',timeout=2),server_command(config)).get('data',[])
         if not data:raise RuntimeError('El servidor local no tiene un modelo disponible.')
         if self.model and self.model not in [row.get('id') for row in data]:
             raise RuntimeError('El modelo conversacional elegido no figura en el catálogo del servidor local.')
@@ -52,7 +54,12 @@ class LocalDialogue:
         return json.loads(raw)
     def respond(self,text,dispatch,result=False):
         # Whole turns keep tool-call/result pairs together when pruning history.
-        turn=[{'role':'user','content':text[:6000]}]
+        if self.light:
+            # Prune complete turns so no orphaned tool results reach the model.
+            while len(json.dumps(self.history,ensure_ascii=False))>5000 and self.history:
+                self.history.pop(0)
+                while self.history and self.history[0].get('role')!='user':self.history.pop(0)
+        turn=[{'role':'user','content':text[:1500 if self.light else 6000]}]
         repairs=0
         dispatched=False
         for _ in range(4):

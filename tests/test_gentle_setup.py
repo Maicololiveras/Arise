@@ -22,7 +22,7 @@ class GentleSetupTests(unittest.TestCase):
             for channel in ('main','release'):
                 result={'status':'ready','channel':channel,'pi_root':str(pi),'gentle_root':str(gentle),'agent_home':str(home)}
                 config=validate_result(result,sys.executable)
-                self.assertEqual(config['pi_command'],[sys.executable,str(pi/'dist/bundle/cli.js')])
+                self.assertEqual(config['pi_command'],[sys.executable,str((pi/'dist/bundle/cli.js').resolve())])
                 self.assertEqual(config['gentle_agent_home'],str(home))
                 self.assertEqual(config['gentle_channel'],channel)
             (pi/'dist/bundle/cli.js').unlink()

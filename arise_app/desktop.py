@@ -110,7 +110,7 @@ class Settings(QDialog):
         self.fields, self.keys, self.mcp = {}, {}, {}
         config = self.runtime.storage.config
         voice = QWidget(); f = QFormLayout(voice); tabs.addTab(voice, "Voz y audio")
-        self.fields["voice_provider"] = QComboBox(); self.fields["voice_provider"].addItems(["openai", "gemini", "local"])
+        self.fields["voice_provider"] = QComboBox(); self.fields["voice_provider"].addItems(["local", "forge-local", "forge-openai", "openai", "gemini"])
         self.fields["voice_provider"].setCurrentText(config["voice_provider"])
         f.addRow("Proveedor", self.fields["voice_provider"])
         self.fields["local_stt_engine"] = QComboBox(); self.fields["local_stt_engine"].addItems(["auto", "vosk", "faster-whisper", "openai-whisper"])
@@ -129,7 +129,11 @@ class Settings(QDialog):
                 if device[capability]:
                     combo.addItem(device["name"], device["id"])
             idx = combo.findData(config[key]); combo.setCurrentIndex(max(0, idx)); self.fields[key] = combo; f.addRow(label, combo)
-        self.check_field(f, 'local_dialogue_enabled', 'Conversar con un modelo local mientras Gentle trabaja', config['local_dialogue_enabled'])
+        f.addRow(QLabel("local: modo ligero sin GPU. forge-local: voz a voz nativa con servidor local compatible. forge-openai: voz a voz en línea."))
+        self.text_field(f,'forge_voice_url','Servidor de voz a voz local',config['forge_voice_url'])
+        for key,label,choices in [('local_profile','Perfil de memoria',['auto','light','standard']),('local_tts','Salida de voz local',['forge','system'])]:
+            combo=QComboBox();combo.addItems(choices);combo.setCurrentText(config[key]);self.fields[key]=combo;f.addRow(label,combo)
+        self.check_field(f, 'local_dialogue_enabled' , 'Conversar con un modelo local mientras Gentle trabaja', config['local_dialogue_enabled'])
         self.text_field(f,'local_dialogue_url','Servidor conversacional local',config['local_dialogue_url'])
         self.text_field(f,'local_server_command','Arranque local (JSON)',json.dumps(config['local_server_command']))
         self.text_field(f,'local_dialogue_model','Modelo local (vacío: detectar)',config['local_dialogue_model'])
@@ -160,7 +164,7 @@ class Settings(QDialog):
         self.button(f, "Detectar Pi y Gentle Shell", self.detect_agent)
         f.addRow(QLabel("Dejar proveedor/modelo vacíos conserva la selección existente de Pi."))
         keys = QWidget(); f = QFormLayout(keys); tabs.addTab(keys, "Credenciales")
-        for provider in ("openai", "gemini", "anthropic", "github-updates", "local-dialogue"):
+        for provider in ("openai", "gemini", "anthropic", "github-updates", "local-dialogue", "forge-local"):
             entry = QLineEdit(); entry.setEchoMode(QLineEdit.Password); entry.setPlaceholderText("Dejar vacío conserva la clave existente")
             self.keys[provider] = entry; f.addRow(provider, entry)
         f.addRow(QLabel("GitHub: acceso a actualizaciones y herramientas privadas. Se detecta también una sesión existente de gh."))
@@ -216,8 +220,10 @@ class Settings(QDialog):
             self.fields[key].setText(value)
 
     def provider_changed(self, provider):
-        if provider == "openai":
+        if provider in ("openai","forge-openai"):
             self.fields["voice_model"].setText("gpt-realtime-2.1"); self.fields["voice"].setText("marin")
+        elif provider == "forge-local":
+            self.fields["voice_model"].setText("modelo-local-voz"); self.fields["voice"].setText("default")
         elif provider == "gemini":
             self.fields["voice_model"].setText("gemini-3.1-flash-live-preview"); self.fields["voice"].setText("Aoede")
         else:

@@ -114,8 +114,8 @@ def install_forge(bundle, tools, opener):
     if not node.is_file() or not npm.is_file():
         raise RuntimeError('Falta Node/npm integrado para Forge. Usa el nuevo ZIP completo de ARISE.')
     base='https://api.github.com/repos/Maicololiveras/forge-mcp'
-    branch=github_json(base,opener)['default_branch']
-    commit=github_json(base+'/commits/'+branch,opener)['sha']
+    # Pin the reviewed voice-capable build; never install an older default-branch Forge.
+    commit='a1fc2f440c6b3c5288838bbe9fc5e2f1ad3ba6c5'
     destination=tools/('forge-'+uuid.uuid4().hex)
     try:
         with tempfile.TemporaryDirectory(dir=tools,prefix='forge-source-') as temporary:
@@ -147,6 +147,11 @@ def auto_setup(runtime):
     missing=[name for name in (*COMPONENTS,'forge')
              if runtime.storage.config['mcp'].get(name,{}).get('enabled',True)
              and not command_available(runtime.storage.config['mcp'].get(name,{}).get('command'))]
+    if runtime.storage.config['mcp'].get('forge',{}).get('enabled',True):
+        from .forge_voice import voice_command
+        try:voice_command(runtime)
+        except RuntimeError:
+            if 'forge' not in missing:missing.append('forge')
     if not missing:return
     if not github_token(runtime.credentials):
         runtime.emit('notice',{'text':'Faltan herramientas privadas: '+', '.join(missing)+'. Conecta GitHub para instalarlas con sus dependencias.'});return

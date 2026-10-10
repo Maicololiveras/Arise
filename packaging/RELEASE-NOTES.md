@@ -38,3 +38,13 @@ Se incluye gh.exe; las descargas de componentes privados pasan por gh api con au
 La voz local rechaza nombres de herramientas usados como respuesta y respuestas idénticas para preguntas distintas, pide una corrección y, si sigue fallando sin haber ejecutado herramientas, pasa la pregunta a Gentle. Esto no sustituye la calidad de un modelo conversacional mayor. El cierre de Pi espera brevemente su código real de salida antes de informar el fallo.
 
 La prueba de Windows ahora verifica también la conexión al Pi declarado por el paquete usando un home que ya registra Gentle. La instalación interactiva completa de Gentle estable/main en el equipo del usuario requiere comprobación allí; las pruebas automatizadas no inician sesión en proveedores ni repositorios privados.
+
+## 0.4.4 — Forge Voice y perfil local para 8 GB
+
+La opción predeterminada sigue siendo local. Con hasta 10 GB de RAM, el perfil automático elige Vosk y limita contexto/hilos del modelo CPU. No requiere CUDA; Whisper permanece disponible para el perfil estándar. Esto es una cadena STT → modelo de texto → síntesis, no un modelo nativo de voz a voz.
+
+La síntesis local pasa por Forge 0.2 (instalación privada fijada a a1fc2f440c6b3c5288838bbe9fc5e2f1ad3ba6c5). Su reproductor es cancelable y no usa Edge TTS por defecto. Mientras se instala Forge se conserva la voz local de Windows con aviso explícito.
+
+Ajustes ofrece forge-local y forge-openai para audio nativo mediante el puente de Forge. forge-local requiere un servidor de voz a voz compatible con OpenAI Realtime en loopback y un modelo configurado; no usa el Qwen de texto incluido como si fuera un modelo de audio. forge-openai requiere la clave OpenAI y selección explícita. No hay cambio automático a servicios pagados. El ZIP incluye los modelos del perfil local ligero/estándar, no un modelo nativo grande ni un servidor GPU sin verificar.
+
+Pruebas de hardware/modelos nativos externos y llamadas reales al proveedor siguen pendientes. Los tests del protocolo usan WebSocket local y audio sintético. El perfil de 8 GB limita memoria por diseño; falta medir latencia en un Windows físico de esa capacidad.

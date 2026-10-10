@@ -37,7 +37,7 @@ class Assistant(Runtime):
         result["version"] = __version__
         result["orb"] = vars(self.orb.value).copy()
         result["voice"] = {"provider": self.storage.config["voice_provider"], "model": self.storage.config["voice_model"],
-            "configured": self.storage.config["voice_provider"] == "local" or bool(self.credentials.get(self.storage.config["voice_provider"]))}
+            "configured": self.storage.config["voice_provider"] == "local" or (self.storage.config["voice_provider"] == "forge-local" and self.storage.config["voice_model"] not in ("local","modelo-local-voz")) or bool(self.credentials.get("openai" if self.storage.config["voice_provider"]=="forge-openai" else self.storage.config["voice_provider"]))}
         result["gentle"] = {"path": self.storage.config.get("gentle_path", ""), "verified": self.pi_state.get("gentleVerified", False)}
         return result
 
@@ -185,8 +185,12 @@ class Assistant(Runtime):
         if changes.get("local_stt_engine", self.storage.config["local_stt_engine"]) not in ("auto", "vosk", "faster-whisper", "openai-whisper"):
             raise ValueError("Motor de transcripción no compatible.")
         for key in ("voice_provider",):
-            if changes.get(key, self.storage.config[key]) not in ("openai", "gemini", "local"):
+            if changes.get(key, self.storage.config[key]) not in ("openai", "gemini", "local", "forge-local", "forge-openai"):
                 raise ValueError("Proveedor de voz no compatible.")
+        if changes.get('local_profile',self.storage.config['local_profile']) not in ('auto','light','standard'):
+            raise ValueError('Perfil local no compatible.')
+        if changes.get('local_tts',self.storage.config['local_tts']) not in ('forge','system'):
+            raise ValueError('Motor de voz local no compatible.')
         if changes.get("thinking", self.storage.config["thinking"]) not in ("off", "minimal", "low", "medium", "high", "xhigh"):
             raise ValueError("Esfuerzo inválido.")
         for key in ("wake_enabled", "pinned", "reduced_motion", "onboarding_complete", "local_barge_in", "local_dialogue_enabled"):

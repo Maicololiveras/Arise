@@ -159,13 +159,18 @@ class VoiceSession:
                 await self.gemini_event(event)
 
     async def run(self, initial_text=""):
-        provider = self.config["voice_provider"]
-        key = self.runtime.credentials.get(provider)
-        if not key:
+        selected = self.config["voice_provider"]
+        provider = 'openai' if selected.startswith('forge-') else selected
+        self.config["voice_provider"] = provider
+        key = self.runtime.credentials.get('forge-local' if selected=='forge-local' else provider)
+        if selected.startswith('forge-'):
+            from .forge_voice import ForgeConnection
+            self.connect=ForgeConnection(self.runtime,selected.removeprefix('forge-'),self.config['voice_model'],self.config.get('forge_voice_url','ws://127.0.0.1:1236/v1/realtime'))
+        if not key and selected!='forge-local':
             raise RuntimeError("Configura la clave del proveedor de voz en Ajustes.")
         if provider == "openai":
             url = "wss://api.openai.com/v1/realtime?" + urllib.parse.urlencode({"model": self.config["voice_model"]})
-            headers = {"Authorization": "Bearer " + key}
+            headers = {"Authorization": "Bearer " + key} if key else {}
             setup = {"type": "session.update", "session": {"type": "realtime", "model": self.config["voice_model"],
                 "instructions": INSTRUCTIONS, "audio": {"input": {"format": {"type": "audio/pcm", "rate": 24000},
                     "turn_detection": {"type": "server_vad", "interrupt_response": True},
@@ -342,7 +347,9 @@ class VoiceService:
     def _local(self, initial):
         from .models import resolve_stt
         c = self.runtime.storage.config
-        engine, model = resolve_stt(c)
+        from .hardware import local_profile
+        stt_config={**c,'local_stt_engine':'vosk'} if local_profile(c)=='light' else c
+        engine, model = resolve_stt(stt_config)
         if self.whisper_name != (engine, model):
             if engine == "vosk":
                 from vosk import Model, KaldiRecognizer, SetLogLevel
@@ -423,6 +430,17 @@ class VoiceService:
 
     def _render_local(self, reply, cancel):
         if cancel.is_set() or not self.active.is_set(): return
+        if self.runtime.storage.config.get('local_tts','forge')=='forge':
+            from .forge_voice import voice_command, speak
+            try: voice_command(self.runtime)
+            except RuntimeError:
+                if not getattr(self,'forge_notice',False):
+                    self.runtime.emit('notice',{'text':'Forge Voice aún no está instalado; se usa la voz local de Windows hasta reparar dependencias.'})
+                    self.forge_notice=True
+            else:
+                self.runtime.orb.update('speaking',microphone=True)
+                speak(self.runtime,reply,self.runtime.storage.config['voice'],cancel,self.active,self.shutdown)
+                return
         model = self.runtime.storage.config["piper_model"]
         if not model and __import__("os").name == "nt":
             self._sapi(reply, cancel)

@@ -41,7 +41,7 @@ class OfflinePackTests(unittest.TestCase):
     def test_success_configures_all_paths_without_changing_agent_or_microphone(self):
         with tempfile.TemporaryDirectory() as root:
             root=Path(root);make_pack(root/'models.zip');runtime=Runtime(root/'data')
-            runtime.storage.config.update(agent_model='keep-this',wake_enabled=False)
+            runtime.storage.config.update(agent_model='keep-this',wake_enabled=False,local_profile='standard')
             try:
                 with patch('arise_app.offline_pack.probe_voice'),patch('arise_app.local_dialogue.LocalDialogue') as dialogue:
                     dialogue.return_value.request.return_value={'choices':[{'message':{'content':'Listo.'}}]}

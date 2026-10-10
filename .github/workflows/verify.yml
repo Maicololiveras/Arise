@@ -118,6 +118,7 @@ jobs:
         with:
           token: ${{ secrets.ARISE_COMPONENTS_TOKEN }}
           repository: Maicololiveras/forge-mcp
+          ref: a1fc2f440c6b3c5288838bbe9fc5e2f1ad3ba6c5
           path: components/forge-mcp
       - name: Installer compiler
         if: steps.cached.outcome != 'success'
