@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "channel": "qa",
+  "version": "0.4.8",
+  "notes": "# ARISE 0.4.8 QA\n\n- La voz usa la misma sesion de Gentle que el chat y sus herramientas habilitadas.\n- Voz neuronal local Piper es-MX Ald gestionada por Forge; modelo y motor incluidos en el ZIP.\n- Modo CPU ligero automatico para equipos de hasta 10 GB: Vosk, sin cargar Whisper ni mantener el modelo conversacional auxiliar en memoria.\n- Reparacion del instalador de Gentle en Windows: carpeta privada con propietario correcto, pnpm PATH y reutilizacion del Pi configurado por Gentle.\n- Nuevo chat desde subcarpetas y conservacion de catalogos MCP al guardar ajustes.\n- Canal QA separado de main: cada instalacion busca actualizaciones solo en su canal.\n\nExtrae ARISE-Windows-Complete.zip y abre Configurar ARISE.cmd. La primera instalacion de Gentle y los MCP privados requiere Internet y acceso GitHub. El proveedor del agente requiere su configuracion habitual; voz local no significa que el modelo de Gentle sea necesariamente local.\n",
+  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.8/ARISE-Setup.exe",
+  "asset_id": 628464014,
+  "sha256": "e4e35c14a70116eb37c98c580c63ec46879a5f03df6ac73ba1bc4b92db69c8db",
+  "size": 401027948,
+  "source_commit": "d5219d7e4db5aa74d8cd16e16fbc096f5a97592a"
+}
