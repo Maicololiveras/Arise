@@ -73,10 +73,14 @@ class LocalVoiceBridge:
                     try:
                         self.speak(self.front.respond(text,self.dispatch_front),epoch)
                         self.last_failure=''
-                    except Exception:
+                    except Exception as error:
                         self.front=None
                         self.front_retry_after=time.monotonic()+30
-                        raise
+                        from .local_dialogue import InvalidSpokenResponse
+                        if not isinstance(error,InvalidSpokenResponse):raise
+                        self.runtime.emit('notice',{'text':'La voz local no pudo responder; se pasa tu pregunta a Gentle. '+str(error)[:200]})
+                        task=self._steer(text)
+                        threading.Thread(target=self._wait_result,args=(task['task_id'],epoch),daemon=True,name='arise-local-result').start()
                     continue
                 task = self._steer(text)
                 self.last_failure=''

@@ -59,7 +59,7 @@ def installed_pi_version(command):
 
 
 def detect(config, agent_dir=None):
-    agent_dir = Path(agent_dir or os.getenv("PI_CODING_AGENT_DIR", Path.home() / ".pi/agent"))
+    agent_dir = Path(agent_dir or config.get("gentle_agent_home") or os.getenv("PI_CODING_AGENT_DIR", Path.home() / ".pi/agent"))
     pi = resolve_pi(config.get("pi_command"))
     candidates = []
     current = config.get("gentle_path")

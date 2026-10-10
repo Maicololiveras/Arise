@@ -103,7 +103,7 @@ def main():
     runtime = Assistant(root)
     found = detect(runtime.storage.config)
     changes = {key: found[key] for key in ("pi_command", "gentle_path") if found.get(key)}
-    if changes: runtime.settings(changes)
+    if changes and not runtime.storage.config.get("gentle_agent_home"): runtime.settings(changes)
     # Run after discovery so stale global paths never overwrite the offline fallback.
     configure_bundle(runtime)
     server = make_server(runtime)

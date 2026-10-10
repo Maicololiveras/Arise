@@ -1,21 +1,32 @@
-"""One download: portable ARISE, model ZIP, and a one-click setup launcher."""
+"""One download: upgrading Windows installer and offline model pack."""
 import argparse
 import zipfile
 from pathlib import Path
 
 def build(application, models, output):
     application,models,output=map(Path,(application,models,output))
-    if not (application/'ARISE.exe').is_file() or not models.is_file():
-        raise RuntimeError('Build the Windows app and model pack first.')
+    installer=application.parent/'ARISE-Setup.exe'
+    if not installer.is_file() or not models.is_file():
+        raise RuntimeError('Build the Windows installer and model pack first.')
     output.parent.mkdir(parents=True,exist_ok=True)
     temporary=output.with_suffix('.tmp')
     with zipfile.ZipFile(temporary,'w',zipfile.ZIP_DEFLATED,compresslevel=1,allowZip64=True) as archive:
-        for file in sorted(application.rglob('*')):
-            if file.is_file():archive.write(file,'ARISE/'+file.relative_to(application).as_posix())
+        archive.write(installer,'ARISE-Setup.exe',compress_type=zipfile.ZIP_STORED)
         archive.write(models,'ARISE-Models-Windows.zip',compress_type=zipfile.ZIP_STORED)
-        archive.writestr('Configurar ARISE.cmd','@echo off\r\n"%~dp0ARISE\\ARISE.exe" --shutdown\r\nif errorlevel 1 (echo Cierra ARISE y vuelve a intentarlo. & pause & exit /b 1)\r\nstart "" "%~dp0ARISE\\ARISE.exe" --setup-pack "%~dp0ARISE-Models-Windows.zip"\r\n')
-        archive.writestr('Abrir ARISE.cmd','@echo off\r\nstart "" "%~dp0ARISE\\ARISE.exe"\r\n')
-        archive.writestr('LEEME.txt','ARISE para Windows x64\n\n1. Extrae este ZIP completo en una carpeta permanente.\n2. Abre Configurar ARISE.cmd.\n3. ARISE verifica los archivos, instala modelos en tus datos locales y prueba el servidor.\n\nDespues de la primera configuracion usa Abrir ARISE.cmd.\n\nNo borres la carpeta ARISE: contiene la aplicacion portable. No necesita Python, Node ni LM Studio instalados. El modo local usa CPU. La primera preparacion requiere espacio para el paquete y los modelos extraidos.\n\nIncluye Vosk espanol, Whisper small, Qwen2.5-1.5B-Instruct Q4_K_M y llama.cpp Windows CPU. La voz de salida usa Windows SAPI. El microfono se activa con su boton; escuchar continuamente sigue siendo opcional.\n\nLas cuentas del agente/Gmail y los repositorios privados se conectan por separado: no se incluyen claves. La configuracion del agente Pi existente se conserva.\n')
+        archive.writestr('Configurar ARISE.cmd','@echo off\r\n"%~dp0ARISE-Setup.exe" "/ARISE-MODELS=%~dp0ARISE-Models-Windows.zip"\r\n')
+        archive.writestr('LEEME.txt',
+            'ARISE para Windows x64\n\n'
+            '1. Extrae este ZIP completo.\n2. Abre Configurar ARISE.cmd y completa el instalador.\n'
+            '3. Deja marcada Abrir ARISE: verificara y extraera los modelos y probara el servidor local.\n'
+            '4. El instalador oficial de Gentle permite elegir estable o ultimo main. Confirma su plan.\n'
+            'ARISE usara el Pi y el entorno configurados por Gentle. Esta etapa requiere Internet.\n\n'
+            'El instalador actualiza ARISE en su carpeta existente, cierra sus procesos y conserva conversaciones y configuracion. '
+            'Despues abre ARISE desde Inicio. Puedes borrar el ZIP tras completar la configuracion.\n\n'
+            'Incluye modelos Vosk espanol, Whisper small, Qwen2.5-1.5B-Instruct Q4_K_M y llama.cpp Windows CPU. '
+            'La voz de salida usa Windows SAPI.\n\n'
+            'Incluye GitHub CLI (gh). Para manos y ojos necesitas una sesion gh auth login con acceso a los repositorios privados, '
+            'o conectar GitHub en Credenciales. ARISE descarga e instala los MCP y verifica sus catalogos. '
+            'No se incluyen credenciales ni codigo privado. Los proveedores del agente y Gmail requieren sus propias cuentas.\n')
     temporary.replace(output)
     print(str(output),output.stat().st_size,flush=True)
 

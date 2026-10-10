@@ -164,6 +164,10 @@ class Runtime:
             if row.get("pi_file") and Path(row["pi_file"]).is_file():
                 command += ["--continue", "--session", row["pi_file"]]
             env = {**os.environ, "ARISE_URL": self.url, "ARISE_TOKEN": self.token, "ARISE_CONVERSATION": self.conversation, "PI_TELEMETRY": "0", "GENTLE_SHELL_INTERACTIVE_HOST": "1", "ARISE_CODE_ENABLED": "1" if config.get("code_enabled") else "0"}
+            if config.get("gentle_agent_home"):
+                env["PI_CODING_AGENT_DIR"] = config["gentle_agent_home"]
+                env["ARISE_GENTLE_ROOT"] = config["gentle_path"]
+                env["ARISE_GENTLE_HOME"] = config["gentle_agent_home"]
             self.pi_epoch += 1
             epoch = self.pi_epoch
             if hasattr(self, "credentials"):
@@ -172,7 +176,7 @@ class Runtime:
                 command += ["--provider", config["agent_provider"], "--model", config["agent_model"]]
             if config.get("thinking"):
                 command += ["--thinking", config["thinking"]]
-            if config.get("gentle_path"):
+            if config.get("gentle_path") and not config.get("gentle_agent_home"):
                 gentle = Path(config["gentle_path"]).resolve()
                 if not (gentle / "package.json").is_file() or not (gentle / "extensions").is_dir():
                     raise ValueError("gentle_path debe apuntar al paquete Gentle Shell completo.")

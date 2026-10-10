@@ -67,7 +67,8 @@ class JsonProcess:
                     self.on_event(event)
         finally:
             self.diagnostics.done.wait(.5)
-            code = self.process.poll()
+            try: code = self.process.wait(timeout=.5)
+            except subprocess.TimeoutExpired: code = self.process.poll()
             detail = f"El proceso se cerró (salida {code if code is not None else 'desconocida'}). {self.diagnostics.hint()}"
             with self.lock:
                 for target in self.pending.values():

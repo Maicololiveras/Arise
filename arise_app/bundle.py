@@ -18,6 +18,11 @@ def configure_bundle(runtime):
     data = json.loads(manifest.read_text(encoding="utf-8-sig"))
     config = runtime.storage.config
     changes = {}
+    # An adopted official installation owns Pi and its home; never replace it
+    # with the fallback bundle, including when a user moves/deletes its files.
+    official = bool(config.get("gentle_agent_home"))
+    if official and (not command_available(config.get("pi_command")) or not gentle_valid(config.get("gentle_path") or "")):
+        runtime.emit("notice", {"text": "La instalación de Gentle cambió o está incompleta. Abre Configurar Gentle para repararla con su propio Pi."})
     def expand(value):
         return str(bundle / value[8:]) if value.startswith("@bundle/") else value
     candidates = {}
@@ -27,12 +32,12 @@ def configure_bundle(runtime):
             candidates[key] = [expand(v) for v in value] if isinstance(value, list) else expand(value)
     for key in ("pi_command", "piper_command"):
         value = candidates.get(key)
-        if value and not command_available(config.get(key)):
+        if value and not (official and key == "pi_command") and not command_available(config.get(key)):
             if not command_available(value):
                 raise RuntimeError("El paquete de " + key + " está incompleto. Extrae de nuevo el ZIP completo de ARISE.")
             changes[key] = value
     gentle = candidates.get("gentle_path")
-    if gentle and not gentle_valid(config.get("gentle_path") or ""):
+    if gentle and not official and not gentle_valid(config.get("gentle_path") or ""):
         if not gentle_valid(gentle):
             raise RuntimeError("Gentle Shell no está completo en el ZIP. Extrae de nuevo el paquete de ARISE.")
         changes["gentle_path"] = gentle
@@ -44,7 +49,7 @@ def configure_bundle(runtime):
         old_pi = pi_version and tuple(int(n) for n in pi_version.split(".")[:3]) < (0, 99, 1)
     except (OSError, ValueError, TypeError):
         gentle_version, old_pi = None, False
-    if gentle_version == "4.0.0" and old_pi:
+    if not official and gentle_version == "4.0.0" and old_pi:
         command = candidates.get("pi_command")
         if not command_available(command):
             raise RuntimeError("Falta el Pi compatible incluido en el ZIP de ARISE.")

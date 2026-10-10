@@ -26,3 +26,15 @@ ARISE Assistant 0.4.0
 - Conserva chats, memoria, modelos de usuario y configuración al reinstalar.
 - Compatible con repositorios privados: credencial GitHub protegida por Windows o sesión existente de gh.
 - Descarga y configura ScreenView (ojos) e InputControl (manos) con un runtime Python incluido. Los repos privados requieren acceso a GitHub una vez.
+
+## 0.4.3 — instalación oficial de Gentle y actualización completa
+
+El ZIP completo ahora contiene ARISE-Setup.exe y el paquete de modelos. Configurar ARISE.cmd ejecuta el instalador sobre la instalación existente, conserva los datos y pasa el paquete de modelos al ARISE instalado.
+
+Después de preparar los modelos se abre el instalador oficial de Gentle Shell v4.0.0 (archivo verificado por SHA-256), que permite elegir release estable o último main. Un adaptador observa el resultado y el canal sin cambiar el plan ni el consentimiento del instalador. ARISE adopta la entrada bin.pi del paquete instalado, el directorio de Gentle y su home configurado; el bundle no sustituye ese Pi después. La sesión usa las reglas de carga del propio Gentle para evitar inyectar sus extensiones dos veces. Las interfaces TUI del Gentle oficial siguen sujetas a las capacidades de RPC de esa versión.
+
+Se incluye gh.exe; las descargas de componentes privados pasan por gh api con autenticación en el entorno del proceso. Se reutiliza gh auth login o la credencial GitHub guardada. Se requieren permisos sobre los repositorios privados y conexión a Internet para Gentle y los MCP; el ZIP no contiene claves ni esos repositorios.
+
+La voz local rechaza nombres de herramientas usados como respuesta y respuestas idénticas para preguntas distintas, pide una corrección y, si sigue fallando sin haber ejecutado herramientas, pasa la pregunta a Gentle. Esto no sustituye la calidad de un modelo conversacional mayor. El cierre de Pi espera brevemente su código real de salida antes de informar el fallo.
+
+La prueba de Windows ahora verifica también la conexión al Pi declarado por el paquete usando un home que ya registra Gentle. La instalación interactiva completa de Gentle estable/main en el equipo del usuario requiere comprobación allí; las pruebas automatizadas no inician sesión en proveedores ni repositorios privados.

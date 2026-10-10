@@ -72,3 +72,9 @@ El ZIP completo contiene Pi, Gentle Shell, Node, npm, Python y FFmpeg. Al inicia
 Al conectar GitHub, ARISE descarga los repositorios privados de ScreenView, InputControl, transcripción y Forge, instala sus dependencias en una carpeta propia nueva y verifica los catálogos MCP. Requiere acceso a esos repositorios y conexión a sus registros de paquetes. Las cuentas de proveedores siguen necesitando autenticación. El marcador installed.json no sustituye la comprobación de rutas.
 
 La prueba Windows del ejecutable empaquetado arranca con onboarding completo y rutas de Pi/Gentle borradas; exige que el motor integrado cargue los comandos reales de Gentle. Las pruebas unitarias cubren detección, reparación, idempotencia y compilación/limpieza de Forge con fixtures; no sustituyen la validación de los repositorios privados en el equipo destino.
+
+### 0.4.3: ownership of the configured Pi
+
+An official Gentle setup result is adopted only after checking package identities, bin.pi containment, existing home and a real RPC command catalog. Its home marks the runtime as owned by Gentle: discovery and offline repair cannot silently replace its Pi or Gentle path. Missing files leave the repair UI available. The in-process bridge uses Gentle's buildPiInvocation and findGentlePiDeclaration to preserve its home and avoid double registration.
+
+The complete ZIP uses the Inno installer, including its existing process shutdown/data preservation logic, and passes ARISE-MODELS to the installed executable. gh is included for authenticated GitHub API/archive downloads; tokens never enter argv or logs. Private MCP catalog verification still requires the user's repository access.

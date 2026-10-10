@@ -104,6 +104,8 @@ class Settings(QDialog):
         layout.addWidget(QLabel("Elige voz, conecta el agente y habilita las herramientas que usarás."))
         quick_setup=QPushButton("Configurar todo desde ZIP")
         quick_setup.clicked.connect(controller.install_model_pack);layout.addWidget(quick_setup)
+        gentle_setup=QPushButton("Configurar Gentle · estable o último main")
+        gentle_setup.clicked.connect(controller.install_gentle);layout.addWidget(gentle_setup)
         tabs = QTabWidget(); layout.addWidget(tabs)
         self.fields, self.keys, self.mcp = {}, {}, {}
         config = self.runtime.storage.config
@@ -516,6 +518,21 @@ class Controller(QObject):
         self.update_busy = False
         if start_voice and getattr(sys, "frozen", False) and not os.getenv("ARISE_SKIP_NETWORK_SETUP"): QTimer.singleShot(1500, self.check_updates)
 
+    def install_gentle(self):
+        if getattr(self,'gentle_busy',False): return
+        self.gentle_busy=True
+        def operation():
+            if getattr(self.runtime,'is_remote',False):
+                return self.runtime.request('gentle/install',{},timeout=3700)
+            from .gentle_setup import install_gentle
+            return install_gentle(self.runtime)
+        def done(result):
+            self.gentle_busy=False
+            if getattr(self.runtime,'is_remote',False): self.runtime.storage.config=self.runtime.request('config')
+            self.reconfigure();self.show_panel()
+        def failed(message): self.gentle_busy=False
+        self.background(operation,done,failed)
+
     def install_model_pack(self, filename=None):
         if getattr(self,'pack_busy',False): return
         if not isinstance(filename,str) or not filename:
@@ -534,6 +551,7 @@ class Controller(QObject):
             if self.settings_window:
                 self.settings_window.close();self.settings_window=None
             self.reconfigure();self.show_panel()
+            self.install_gentle()
         def failed(message): self.pack_busy=False
         self.background(operation,done,failed)
 

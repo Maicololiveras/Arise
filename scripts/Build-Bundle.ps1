@@ -23,10 +23,10 @@ if($GentlePath){
     $gentle='@bundle/gentle-shell'
 }
 $manifest=@{
-    pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/cli.js')
+    pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     gentle_path=$gentle
     wake_model='@bundle/models/vosk-model-small-es-0.42'
-    versions=@{pi='1.1.0';gentle='4.0.0';arise='0.4.2';vosk='small-es-0.42'}
+    versions=@{pi='1.1.0';gentle='4.0.0';arise='0.4.3';vosk='small-es-0.42'}
     mcp=@{}
 }
 & python (Join-Path $PSScriptRoot 'prepare_voice_pack.py') --destination $bundle --output (Join-Path (Split-Path $Target -Parent) 'ARISE-Voice-Models-es.zip')
@@ -72,5 +72,9 @@ if($WithTools){
     & (Join-Path $pythonRoot 'python.exe') -c 'import screenview_mcp.server, inputcontrol_mcp.server, transcripcion_mcp.server'
     Check-Exit 'Imports reales de MCP en Python integrado'
 }
+& python (Join-Path $PSScriptRoot 'prepare_gentle_installer.py') --destination (Join-Path $bundle 'gentle-installer')
+Check-Exit 'Instalador oficial de Gentle (estable/main)'
+$ghRoot=Join-Path $bundle 'gh';New-Item -ItemType Directory -Path $ghRoot -Force | Out-Null
+Copy-Item -LiteralPath (Get-Command gh.exe).Source -Destination (Join-Path $ghRoot 'gh.exe')
 $manifest | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $bundle 'manifest.json') -Encoding UTF8
 Write-Host "Bundle preparado en $bundle"

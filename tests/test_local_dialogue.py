@@ -75,3 +75,16 @@ class DialogueTests(unittest.TestCase):
         bridge=LocalVoiceBridge(self.runtime,SimpleNamespace(interrupt=lambda:None),lambda *a:None,active,threading.Event())
         try:self.assertEqual([task['id'] for task in bridge.dispatch_front('task_status',{})['tasks']],['current'])
         finally:bridge.close()
+
+    def test_bare_tool_name_is_not_spoken_or_executed(self):
+        dialogue=LocalDialogue(self.runtime);calls=[]
+        dialogue.request=lambda *a,**kw:{'choices':[{'message':{'content':'stop_task'}}]}
+        with self.assertRaisesRegex(RuntimeError,'nombre de herramienta'):
+            dialogue.respond('que sabes de E3',lambda *a:calls.append(a))
+        self.assertEqual(calls,[])
+
+    def test_repeated_answer_requires_a_real_response(self):
+        dialogue=LocalDialogue(self.runtime)
+        dialogue.history=[{'role':'user','content':'hola'},{'role':'assistant','content':'Gentle Shell está escuchando.'}]
+        dialogue.request=lambda *a,**kw:{'choices':[{'message':{'content':'Gentle Shell está escuchando.'}}]}
+        with self.assertRaises(RuntimeError):dialogue.respond('que sabes de E3',lambda *a:None)

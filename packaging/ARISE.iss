@@ -1,4 +1,4 @@
-#define AppVersion "0.4.2"
+#define AppVersion "0.4.3"
 [Setup]
 AppId={{E99B270E-3F4F-421C-9D9F-705E523F3ED6}
 AppName=ARISE
@@ -44,8 +44,12 @@ begin
 end;
 
 function LaunchParameters(Param: String): String;
+var
+  Models: String;
 begin
   Result := '--data-dir "' + DataDirectory() + '"';
+  Models := ExpandConstant('{param:ARISE-MODELS}');
+  if Models <> '' then Result := Result + ' --setup-pack "' + Models + '"';
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

@@ -38,7 +38,18 @@ with tempfile.TemporaryDirectory(prefix='arise-frozen-') as temporary:
         remote.settings({'agent_provider':'arise-smoke','agent_model':'fixture','thinking':'off','pi_extra_args':['--offline','--no-extensions','--no-skills','--no-context-files']})
         state=remote.connect_pi()
         if not state.get('gentleVerified'):raise RuntimeError('Bundled Gentle Shell did not load')
-        remote.call_tool('memory.save',{'text':'Frozen application smoke test'})
+        # Adopt a configured Gentle home and its package metadata Pi entry.
+        # The home already declares Gentle: loading it twice must be avoided.
+        gentle=package/'bundle/node/node_modules/gentle-pi'
+        pi=package/'bundle/node/node_modules/@earendil-works/pi-coding-agent'
+        cli=json.loads((pi/'package.json').read_text(encoding='utf-8'))['bin']['pi']
+        (agent/'settings.json').write_text(json.dumps({'packages':[str(gentle)],'telemetry':False}),encoding='utf-8')
+        remote.settings({'gentle_path':str(gentle),'gentle_agent_home':str(agent),
+            'pi_command':[str(package/'bundle/node/node.exe'),str(pi/cli)],
+            'pi_extra_args':['--offline','--no-skills','--no-context-files']})
+        if not remote.connect_pi().get('gentleVerified'):raise RuntimeError('Configured Gentle home/Pi did not connect')
+        report['configured_gentle_pi']='passed'
+        remote.call_tool('memory.save' ,{'text':'Frozen application smoke test'})
         report.update(host='passed',frozen_daemon='passed',bundled_pi_gentle='passed',stale_dependencies_repaired='passed',memory='passed')
     finally:
         if remote:remote.shutdown()

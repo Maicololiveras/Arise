@@ -20,7 +20,7 @@ DEFAULTS = {
     "onboarding_complete": False, "local_barge_in": True, "voice_interrupt_threshold": 800,
     "local_server_command": [],
     "local_dialogue_enabled": True, "local_dialogue_url": "http://127.0.0.1:1235/v1", "local_dialogue_model": "",
-    "active_chat": "",
+    "active_chat": "", "gentle_agent_home": "", "gentle_channel": "release",
     "gmail_client_file": "",
     "mcp": {
         "screenview": {"command": ["screenview-mcp"], "enabled": True},
