@@ -175,7 +175,7 @@ class Settings(QDialog):
             command = QLineEdit(json.dumps(spec["command"], ensure_ascii=False))
             self.mcp[name] = (enabled, command)
             f.addRow(enabled, command)
-        self.button(f, "Instalar y configurar manos y ojos", self.setup_desktop_tools)
+        self.button(f, "Instalar y reparar dependencias", self.setup_desktop_tools)
         self.button(f, "Guardar y comprobar herramientas", self.connect_tools)
         self.button(f, "Importar configuración MCP", self.import_tools)
         self.text_field(f, "extra_mcp", "MCP adicionales (objeto JSON)", "{}")
@@ -305,12 +305,12 @@ class Settings(QDialog):
 
     def setup_desktop_tools(self):
         if not self.save(): return
-        self.message.setText('Descargando e instalando manos y ojos…')
+        self.message.setText('Instalando pantalla, control, transcripción y Forge…')
         def complete(result):
-            self.message.setText('Manos y ojos instalados y conectados. Herramientas: '+str(result.get('catalogs',{})))
+            self.message.setText('Dependencias instaladas. Herramientas: '+str(result.get('catalogs',{})))
             self.controller.settings_window=None; self.hide()
             self.controller.show_settings()
-        self.controller.background(lambda:self.runtime.request('tools/setup-desktop',{},timeout=600),complete,lambda message:self.message.setText(message))
+        self.controller.background(lambda:self.runtime.request('tools/setup-desktop',{},timeout=2400),complete,lambda message:self.message.setText(message))
 
     def detect_agent(self):
         from .discovery import detect

@@ -1,3 +1,10 @@
+## 0.4.2 — Dependencias automáticas
+
+- Recupera Pi y Gentle incluidos cuando faltan, incluso después de configurar ARISE o mover la carpeta portable.
+- No considera instalado un paquete solo por aparecer en los ajustes.
+- Instala ScreenView, InputControl, transcripción y Forge con sus dependencias al conectar GitHub. Incluye npm para no requerir Node global.
+- Instala las herramientas en una carpeta nueva y comprueba sus catálogos antes de conservar la configuración; mantiene las herramientas desactivadas.
+
 ARISE Assistant 0.4.1
 
 - Paquete completo Windows con modelos Vosk español, Whisper small, Qwen local y llama.cpp CPU.

@@ -17,6 +17,11 @@ with tempfile.TemporaryDirectory(prefix='arise-frozen-') as temporary:
     agent=root/'agent';agent.mkdir()
     (agent/'settings.json').write_text(json.dumps({'packages':[],'telemetry':False}),encoding='utf-8')
     (agent/'models.json').write_text(json.dumps({'providers':{'arise-smoke':{'baseUrl':'http://127.0.0.1:1/v1','api':'openai-completions','apiKey':'fixture-only','models':[{'id':'fixture','input':['text'],'contextWindow':32000,'maxTokens':1000}]}}}),encoding='utf-8')
+    # Upgrade/portable relocation: completed onboarding must not pin deleted paths.
+    data=root/'data';data.mkdir()
+    (data/'settings.json').write_text(json.dumps({'onboarding_complete':True,
+        'pi_command':[str(package/'bundle/node/node.exe'),str(root/'deleted/cli.js')],
+        'gentle_path':str(root/'deleted/gentle')}),encoding='utf-8')
     env={**os.environ,'PI_CODING_AGENT_DIR':str(agent),'PI_OFFLINE':'1','QT_QPA_PLATFORM':'offscreen','ARISE_CHAT_ROOT':str(root/'chats')}
     engine=package/'ARISE.exe';host=package/'ARISE-host.exe'
     process=subprocess.Popen([str(host),'--engine',str(engine),'--data-dir',str(root/'data')],env=env)
@@ -34,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix='arise-frozen-') as temporary:
         state=remote.connect_pi()
         if not state.get('gentleVerified'):raise RuntimeError('Bundled Gentle Shell did not load')
         remote.call_tool('memory.save',{'text':'Frozen application smoke test'})
-        report.update(host='passed',frozen_daemon='passed',bundled_pi_gentle='passed',memory='passed')
+        report.update(host='passed',frozen_daemon='passed',bundled_pi_gentle='passed',stale_dependencies_repaired='passed',memory='passed')
     finally:
         if remote:remote.shutdown()
         try:process.wait(timeout=15)

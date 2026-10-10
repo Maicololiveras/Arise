@@ -6,8 +6,19 @@ import subprocess
 from pathlib import Path
 
 
+def command_available(command):
+    """Resolve launchers and reject missing script arguments, not only missing hosts."""
+    from .processes import executable_argv
+    try:
+        resolved = executable_argv(command)
+    except (ValueError, RuntimeError, OSError):
+        return False
+    return all(Path(arg).is_file() for arg in resolved[1:]
+               if arg.lower().endswith(('.js', '.mjs', '.cjs', '.py')))
+
+
 def resolve_pi(command=None):
-    if command and (shutil.which(command[0]) or Path(command[0]).is_file()):
+    if command_available(command):
         from .processes import executable_argv
         try: return executable_argv(command)
         except RuntimeError: pass
@@ -76,7 +87,7 @@ def detect(config, agent_dir=None):
         except (ValueError, OSError): pass
     gentle = next((str(p.resolve()) for p in candidates if gentle_valid(p)), None)
     return {"pi_command": pi, "gentle_path": gentle, "agent_dir": str(agent_dir), "package_sources": package_sources,
-        "model_providers": providers, "gentle_installed_package": any("gentle" in str(s) for s in package_sources)}
+        "model_providers": providers, "gentle_installed_package": bool(gentle)}
 
 
 def import_mcp(path):

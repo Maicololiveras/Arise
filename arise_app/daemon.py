@@ -102,21 +102,10 @@ def main():
     if getattr(sys, "frozen", False): os.environ.setdefault("ARISE_CHAT_ROOT", str(application_root() / "chat"))
     runtime = Assistant(root)
     found = detect(runtime.storage.config)
-    configure_bundle(runtime)
     changes = {key: found[key] for key in ("pi_command", "gentle_path") if found.get(key)}
-    if found.get("gentle_installed_package") and not found.get("gentle_path"):
-        changes["gentle_path"] = ""
     if changes: runtime.settings(changes)
-    # An old globally installed Pi must not replace the compatible bundled engine.
-    from .discovery import installed_pi_version
-    selected_gentle = Path(runtime.storage.config['gentle_path']) / 'package.json'
-    version = installed_pi_version(runtime.storage.config['pi_command'])
-    if selected_gentle.is_file() and version and tuple(int(n) for n in version.split('.')[:3]) < (0,99,1):
-        if json.loads(selected_gentle.read_text(encoding='utf-8')).get('version') == '4.0.0':
-            bundle = application_root() / 'bundle'; manifest = bundle / 'manifest.json'
-            if manifest.is_file():
-                command = json.loads(manifest.read_text(encoding='utf-8-sig'))['pi_command']
-                runtime.settings({'pi_command':[str(bundle/v[8:]) if v.startswith('@bundle/') else v for v in command]})
+    # Run after discovery so stale global paths never overwrite the offline fallback.
+    configure_bundle(runtime)
     server = make_server(runtime)
     voice = VoiceService(runtime)
     runtime.voice_service = voice

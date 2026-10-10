@@ -63,3 +63,12 @@ No se ha demostrado que codegraph provoque el cierre de Pi. Se mantiene su
 configuración; no se desactiva silenciosamente ningún MCP.
 Falta probar esta corrección con el instalador Windows y capturar el diagnóstico
 del cierre original. Estos cambios aún no son una nueva release.
+
+
+## Aprovisionamiento automático (0.4.2)
+
+El ZIP completo contiene Pi, Gentle Shell, Node, npm, Python y FFmpeg. Al iniciar, ARISE conserva rutas existentes válidas y configura los componentes integrados para las que faltan, aunque el onboarding ya estuviera completo. No requiere instalación global ni permisos de administrador. Un ZIP incompleto debe extraerse de nuevo: no se simula una instalación correcta.
+
+Al conectar GitHub, ARISE descarga los repositorios privados de ScreenView, InputControl, transcripción y Forge, instala sus dependencias en una carpeta propia nueva y verifica los catálogos MCP. Requiere acceso a esos repositorios y conexión a sus registros de paquetes. Las cuentas de proveedores siguen necesitando autenticación. El marcador installed.json no sustituye la comprobación de rutas.
+
+La prueba Windows del ejecutable empaquetado arranca con onboarding completo y rutas de Pi/Gentle borradas; exige que el motor integrado cargue los comandos reales de Gentle. Las pruebas unitarias cubren detección, reparación, idempotencia y compilación/limpieza de Forge con fixtures; no sustituyen la validación de los repositorios privados en el equipo destino.
