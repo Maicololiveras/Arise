@@ -1,3 +1,11 @@
+## 0.4.5 — Preparación privada del instalador de Gentle
+
+- Crea automáticamente una carpeta de preparación nueva dentro del perfil, con propietario igual al usuario actual y ACL privada. No cambia propietario ni permisos de AppData, del perfil o de carpetas existentes.
+- Conserva las comprobaciones oficiales de Gentle de ACL, propietarios, ancestros, reparse points e integridad de descargas. No cambia LOCALAPPDATA ni USERPROFILE del proceso.
+- Supervisa el proceso del instalador y conserva bootstrap.log; un cierre anticipado se comunica sin esperar una hora.
+- Diferencia el fallo posterior install-shell-main de los errores de permisos. No cambia de canal automáticamente ni adopta una instalación incompleta.
+- La solución manual de carpeta propia/propietario fue confirmada por el usuario hasta abrir el instalador web. La instalación desde main falló después y su causa sigue pendiente; esta versión no afirma corregirla.
+
 ## 0.4.2 — Dependencias automáticas
 
 - Recupera Pi y Gentle incluidos cuando faltan, incluso después de configurar ARISE o mover la carpeta portable.
