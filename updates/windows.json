@@ -1,10 +1,11 @@
 {
   "schema": 1,
-  "version": "0.4.0",
-  "notes": "ARISE Assistant 0.4.0\n\n- Orbe persistente; doble clic abre el chat y clic sencillo lo oculta.\n- El panel acompa\u00f1a al orbe, recuerda su ubicaci\u00f3n y se oculta tras 60 segundos sin interacci\u00f3n.\n- Activaci\u00f3n por voz sin abrir el panel de chat.\n- Voz local con captura continua, interrupci\u00f3n de audio y correcciones en la misma sesi\u00f3n de Gentle Shell. Vosk/Whisper + Windows SAPI/Piper; no requiere una API de voz. La latencia depende del hardware y del modelo del agente. Auriculares recomendados para evitar eco; no incluye cancelaci\u00f3n ac\u00fastica de eco.\n- Interlocutor local configurable (por defecto LM Studio en localhost:1235), contexto por chat y delegaci\u00f3n concurrente a Gentle. Requiere un servidor/modelo cargado; sin \u00e9l usa voz directa con Gentle.\n- Preguntas select/input/confirm de Gentle pueden responderse por voz. Las aprobaciones de env\u00edo de Gmail conservan su revisi\u00f3n visual.\n- Consulta de versiones en main, novedades, instalaci\u00f3n consentida y descarga verificada por SHA-256.\n- Launcher externo y cierre coordinado de UI, daemon, Pi y procesos hijos antes de reemplazar los archivos.\n- Conserva chats, memoria, modelos de usuario y configuraci\u00f3n al reinstalar.\n- Compatible con repositorios privados: credencial GitHub protegida por Windows o sesi\u00f3n existente de gh.\n- Descarga y configura ScreenView (ojos) e InputControl (manos) con un runtime Python incluido. Los repos privados requieren acceso a GitHub una vez.\n",
-  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/v0.4.0/ARISE-Setup.exe",
-  "asset_id": 625838107,
-  "sha256": "b0e51a0dede79c031f4e15635d855663ed6d8f97c43bb23e34bad62d57d301f4",
-  "size": 388502656,
-  "source_commit": "e062547fa11cf948f84738228ce2a9c2cb274492"
+  "channel": "main",
+  "version": "0.4.8",
+  "notes": "# ARISE 0.4.8\n\n- La voz usa la misma sesion de Gentle que el chat y sus herramientas habilitadas.\n- Voz neuronal local Piper es-MX Ald gestionada por Forge; modelo y motor incluidos en el ZIP.\n- Modo CPU ligero automatico para equipos de hasta 10 GB: Vosk, sin cargar Whisper ni mantener el modelo conversacional auxiliar en memoria.\n- Reparacion del instalador de Gentle en Windows: carpeta privada con propietario correcto, pnpm PATH y reutilizacion del Pi configurado por Gentle.\n- Nuevo chat desde subcarpetas y conservacion de catalogos MCP al guardar ajustes.\n- Canal QA separado de main: cada instalacion busca actualizaciones solo en su canal.\n\nExtrae ARISE-Windows-Complete.zip y abre Configurar ARISE.cmd. La primera instalacion de Gentle y los MCP privados requiere Internet y acceso GitHub. El proveedor del agente requiere su configuracion habitual; voz local no significa que el modelo de Gentle sea necesariamente local.\n",
+  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/v0.4.8/ARISE-Setup.exe",
+  "asset_id": 629026219,
+  "sha256": "7d9185f793f2fabe7ee82d1f44f5cf2886f1e47ec61555549ac08c16a5b89e50",
+  "size": 401037561,
+  "source_commit": "76d4d366354f2233e9138dd0f4dbe3331f48871e"
 }
