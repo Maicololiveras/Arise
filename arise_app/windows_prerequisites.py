@@ -28,6 +28,11 @@ def refresh_path(env, first=()):
             except OSError:
                 pass
     result = dict(env)
+    for canonical in ('SystemRoot', 'ProgramFiles', 'ProgramFiles(x86)', 'ProgramW6432', 'LOCALAPPDATA'):
+        for key, value in env.items():
+            if key.upper() == canonical.upper():
+                result[canonical] = value
+                break
     for key in list(result):
         if key.upper() == 'PATH':
             del result[key]
@@ -121,7 +126,7 @@ def prepare_manager_directory():
     if not created:
         script = script[:start] + '$me = [Security.Principal.WindowsIdentity]::GetCurrent().User\n' + script[end:]
     env = dict(os.environ, ARISE_GENTLE_STAGE=str(directory))
-    powershell = Path(env['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
+    powershell = Path(os.environ['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
     checked_run([str(powershell), '-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand',
                  base64.b64encode(script.encode('utf-16-le')).decode('ascii')],
                 'Verificación de la carpeta privada de dependencias', env=env, timeout=30,

@@ -1,6 +1,6 @@
 # Dependencias de Gentle Shell en Windows
 
-ARISE 0.4.9 prepara los requisitos antes de iniciar el asistente oficial. Esta fase reutiliza Node/npm integrados; instala Git for Windows (incluye Bash) y Go con WinGet cuando no encuentra versiones utilizables; prepara pnpm 11.1.1 y npm 11.10.0 en su carpeta de datos. Refresca PATH y verifica los ejecutables antes de continuar. No cambia el pnpm global del usuario.
+ARISE 0.4.9 prepara los requisitos antes de iniciar el asistente oficial. Esta fase reutiliza Node/npm integrados; instala Git for Windows (incluye Bash) y Go con WinGet cuando no encuentra versiones utilizables; prepara pnpm 11.1.1 y npm 11.10.0 en `%USERPROFILE%\ARISE-Gentle-Prerequisites`, con permisos privados verificados. Incluye allí el Node que seleccionan los lanzadores de npm. Si la carpeta ya existe, verifica sus permisos sin modificarlos. Refresca PATH y verifica los ejecutables antes de continuar. No cambia el pnpm global del usuario.
 
 Git/Bash se necesita para el trabajo de Pi. Go >=1.25.10 se prepara para la compilación nativa de Gentle en Windows. El bootstrap oficial Windows exige Node >=24.3.0; ARISE incluye una versión compatible. El extractor `System32\tar.exe` debe existir en Windows. GitHub CLI (`gh`) sirve para autenticación y no sustituye Git ni Bash.
 
