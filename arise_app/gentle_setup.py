@@ -112,6 +112,9 @@ def install_gentle(runtime, timeout=3600):
         bundle=application_root()/'bundle'
         source=bundle/'gentle-installer'
         if not (source/'scripts/bootstrap.cmd').is_file():raise RuntimeError('Usa el ZIP nuevo de ARISE: falta el instalador oficial de Gentle.')
+        from .windows_prerequisites import prepare_prerequisites, refresh_path
+        env=prepare_prerequisites(bundle,runtime.storage.root/'prerequisites',
+            lambda message:runtime.emit('notice',{'text':message}))
         jobs=runtime.storage.root/'installers';jobs.mkdir(exist_ok=True)
         # Keep the job if the UI closes; the installer may still own files in it.
         job=Path(tempfile.mkdtemp(prefix='gentle-',dir=jobs))
@@ -120,7 +123,8 @@ def install_gentle(runtime, timeout=3600):
         result_file=job/'arise-result.json'
         log_file=job/'bootstrap.log'
         command=str(Path(os.environ['SystemRoot'])/'System32/cmd.exe')
-        stage,env=prepare_installer_stage()
+        stage,stage_env=prepare_installer_stage()
+        env['ARISE_GENTLE_STAGE']=stage_env['ARISE_GENTLE_STAGE']
         process=None
         try:
             with log_file.open('wb') as log:
@@ -136,6 +140,8 @@ def install_gentle(runtime, timeout=3600):
                 except OSError:pass
         result=json.loads(result_file.read_text(encoding='utf-8'))
         changes=validate_result(result,bundle/'node/node.exe')
+        # Pi starts in this daemon too: inherit installed Git/Go without a restart.
+        os.environ['PATH']=refresh_path(env)['PATH']
         with runtime.transition_lock:
             if runtime.busy:raise RuntimeError('Gentle está instalado. Detén la tarea y vuelve a configurar para conectarlo.')
             previous={key:runtime.storage.config.get(key,'') for key in changes}
