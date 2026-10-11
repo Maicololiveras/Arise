@@ -1,5 +1,7 @@
 """Prepare Windows dependencies before starting the official Gentle wizard."""
 import os
+import base64
+import shutil
 from pathlib import Path
 import re
 import subprocess
@@ -103,6 +105,30 @@ def install_native(tool, env, cwd, notify):
                            f'winget install --id {package} --exact --source winget') from None
 
 
+def prepare_manager_directory():
+    """Own one private directory; never change permissions on an existing tree."""
+    from .gentle_setup import STAGE_SCRIPT
+    directory = Path(os.environ['USERPROFILE']).resolve() / 'ARISE-Gentle-Prerequisites'
+    created = False
+    try:
+        directory.mkdir()
+        created = True
+    except FileExistsError:
+        pass
+    script = STAGE_SCRIPT.replace("'^ARISE-Gentle-Setup-[a-f0-9]{32}$'", "'^ARISE-Gentle-Prerequisites$'")
+    start = script.index("if ([IO.Directory]::GetFileSystemEntries")
+    end = script.index('$actual =')
+    if not created:
+        script = script[:start] + '$me = [Security.Principal.WindowsIdentity]::GetCurrent().User\n' + script[end:]
+    env = dict(os.environ, ARISE_GENTLE_STAGE=str(directory))
+    powershell = Path(env['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
+    checked_run([str(powershell), '-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand',
+                 base64.b64encode(script.encode('utf-16-le')).decode('ascii')],
+                'Verificación de la carpeta privada de dependencias', env=env, timeout=30,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    return directory
+
+
 def prepare_prerequisites(bundle, root, notify=lambda message: None, env=None):
     """Return a verified child environment; failure never launches Gentle Shell."""
     bundle, root = Path(bundle), Path(root)
@@ -136,7 +162,9 @@ def prepare_prerequisites(bundle, root, notify=lambda message: None, env=None):
             env = refresh_path(env, [found.parent])
         notify(f'{tool} verificado.')
     # A private prefix preserves any global package-manager version the user owns.
-    managers = root / 'package-managers'
+    managers = prepare_manager_directory()
+    # npm's shim prefers its sibling Node; keep that binary in the private ACL tree.
+    shutil.copyfile(node, managers / 'node.exe')
     pnpm = managers / 'node_modules/pnpm/bin/pnpm.cjs'
     if not pnpm.is_file():
         pnpm = managers / 'node_modules/pnpm/bin/pnpm.mjs'

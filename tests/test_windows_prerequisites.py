@@ -22,6 +22,8 @@ class WindowsPrerequisitesTests(unittest.TestCase):
             path = self.bundle / name; path.parent.mkdir(parents=True, exist_ok=True); path.touch()
         tar = self.root / 'Windows/System32/tar.exe'; tar.parent.mkdir(parents=True); tar.touch()
         self.managers()
+        manager_patch = patch.object(p, 'prepare_manager_directory', return_value=self.data/'package-managers')
+        manager_patch.start(); self.addCleanup(manager_patch.stop)
         self.git = self.root / 'Git/cmd/git.exe'
         self.bash = self.root / 'Git/bin/bash.exe'
         self.go = self.root / 'Go/bin/go.exe'
