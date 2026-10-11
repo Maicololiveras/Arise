@@ -24,7 +24,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Tool screenvi
 
 Se descarga solo lo elegido, se comprueba SHA-256 y se instala por versión en `%LOCALAPPDATA%\Programs\AriseTools`. No necesita instalar Python, Node o Bun. Importa el archivo `mcp.json` generado en tu cliente MCP. No cambia automáticamente ARISE ni la configuración de otros clientes. Vuelve a ejecutar el script para obtener la versión publicada; conserva las versiones anteriores y cierra los clientes antes de retirarlas.
 
-ScreenView básico incluye captura, ventanas y cambios de pantalla. **OCR/EasyOCR no está incluido en este paquete ligero**: las funciones OCR necesitan un paquete ampliado con sus modelos. Forge puede necesitar servicios adicionales según la herramienta invocada (por ejemplo transcripción y el cliente/agente configurado). Esta entrega no incluye Transcripción, modelos de voz ni un LLM.
+ScreenView incluye captura, ventanas, cambios y OCR nativo de Windows (WinRT), sujeto a los idiomas OCR instalados en el sistema. No descarga EasyOCR ni sus modelos. Forge puede necesitar servicios adicionales según la herramienta invocada (por ejemplo transcripción y el cliente/agente configurado). Esta entrega no incluye Transcripción, modelos de voz ni un LLM.
 
 ## Publicación (mantenedor)
 

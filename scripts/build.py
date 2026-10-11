@@ -28,7 +28,8 @@ def build(tool):
         Path('public_entry.py').write_text(f'from {module}.server import main\nif __name__ == "__main__": main()\n')
         run(sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onedir', '--name', name,
             '--collect-all', module, '--collect-all', 'mcp', '--collect-all', 'pynput' if tool == 'inputcontrol' else 'mss',
-            '--hidden-import', 'win32timezone', 'public_entry.py')
+            '--hidden-import', 'win32timezone',
+            *(['--collect-submodules', 'winrt'] if tool == 'screenview' else []), 'public_entry.py')
         payload = Path('dist') / name
         # collect-all may copy project source as data. Never release those files.
         for p in list(payload.rglob('*')):
