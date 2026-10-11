@@ -1,0 +1,27 @@
+name: Validate public tools installer
+on:
+  push:
+    branches: [herramientas]
+  pull_request:
+    branches: [herramientas]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Parse installer and Python scripts
+        shell: powershell
+        run: |
+          $tokens = $null; $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$pwd/install.ps1", [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count) { $errors | Format-List; exit 1 }
+          python -m compileall -q scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise downloads, install, retry and rejection paths
+        shell: powershell
+        run: ./scripts/test-installer.ps1
