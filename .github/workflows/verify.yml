@@ -134,6 +134,8 @@ jobs:
         run: |
           if ($env:COMPONENTS_AVAILABLE -eq 'true') { ./scripts/Build-Windows.ps1 -WithTools -ReposRoot ./components }
           else { ./scripts/Build-Windows.ps1; Write-Host 'Base build includes Pi/Gentle; private MCP repos need ARISE_COMPONENTS_TOKEN.' }
+      - name: Verify Windows prerequisites with official Gentle adapter
+        run: python scripts/smoke_gentle_prerequisites.py dist/ARISE
       - name: Real bundled MCP catalog smoke tests
         if: env.COMPONENTS_AVAILABLE == 'true'
         run: python scripts/smoke_bundle.py dist/ARISE
