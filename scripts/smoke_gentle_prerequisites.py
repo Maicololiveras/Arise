@@ -32,4 +32,5 @@ with tempfile.TemporaryDirectory(prefix='arise-prerequisites-') as temporary:
         subprocess.run([str(bundle/'node/node.exe'),'--input-type=module','-e',script],env=env,cwd=root,check=True,timeout=90)
     finally:
         stage.rmdir()
+Path('artifacts').mkdir(exist_ok=True)
 Path('artifacts/gentle-prerequisites.json').write_text(json.dumps({'windows_tools':'passed','private_pnpm':'passed','official_adapter':'passed','repeat':'passed'}),encoding='utf-8')

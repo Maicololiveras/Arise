@@ -22,7 +22,32 @@ jobs:
         with:
           name: arise-docker-results
           path: artifacts/test-results.json
+  prerequisites:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.13.1'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.10'
+          cache: false
+      - name: Prepare minimal Windows dependency bundle
+        run: |
+          New-Item -ItemType Directory -Force dependency-smoke/bundle/node | Out-Null
+          Copy-Item (Get-Command node.exe).Source dependency-smoke/bundle/node/node.exe
+          npm.cmd install --prefix dependency-smoke/bundle/node --ignore-scripts --no-audit --no-fund npm@11.10.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/prepare_gentle_installer.py --destination dependency-smoke/bundle/gentle-installer
+      - name: Verify dependencies before building the application
+        run: python scripts/smoke_gentle_prerequisites.py dependency-smoke
   windows:
+    needs: prerequisites
     permissions:
       contents: read
       actions: read
