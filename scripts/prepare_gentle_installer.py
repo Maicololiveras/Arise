@@ -25,6 +25,9 @@ def adapt(entry):
     source=entry.read_text(encoding='utf-8')
     needle='...wizardHandlers({ platform, arch, env, run, fs }),'
     if source.count(needle)!=1: raise RuntimeError('Cambió el contrato del instalador oficial.')
+    context_needle='\treturn {\n\t\tcollectPlan: async (channel) => {'
+    if source.count(context_needle)!=1: raise RuntimeError('Cambió el contexto del instalador oficial.')
+    source=source.replace(context_needle, '\treturn {\n\t\tariseContext: () => ({ env: wizard.env, pnpmHome: wizard.pnpmHome }),\n\t\tcollectPlan: async (channel) => {')
     source=source.replace(needle, '...withAriseReport(wizardHandlers({ platform, arch, env, run, fs }), { platform, arch, env, run, fs }),')
     source='import { withAriseReport } from "./arise-result.mjs";\n'+source
     # Preserve the executable hashbang as the first line.

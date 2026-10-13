@@ -19,7 +19,7 @@ class GentleReportTests(unittest.TestCase):
             test='''import {withAriseReport} from './bin/arise-result.mjs';
 import {readFile} from 'node:fs/promises';
 const [root,home]=process.argv.slice(2);
-const handlers=withAriseReport({collectPlan:async channel=>({channel}),runInstall:async()=>({outcome:'ready'})},{platform:process.platform,env:{TEST_HOME:home},run(){},fs:{}});
+const handlers=withAriseReport({ariseContext:()=>({env:{TEST_HOME:home}}),collectPlan:async channel=>({channel}),runInstall:async()=>({outcome:'ready'})},{platform:process.platform,env:{TEST_HOME:'wrong-bootstrap-home'},run(){},fs:{}});
 await handlers.collectPlan('release');
 await handlers.runInstall({plan:{bundled:{root}}},()=>{});
 console.log(await readFile('./arise-result.json','utf8'));

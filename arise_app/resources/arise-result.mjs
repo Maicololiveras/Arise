@@ -61,7 +61,7 @@ export function withAriseReport(handlers, context) {
     collectPlan: async (selected) => { channel=selected; return handlers.collectPlan(selected); },
     runInstall: async (request, log) => {
       const result=await handlers.runInstall(request,log);
-      await reportToArise(result,channel,{...context,request});
+      await reportToArise(result,channel,{...context,...handlers.ariseContext?.(),request});
       return result;
     },
   };

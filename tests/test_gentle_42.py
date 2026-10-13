@@ -28,6 +28,7 @@ class Gentle42Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             entry=Path(temp)/'installer.mjs'
             source='#!/usr/bin/env node\nconst handlers={...wizardHandlers({ platform, arch, env, run, fs }),};\n'
+            source+='\treturn {\n\t\tcollectPlan: async (channel) => {\n'
             entry.write_text(source);adapt(entry)
             self.assertTrue(entry.read_text().startswith('#!/usr/bin/env node\n'))
             self.assertIn('withAriseReport(wizardHandlers(',entry.read_text())
