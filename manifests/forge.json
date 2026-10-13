@@ -1,6 +1,11 @@
 {
   "schema": 1,
   "tool": "forge",
-  "status": "pending",
-  "platform": "windows-x64"
+  "version": "0.1.0",
+  "tag": "herramientas-forge-v0.1.0-af560faf6433",
+  "platform": "windows-x64",
+  "entry": "forge-mcp.exe",
+  "sha256": "6309d287875ec42f97cab54e2ba68ca2da15cf2d9761feaacc2e924f1f94c559",
+  "size": 42829876,
+  "url": "https://github.com/Maicololiveras/Arise/releases/download/herramientas-forge-v0.1.0-af560faf6433/forge-mcp-windows-x64.zip"
 }
