@@ -44,5 +44,5 @@ def api(endpoint, payload=None, method='POST'):
     file.write_text(json.dumps(payload), encoding='utf-8')
     return json.loads(gh('api', endpoint, '--method', method, '--input', str(file)))
 
-publish_metadata(api, channel, manifest)
+publish_metadata(api, channel, manifest, sync_other=channel != "qa")
 print('Published '+tag+'; channel manifest and README download links synchronized')

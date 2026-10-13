@@ -92,12 +92,15 @@ class Assistant(Runtime):
             return self.stop()
         # Reconnect after settings/chat changes; permission alone used to leave
         # an empty catalog even when the desktop dependencies were installed.
+        generation=self.stop_generation
+        self.desktop_halted=False
         for name in ("screenview", "inputcontrol"):
             if self.storage.config["mcp"].get(name, {}).get("enabled"):
                 try:
                     self.connect_mcp(name)
                 except Exception as error:
                     self.emit("error", {"text": f"{name}: no se pudo conectar. {str(error)[:300]}"})
+        if generation!=self.stop_generation:raise RuntimeError('Activación cancelada por la parada de emergencia.')
         self.desktop = True
         self.orb.update(control=True)
         return self.status()
@@ -183,6 +186,7 @@ class Assistant(Runtime):
             with self.action_lock:
                 return super().call_tool(name, arguments)
         if name.startswith("screenview."):
+            if self.desktop_halted:raise RuntimeError("Observación detenida. Reactívala expresamente desde el chat.")
             self.orb.update(screen=True)
             try:
                 return super().call_tool(name, arguments)
@@ -214,4 +218,7 @@ class Assistant(Runtime):
         if "orb_size" in changes and (type(changes["orb_size"]) is not int or not 48 <= changes["orb_size"] <= 240):
             raise ValueError("Tamaño entre 48 y 240.")
         if 'voice_interrupt_threshold' in changes and (type(changes['voice_interrupt_threshold']) is not int or not 300<=changes['voice_interrupt_threshold']<=10000): raise ValueError('Umbral de interrupción entre 300 y 10000.')
+        if 'voice_silence_ms' in changes and (type(changes['voice_silence_ms']) is not int or not 700<=changes['voice_silence_ms']<=3000):raise ValueError('Pausa de voz entre 700 y 3000 ms.')
+        if 'forge_voice' in changes and changes['forge_voice']!='es-CO-GonzaloNeural':raise ValueError('Selecciona la voz Gonzalo disponible en este paquete.')
+        if 'forge_rate' in changes and not __import__('re').fullmatch(r'[+-]\d{1,2}%',changes['forge_rate']):raise ValueError('Velocidad en formato +5%.')
         return super().settings(changes)

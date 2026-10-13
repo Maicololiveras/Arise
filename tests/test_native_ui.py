@@ -26,7 +26,7 @@ class NativeTests(unittest.TestCase):
     def test_compact_panel_orb_and_actual_state_updates(self):
         self.c.panel.show();QTest.qWait(100)
         self.assertLessEqual(self.c.panel.width(),440)
-        self.assertLessEqual(self.c.panel.height(),550)
+        self.assertLessEqual(self.c.panel.height(),700)
         self.assertEqual(self.orb.width(),96)
         self.r.orb.update("waiting_approval",microphone=True,control=True)
         self.c.poll();QTest.qWait(30)
@@ -80,6 +80,26 @@ class NativeTests(unittest.TestCase):
             panel.send();QTest.qWait(100)
             self.assertEqual(send.call_args.args[1][0]['mimeType'],'image/png')
         self.assertEqual(panel.input.toPlainText(),'');self.assertEqual(panel.attachments,[])
+
+    def test_settings_wheel_does_not_change_profile_and_close_discards(self):
+        from PySide6.QtGui import QWheelEvent
+        from PySide6.QtCore import QPoint,QPointF
+        settings=Settings(self.c);self.c.settings_window=settings;settings.show();QTest.qWait(30)
+        profile=settings.fields['local_profile'];profile.setCurrentText('auto');profile.setFocus()
+        event=QWheelEvent(QPointF(5,5),QPointF(5,5),QPoint(),QPoint(0,-120),Qt.NoButton,Qt.NoModifier,Qt.NoScrollPhase,False)
+        self.app.sendEvent(profile,event);self.assertEqual(profile.currentText(),'auto')
+        profile.setCurrentText('light');settings.close();QTest.qWait(20)
+        self.assertEqual(self.r.storage.config['local_profile'],'auto')
+        self.c.show_settings();self.assertEqual(self.c.settings_window.fields['local_profile'].currentText(),'auto')
+
+    def test_orb_single_click_opens_and_error_restore_never_sends(self):
+        self.assertFalse(self.c.panel.isVisible());QTest.mouseClick(self.orb,Qt.LeftButton);QTest.qWait(20)
+        self.assertTrue(self.c.panel.isVisible());self.assertTrue(self.c.panel.status.isVisible())
+        panel=self.c.panel;panel.last_submission=(panel.current_chat,'Mi borrador',[])
+        self.r.emit('error',{'text':'503 Service Unavailable'});self.c.poll()
+        self.assertIn('temporalmente',panel.history.toPlainText())
+        with patch.object(self.r,'steer') as send:panel.restore_draft();send.assert_not_called()
+        self.assertEqual(panel.input.toPlainText(),'Mi borrador')
 
     def test_rpc_editor_returns_multiline_text_and_chat_change_closes_dialog(self):
         answers=[]

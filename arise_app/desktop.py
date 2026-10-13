@@ -14,7 +14,7 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QImage, QDesktopServ
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import (QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QPushButton, QLineEdit, QTextBrowser, QTextEdit, QComboBox, QCheckBox, QTabWidget,
-    QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QSpinBox, QDialogButtonBox, QInputDialog, QWidgetAction, QScrollArea, QProgressDialog)
+    QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QSpinBox, QDialogButtonBox, QInputDialog, QWidgetAction, QScrollArea, QProgressDialog, QSizePolicy)
 from .orb import build_orb
 from .assistant import Assistant
 from .audio import Audio
@@ -40,6 +40,12 @@ QTabWidget::pane {border:1px solid #25445B;} QTabBar::tab {padding:12px;backgrou
 QTabBar::tab:selected {color:#74F6FF;background:#17364C;}
 QCheckBox {padding:5px;} QMenu {background:#10283C;}
 """
+
+class WheelSafeCombo(QComboBox):
+    def wheelEvent(self,event):event.ignore()
+
+class WheelSafeSpin(QSpinBox):
+    def wheelEvent(self,event):event.ignore()
 
 class Worker(QObject):
     finished = Signal(object)
@@ -110,7 +116,7 @@ class Settings(QDialog):
         self.resize(760, 650); self.setStyleSheet(STYLE)
         layout = QVBoxLayout(self)
         title = QLabel("Configura tu ARISE"); title.setObjectName("title"); layout.addWidget(title)
-        layout.addWidget(QLabel("Elige voz, conecta el agente y habilita las herramientas que usarás."))
+        intro=QLabel("Elige voz, conecta el agente y habilita las herramientas que usarás.");intro.setWordWrap(True);layout.addWidget(intro)
         quick_setup=QPushButton("Configurar todo desde ZIP")
         quick_setup.clicked.connect(controller.install_model_pack);layout.addWidget(quick_setup)
         gentle_setup=QPushButton("Configurar Gentle · estable o último main")
@@ -119,13 +125,21 @@ class Settings(QDialog):
         self.fields, self.keys, self.mcp = {}, {}, {}
         config = self.runtime.storage.config
         voice = QWidget(); f = QFormLayout(voice); tabs.addTab(voice, "Voz y audio")
-        self.fields["voice_provider"] = QComboBox(); self.fields["voice_provider"].addItems(["local", "forge-local", "forge-openai", "openai", "gemini"])
+        self.fields["voice_provider"] = WheelSafeCombo(); self.fields["voice_provider"].addItems(["local", "forge-local", "forge-openai", "openai", "gemini"])
         self.fields["voice_provider"].setCurrentText(config["voice_provider"])
         f.addRow("Proveedor", self.fields["voice_provider"])
-        self.fields["local_stt_engine"] = QComboBox(); self.fields["local_stt_engine"].addItems(["auto", "vosk", "faster-whisper", "openai-whisper"])
+        self.fields['forge_voice']=WheelSafeCombo();self.fields['forge_voice'].addItem('es-CO-GonzaloNeural');f.addRow('Gonzalo · español de Colombia',self.fields['forge_voice'])
+        self.text_field(f,'forge_rate','Velocidad Forge',config['forge_rate'])
+        pause=WheelSafeSpin();pause.setRange(700,3000);pause.setSingleStep(100);pause.setSuffix(' ms');pause.setValue(config['voice_silence_ms'])
+        self.fields['voice_silence_ms']=pause;f.addRow('Pausa para terminar el dictado',pause)
+        preset=QPushButton('Usar Gonzalo · Colombia · +5%');preset.clicked.connect(self.select_gonzalo);f.addRow(preset)
+        f.addRow(QLabel('Gonzalo · español de Colombia. Forge/Edge necesita Internet. No cambia a Windows si falla.'))
+        self.fields["local_stt_engine"] = WheelSafeCombo(); self.fields["local_stt_engine"].addItems(["auto", "vosk", "faster-whisper", "openai-whisper"])
         self.fields["local_stt_engine"].setCurrentText(config["local_stt_engine"]); f.addRow("Motor local", self.fields["local_stt_engine"])
-        for key, label in (("voice_model", "Modelo de voz"), ("voice", "Voz"), ("wake_model", "Modelo Vosk (carpeta)"), ("local_stt_model", "Modelo local (.pt o carpeta)"), ("piper_model", "Modelo Piper (.onnx)")):
+        for key, label in (("voice_model", "Modelo de voz"), ("voice", "Voz de otros proveedores"), ("wake_model", "Modelo Vosk (carpeta)"), ("local_stt_model", "Modelo local (.pt o carpeta)"), ("piper_model", "Modelo Piper (.onnx)")):
             self.text_field(f, key, label, config[key])
+        self.voice_form=f
+        f.setRowVisible(self.fields['voice'],config['voice_provider']!='local' or config['local_tts']=='system')
         self.fields["voice_provider"].currentTextChanged.connect(self.provider_changed)
         devices = []
         try:
@@ -133,7 +147,7 @@ class Settings(QDialog):
         except Exception:
             f.addRow(QLabel("No se detectaron dispositivos. Revisa el audio del sistema."))
         for key, label, capability in (("input_device", "Micrófono", "input"), ("output_device", "Altavoz", "output")):
-            combo = QComboBox(); combo.addItem("Predeterminado del sistema", None)
+            combo = WheelSafeCombo(); combo.addItem("Predeterminado del sistema", None)
             for device in devices:
                 if device[capability]:
                     combo.addItem(device["name"], device["id"])
@@ -141,13 +155,14 @@ class Settings(QDialog):
         f.addRow(QLabel("local: modo ligero sin GPU. forge-local: voz a voz nativa con servidor local compatible. forge-openai: voz a voz en línea."))
         self.text_field(f,'forge_voice_url','Servidor de voz a voz local',config['forge_voice_url'])
         for key,label,choices in [('voice_task_engine','Motor de conversación',['gentle','local-dialogue']),('local_profile','Perfil de memoria',['auto','light','standard']),('local_tts','Salida de voz local',['forge','system'])]:
-            combo=QComboBox();combo.addItems(choices);combo.setCurrentText(config[key]);self.fields[key]=combo;f.addRow(label,combo)
+            combo=WheelSafeCombo();combo.addItems(choices);combo.setCurrentText(config[key]);self.fields[key]=combo;f.addRow(label,combo)
+        self.fields['local_tts'].currentTextChanged.connect(lambda value:self.voice_form.setRowVisible(self.fields['voice'],self.fields['voice_provider'].currentText()!='local' or value=='system'))
         self.check_field(f, 'local_dialogue_enabled' , 'Conversar con un modelo local mientras Gentle trabaja', config['local_dialogue_enabled'])
         self.text_field(f,'local_dialogue_url','Servidor conversacional local',config['local_dialogue_url'])
         self.text_field(f,'local_server_command','Arranque local (JSON)',json.dumps(config['local_server_command']))
         self.text_field(f,'local_dialogue_model','Modelo local (vacío: detectar)',config['local_dialogue_model'])
         self.check_field(f, "local_barge_in", "Permitir interrupciones en voz local", config["local_barge_in"])
-        threshold=QSpinBox(); threshold.setRange(300,10000); threshold.setValue(config["voice_interrupt_threshold"]); self.fields["voice_interrupt_threshold"]=threshold; f.addRow("Umbral de interrupción local",threshold)
+        threshold=WheelSafeSpin(); threshold.setRange(300,10000); threshold.setValue(config["voice_interrupt_threshold"]); self.fields["voice_interrupt_threshold"]=threshold; f.addRow("Umbral de interrupción local",threshold)
         self.check_field(f, "wake_enabled", "Escuchar 'Oye Arise' localmente", config["wake_enabled"])
         self.text_field(f, "wake_phrases", "Frases (separadas por coma)", ", ".join(config["wake_phrases"]))
         f.addRow(QLabel("Voz local con escucha continua e interrupciones. Usa auriculares para evitar que el micrófono capture la propia voz de ARISE."))
@@ -163,7 +178,7 @@ class Settings(QDialog):
         for key, label in (("workspace", "Carpeta de trabajo"), ("pi_command", "Comando Pi (lista JSON)"), ("gentle_path", "Carpeta Gentle Shell"), ("agent_provider", "Proveedor del agente"), ("agent_model", "Modelo del agente")):
             value = json.dumps(config[key]) if key == "pi_command" else config[key]
             self.text_field(f, key, label, value)
-        self.fields["thinking"] = QComboBox(); self.fields["thinking"].addItems(["off", "minimal", "low", "medium", "high", "xhigh"])
+        self.fields["thinking"] = WheelSafeCombo(); self.fields["thinking"].addItems(["off", "minimal", "low", "medium", "high", "xhigh"])
         self.fields["thinking"].setCurrentText(config["thinking"]); f.addRow("Esfuerzo", self.fields["thinking"])
         self.check_field(f, "code_enabled", "Permitir herramientas de código y shell de Pi", config["code_enabled"])
         self.button(f, "Elegir carpeta de trabajo", lambda: self.pick("workspace", True))
@@ -208,11 +223,11 @@ class Settings(QDialog):
         note = QLabel("Requiere conexión y espacio libre. Si falla, puedes reintentar; tu configuración anterior se conserva. Los modelos se descargan de sus fuentes oficiales.")
         note.setWordWrap(True); f.addRow(note)
         ui = QWidget(); f = QFormLayout(ui); tabs.addTab(ui, "Orbe")
-        size = QSpinBox(); size.setRange(48, 240); size.setValue(config["orb_size"]); self.fields["orb_size"] = size
+        size = WheelSafeSpin(); size.setRange(48, 240); size.setValue(config["orb_size"]); self.fields["orb_size"] = size
         f.addRow("Tamaño", size)
         self.check_field(f, "pinned", "Orbe siempre visible", True); self.fields["pinned"].setEnabled(False)
         self.check_field(f, "reduced_motion", "Reducir animación", config["reduced_motion"])
-        self.fields["orb_animation"] = QComboBox(); self.fields["orb_animation"].addItems(["sprite", "native"]); self.fields["orb_animation"].setCurrentText(config["orb_animation"]); f.addRow("Animación", self.fields["orb_animation"])
+        self.fields["orb_animation"] = WheelSafeCombo(); self.fields["orb_animation"].addItems(["sprite", "native"]); self.fields["orb_animation"].setCurrentText(config["orb_animation"]); f.addRow("Animación", self.fields["orb_animation"])
         autostart = QCheckBox("Iniciar ARISE al entrar a Windows")
         autostart.setEnabled(os.name == "nt" and getattr(sys, "frozen", False))
         autostart.setChecked(self.autostart_enabled()); self.autostart = autostart; f.addRow(autostart)
@@ -220,17 +235,32 @@ class Settings(QDialog):
         pages = [(tabs.widget(i), tabs.tabText(i)) for i in range(tabs.count())]
         while tabs.count(): tabs.removeTab(0)
         for page, label in pages:
-            scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setWidget(page); tabs.addTab(scroll, label)
+            form=page.layout()
+            if isinstance(form,QFormLayout):
+                form.setRowWrapPolicy(QFormLayout.WrapAllRows)
+                form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+            for field in page.findChildren(QLabel):field.setWordWrap(True)
+            for field in page.findChildren(QWidget):
+                if isinstance(field,(QLineEdit,QComboBox)):
+                    field.setMinimumWidth(0);field.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Fixed)
+            scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff); scroll.setWidget(page); tabs.addTab(scroll, label)
         self.message = QLabel(""); self.message.setWordWrap(True); layout.addWidget(self.message)
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Close)
         buttons.button(QDialogButtonBox.Save).setText("Guardar"); buttons.button(QDialogButtonBox.Close).setText("Cerrar")
-        buttons.accepted.connect(self.save); buttons.rejected.connect(self.hide); layout.addWidget(buttons)
+        buttons.accepted.connect(self.save); buttons.rejected.connect(self.close); layout.addWidget(buttons)
+
+    def closeEvent(self,event):
+        # Closing discards the unsaved form; storage changes only in Save.
+        self.controller.settings_window=None
+        event.accept();self.deleteLater()
 
     def text_field(self, form, key, label, value):
         field = QLineEdit(str(value)); self.fields[key] = field; form.addRow(label, field)
 
     def check_field(self, form, key, label, value):
-        field = QCheckBox(label); field.setChecked(value); self.fields[key] = field; form.addRow(field)
+        field = QCheckBox(); field.setAccessibleName(label); field.setChecked(value); self.fields[key] = field
+        row=QWidget();layout=QHBoxLayout(row);layout.setContentsMargins(0,0,0,0);layout.addWidget(field)
+        caption=QLabel(label);caption.setWordWrap(True);caption.setBuddy(field);layout.addWidget(caption,1);form.addRow(row)
 
     def button(self, form, label, callback):
         button = QPushButton(label); button.clicked.connect(callback); form.addRow(button)
@@ -240,7 +270,15 @@ class Settings(QDialog):
         if value:
             self.fields[key].setText(value)
 
+    def select_gonzalo(self):
+        self.fields['voice_provider'].setCurrentText('local')
+        self.fields['local_tts'].setCurrentText('forge')
+        self.fields['piper_model'].clear()
+        self.fields['forge_voice'].setCurrentText('es-CO-GonzaloNeural');self.fields['forge_rate'].setText('+5%')
+        self.message.setText('Gonzalo seleccionado. Pulsa Guardar para aplicarlo; requiere Forge y conexión a Internet.')
+
     def provider_changed(self, provider):
+        self.voice_form.setRowVisible(self.fields['voice'],provider!='local' or self.fields['local_tts'].currentText()=='system')
         if provider in ("openai","forge-openai"):
             self.fields["voice_model"].setText("gpt-realtime-2.1"); self.fields["voice"].setText("marin")
         elif provider == "forge-local":
@@ -248,7 +286,7 @@ class Settings(QDialog):
         elif provider == "gemini":
             self.fields["voice_model"].setText("gemini-3.1-flash-live-preview"); self.fields["voice"].setText("Aoede")
         else:
-            self.fields["voice_model"].setText("local"); self.fields["voice"].setText("Windows default")
+            self.fields["voice_model"].setText("local"); self.fields["voice"].setText("es-CO-GonzaloNeural")
 
     def changes(self):
         changes = {}
@@ -423,13 +461,18 @@ class Settings(QDialog):
 class Panel(QWidget):
     def __init__(self, controller):
         super().__init__(); self.controller = controller; self.runtime = controller.runtime
-        self.setWindowTitle("ARISE Assistant"); self.setWindowIcon(icon()); self.resize(420, 540); self.setMinimumSize(320, 400); self.setMaximumWidth(900); self.setStyleSheet(STYLE)
+        self.setWindowTitle("ARISE Assistant"); self.setWindowIcon(icon()); self.resize(420, 680); self.setMinimumSize(320, 400); self.setMaximumWidth(900); self.setStyleSheet(STYLE)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 12, 14, 10); layout.setSpacing(7)
         title = QLabel("ARISE Assistant"); title.setObjectName("chatTitle"); layout.addWidget(title)
-        self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); self.status.hide()
-        self.privacy = QLabel("Micrófono apagado · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); self.privacy.hide()
+        self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); layout.addWidget(self.status)
+        self.privacy = QLabel("Micrófono apagado · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); layout.addWidget(self.privacy)
         from .chat_content import ChatHistory
+        self.emergency=QPushButton('Detener manos y ojos · Ctrl+Alt+Esc')
+        self.emergency.setAccessibleName('Detener manos y ojos');self.emergency.clicked.connect(controller.stop)
+        self.emergency.setStyleSheet('background:#6B2636;color:white;font-weight:600;');layout.addWidget(self.emergency)
+        self.recovery=QPushButton('Recuperar último mensaje para revisar');self.recovery.hide();self.recovery.clicked.connect(self.restore_draft);layout.addWidget(self.recovery)
+        self.last_submission=None
         self.history = ChatHistory(); self.history.setObjectName("chatHistory"); self.history.setOpenExternalLinks(False); layout.addWidget(self.history, 1)
         self.attachments=[]
         self.attachment_bar=QWidget(); self.attachment_layout=QHBoxLayout(self.attachment_bar)
@@ -441,8 +484,8 @@ class Panel(QWidget):
         self.navigation = self.icon_button(row, "menu", "Proyectos, chats y comandos")
         self.navigation_menu = QMenu(self.navigation)
         picker = QWidget(); pick_layout = QFormLayout(picker); pick_layout.setContentsMargins(10, 8, 10, 8)
-        self.projects = QComboBox(); self.projects.currentIndexChanged.connect(self.select_project); pick_layout.addRow("Proyecto", self.projects)
-        self.conversations = QComboBox(); self.conversations.currentIndexChanged.connect(self.select_conversation); pick_layout.addRow("Chat", self.conversations)
+        self.projects = WheelSafeCombo(); self.projects.currentIndexChanged.connect(self.select_project); pick_layout.addRow("Proyecto", self.projects)
+        self.conversations = WheelSafeCombo(); self.conversations.currentIndexChanged.connect(self.select_conversation); pick_layout.addRow("Chat", self.conversations)
         action = QWidgetAction(self.navigation_menu); action.setDefaultWidget(picker); self.navigation_menu.addAction(action)
         self.navigation_menu.addAction(control_icon("plus"), "Nuevo chat", self.new_conversation)
         self.navigation_menu.addAction(control_icon("folder"), "Elegir carpeta…", self.open_project)
@@ -572,6 +615,14 @@ class Panel(QWidget):
             self.controller.voice.end_session()
             self.controller.background(lambda: self.runtime.select_project(path), lambda _: self.reload())
 
+    def restore_draft(self):
+        if not self.last_submission:return
+        chat,text,images=self.last_submission
+        if chat!=self.current_chat or self.input.toPlainText().strip() or self.attachments:
+            self.status.setText('El borrador actual se conserva.');return
+        self.input.setPlainText(text);self.attachments=list(images);self.refresh_attachments();self.recovery.hide()
+        self.status.setText('Borrador recuperado; no se ha reenviado.')
+
     def send(self):
         text=self.input.toPlainText().strip();images=list(self.attachments)
         if self.input.isReadOnly() or (not text and not images):return
@@ -579,6 +630,7 @@ class Panel(QWidget):
             if images:
                 QMessageBox.warning(self,'Imágenes','Envía las imágenes con un mensaje, sin comando /.');return
             self.input.clear();self.run_command(text);return
+        self.last_submission=(self.current_chat,text,images)
         self.send_button.setEnabled(False);self.input.setReadOnly(True)
         def done(_):
             self.input.clear();self.attachments.clear();self.refresh_attachments()
@@ -609,10 +661,12 @@ class Controller(QObject):
         self.settings_window = None; self.pending_dialogs = {}
         self.panel = Panel(self)
         self.wake_requested.connect(self._wake); self.stop_requested.connect(self._stop)
+        self.orb.setToolTip("ARISE · clic para abrir el chat · clic derecho para detener")
+        self.orb.setAccessibleName("ARISE: abrir conversación")
         self.tray = QSystemTrayIcon(icon(), self); self.tray.setToolTip("ARISE · Oye Arise")
         self.menu = QMenu()
         for label, callback in (("Hablar", self.wake), ("Conversación", self.show_panel), ("Ajustes", self.show_settings),
-                                ("Silenciar / activar micrófono", self.toggle_mute), ("Detener tareas", self.stop), ("Reiniciar asistente", self.restart), ("Salir de ARISE", self.quit_all), ("Ocultar conversación", self.hide_panel), ("Buscar actualizaciones", self.check_updates)):
+                                ("Silenciar / activar micrófono", self.toggle_mute), ("Detener manos y ojos · Ctrl+Alt+Esc", self.stop), ("Reiniciar asistente", self.restart), ("Salir de ARISE", self.quit_all), ("Ocultar conversación", self.hide_panel), ("Buscar actualizaciones", self.check_updates)):
             self.menu.addAction(label, callback)
         self.tray.setContextMenu(self.menu); self.tray.activated.connect(lambda reason: self.show_panel() if reason == QSystemTrayIcon.Trigger else None)
         if QSystemTrayIcon.isSystemTrayAvailable(): self.tray.show()
@@ -694,6 +748,7 @@ class Controller(QObject):
 
     def _stop(self):
         self.close_dialogs()
+        self.panel.status.setText('Deteniendo manos y ojos…')
         self.background(lambda:(self.voice.end_session(),self.runtime.stop()))
 
     def close_dialogs(self):
@@ -812,6 +867,8 @@ class Controller(QObject):
             if event.type() == QEvent.Move:
                 self.anchor_panel(); self.position_timer.start()
             elif event.type() == QEvent.MouseButtonPress:
+                if event.button()==Qt.RightButton:
+                    self.menu.popup(event.globalPosition().toPoint());return True
                 self.double_click = False
                 self.press_point = event.globalPosition().toPoint()
                 if event.button() == Qt.RightButton:
@@ -821,7 +878,7 @@ class Controller(QObject):
                 self.clamp_position()
                 self.position_timer.start()
                 if self.double_click: self.double_click = False
-                elif not moved: self.hide_panel()
+                elif not moved: self.hide_panel() if self.panel.isVisible() else self.show_panel()
             elif event.type() == QEvent.MouseButtonDblClick:
                 self.double_click = True; self.show_panel(); return True
             elif event.type() == QEvent.Close:
@@ -853,18 +910,27 @@ class Controller(QObject):
                     "reason": data["activity"], "state": data["state"], "privacy": data, "speaker": {"understanding": "subagent", "waiting_approval": "approval", "error": "error", "speaking": "human", "working": "working"}.get(data["state"], "orchestrator"),
                     "visible": True})
                 self.panel.status.setText(data["activity"])
+                self.orb.setToolTip("ARISE · "+data["activity"]+" · clic para abrir chat")
                 self.panel.send_button.setToolTip(data["activity"])
                 self.panel.mic_button.setToolTip("Micrófono " + ("activo" if data["microphone"] else "apagado"))
                 self.panel.mic_button.setAccessibleName(self.panel.mic_button.toolTip())
+                if data['control']:self.panel.emergency.setText('Detener manos y ojos · Ctrl+Alt+Esc')
                 self.panel.control.setText("Control del PC " + ("activo" if data["control"] else "apagado"))
                 self.panel.privacy.setText("Micrófono " + ("activo" if data["microphone"] else "apagado") + " · Pantalla " + ("activa" if data["screen"] else "apagada") + " · Control " + ("activo" if data["control"] else "apagado"))
                 self.panel.control.blockSignals(True); self.panel.control.setChecked(data["control"]); self.panel.control.blockSignals(False)
                 self.panel.mic_button.setChecked(data["microphone"] and data["state"] not in ("idle", "wake_detected"))
+            elif kind == 'desktop_stopped':
+                self.panel.status.setText('Manos y ojos detenidos. Reactivación manual.' if data['confirmed'] else 'No se pudo confirmar la parada: '+', '.join(data['errors']))
+                self.panel.emergency.setText('Manos y ojos detenidos' if data['confirmed'] else 'Revisar parada de manos y ojos')
             elif kind == 'update_progress' and getattr(self,'update_progress',None):
                 received=data['received'];total=data['total']
                 self.update_progress.setValue(int(100*received/total))
                 self.update_progress.setLabelText(f"Descargando: {received/1048576:.1f} de {total/1048576:.1f} MB")
             elif kind in ("user", "assistant_end", "notice", "error"):
+                if kind=='error':
+                    from .user_errors import friendly_error
+                    data={**data,'text':friendly_error(data.get('text',''))}
+                    self.panel.recovery.setVisible(self.panel.last_submission is not None)
                 self.panel.append({"user": "Tú", "assistant_end": "ARISE", "notice": "Aviso", "error": "Revisar"}[kind], data.get("text", ""), data.get("images"))
                 if kind == "error":
                     self.runtime.orb.update("error")

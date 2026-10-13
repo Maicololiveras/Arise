@@ -182,7 +182,7 @@ def _install_into(runtime, tools, selected=None):
         from .forge_voice import voice_command
         try: specs['forge']['voice_command'] = voice_command(runtime)
         except RuntimeError:
-            runtime.emit('notice', {'text':'Forge público instala herramientas MCP. Su puente de voz todavía no está incluido; puedes usar la voz local del sistema.'})
+            runtime.emit('notice', {'text':'Forge público instala herramientas MCP. Gonzalo usa el adaptador Edge incluido en ARISE QA; si falta, repara ARISE. No se sustituye la voz automáticamente.'})
     try:
         for name in specs:
             old = runtime.mcp.pop(name, None)

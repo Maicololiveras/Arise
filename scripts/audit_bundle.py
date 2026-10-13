@@ -8,7 +8,7 @@ from arise_app.gentle_compat import require_compatible_pi
 
 def audit(root):
     root=Path(root);bundle=root/'bundle'
-    required=['node/node.exe','node/node_modules/npm/bin/npm-cli.js','node/node_modules/@earendil-works/pi-coding-agent/package.json','node/node_modules/gentle-pi/package.json','python/python.exe','python/Lib/site-packages/pip/__init__.py','media/ffmpeg.exe','media/ffprobe.exe','gh/gh.exe','gentle-installer/scripts/bootstrap.cmd','gentle-installer/bin/arise-result.mjs','models/vosk-model-small-es-0.42/am/final.mdl']
+    required=['forge-voice/bridge.mjs','forge-voice/edge-speech.mjs','node/node_modules/msedge-tts/package.json','node/node.exe','node/node_modules/npm/bin/npm-cli.js','node/node_modules/@earendil-works/pi-coding-agent/package.json','node/node_modules/gentle-pi/package.json','python/python.exe','python/Lib/site-packages/pip/__init__.py','media/ffmpeg.exe','media/ffprobe.exe','gh/gh.exe','gentle-installer/scripts/bootstrap.cmd','gentle-installer/bin/arise-result.mjs','models/vosk-model-small-es-0.42/am/final.mdl']
     missing=[name for name in required if not (bundle/name).is_file()]
     if missing:raise RuntimeError('Bundle base incompleto: '+', '.join(missing))
     manifest=json.loads((bundle/'manifest.json').read_text(encoding='utf-8-sig'))

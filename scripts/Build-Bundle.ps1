@@ -10,6 +10,7 @@ Copy-Item -LiteralPath (Get-Command node).Source -Destination (Join-Path $nodeRo
 Copy-Item -LiteralPath (Join-Path $root 'vendor/package.json') -Destination (Join-Path $nodeRoot 'package.json')
 Copy-Item -LiteralPath (Join-Path $root 'vendor/package-lock.json') -Destination (Join-Path $nodeRoot 'package-lock.json')
 & npm ci --prefix $nodeRoot --ignore-scripts --no-audit --no-fund;Check-Exit 'Pi y Gentle Shell'
+Copy-Item -LiteralPath (Join-Path $root 'vendor/forge-voice') -Destination (Join-Path $bundle 'forge-voice') -Recurse
 & node (Join-Path $PSScriptRoot 'install-gentle-native.mjs') (Join-Path $nodeRoot 'node_modules/gentle-pi')
 Check-Exit 'Gentle AI nativo verificado (Windows requiere Go 1.25.10+)'
 # Ship npm for private-tool provisioning on PCs without any Node installation.

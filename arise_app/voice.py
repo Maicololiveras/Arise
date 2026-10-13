@@ -173,7 +173,7 @@ class VoiceSession:
             headers = {"Authorization": "Bearer " + key} if key else {}
             setup = {"type": "session.update", "session": {"type": "realtime", "model": self.config["voice_model"],
                 "instructions": INSTRUCTIONS, "audio": {"input": {"format": {"type": "audio/pcm", "rate": 24000},
-                    "turn_detection": {"type": "server_vad", "interrupt_response": True},
+                    "turn_detection": {"type": "server_vad", "interrupt_response": True, "silence_duration_ms": self.config.get("voice_silence_ms",1400)},
                     "transcription": {"model": "whisper-1"}}, "output": {"format": {"type": "audio/pcm", "rate": 24000}, "voice": self.config["voice"]}},
                 "tools": [{"type": "function", **tool} for tool in TOOLS]}}
         else:
@@ -371,14 +371,15 @@ class VoiceService:
                 try: pcm = utterances.get(timeout=.1)
                 except queue.Empty: continue
                 try:
+                    self.runtime.orb.update("transcribing",microphone=True)
                     text = self.transcribe_local(pcm, engine)
                     if bridge.valid() and text: bridge.submit(text)
                 except Exception as error: self.runtime.emit("error", {"text":str(error)[:300]})
         worker=threading.Thread(target=transcriber,daemon=True,name="arise-local-stt");worker.start()
         if initial: bridge.submit(initial)
         else: bridge.speak("Te escucho.")
-        chunks, silent, voiced, started = [], 0, 0, False
-        preroll=deque(maxlen=10)
+        from .turn_detection import TurnDetector
+        detector=TurnDetector(c.get("voice_silence_ms",1400))
         deadline=time.monotonic()+int(c["voice_timeout"])
         import numpy as np
         try:
@@ -388,22 +389,15 @@ class VoiceService:
                 if time.monotonic()>deadline: break
                 pcm=self.audio.read()
                 if not pcm: continue
-                amplitude=np.abs(np.frombuffer(pcm,dtype="<i2").astype(np.float32)).mean()
                 threshold=int(c.get("voice_interrupt_threshold",800)) if self.local_speaking.is_set() else 300
-                if amplitude>threshold:
-                    voiced+=1; silent=0; deadline=time.monotonic()+int(c["voice_timeout"])
-                    if not started and voiced>=4:
-                        started=True; chunks=list(preroll)
-                        if c.get("local_barge_in",True): bridge.interrupt()
-                        self.runtime.orb.update("listening",microphone=True)
-                elif started: silent+=1
-                else: voiced=0
-                if started: chunks.append(pcm)
-                else: preroll.append(pcm)
-                if started and (silent>=25 or len(chunks)>=1500):
-                    try: utterances.put_nowait(b"".join(chunks))
+                began,turn=detector.feed(pcm,threshold)
+                if detector.started: deadline=time.monotonic()+int(c["voice_timeout"])
+                if began:
+                    if c.get("local_barge_in",True): bridge.interrupt()
+                    self.runtime.orb.update("listening",microphone=True)
+                if turn:
+                    try: utterances.put_nowait(turn)
                     except queue.Full: self.runtime.emit("notice",{"text":"Estoy procesando la voz anterior. Espera un momento."})
-                    chunks,silent,voiced,started=[],0,0,False; preroll.clear()
         finally:
             bridge.close(); worker.join(timeout=1); self.local_bridge=None
 
@@ -431,16 +425,26 @@ class VoiceService:
     def _render_local(self, reply, cancel):
         if cancel.is_set() or not self.active.is_set(): return
         if self.runtime.storage.config.get('local_tts','forge')=='forge' and not self.runtime.storage.config.get('piper_model'):
-            from .forge_voice import voice_command, speak
-            try: voice_command(self.runtime)
-            except RuntimeError:
-                if not getattr(self,'forge_notice',False):
-                    self.runtime.emit('notice',{'text':'Forge Voice aún no está instalado; se usa la voz local de Windows hasta reparar dependencias.'})
-                    self.forge_notice=True
-            else:
+            from .forge_voice import edge_audio
+            from .bundle import application_root
+            import shutil
+            with tempfile.TemporaryDirectory() as temporary:
+                mp3=Path(temporary)/'reply.mp3';wavfile=Path(temporary)/'reply.wav'
+                self.runtime.orb.update('synthesizing',microphone=True)
+                if not edge_audio(self.runtime,reply,mp3,cancel,self.active,self.shutdown):return
+                ffmpeg=application_root()/'bundle/media/ffmpeg.exe'
+                executable=str(ffmpeg) if ffmpeg.is_file() else shutil.which('ffmpeg')
+                if not executable:raise RuntimeError('Falta FFmpeg para reproducir Gonzalo. Repara ARISE; no se usó otra voz.')
+                process=subprocess.Popen([executable,'-y','-i',str(mp3),'-ac','1','-ar','24000',str(wavfile)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+                try:process.wait(timeout=30)
+                except subprocess.TimeoutExpired:process.kill();process.wait();raise RuntimeError('No se pudo preparar el audio de Gonzalo.')
+                if process.returncode:raise RuntimeError('El audio de Forge no se pudo convertir.')
+                if cancel.is_set() or not self.active.is_set():return
+                with wave.open(str(wavfile)) as wav:self.audio.play(wav.readframes(wav.getnframes()),rate=wav.getframerate())
                 self.runtime.orb.update('speaking',microphone=True)
-                speak(self.runtime,reply,self.runtime.storage.config['voice'],cancel,self.active,self.shutdown)
-                return
+                while self.audio.speaking and self.active.is_set() and not cancel.is_set() and not self.shutdown.is_set():self.shutdown.wait(.05)
+                if cancel.is_set() or not self.active.is_set():self.audio.interrupt()
+            return
         model = self.runtime.storage.config["piper_model"]
         if not model and __import__("os").name == "nt":
             self._sapi(reply, cancel)

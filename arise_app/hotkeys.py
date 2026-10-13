@@ -11,6 +11,7 @@ class Hotkeys:
         self.thread = None
         self.ready = threading.Event()
         self.registered = False
+        self.stop_registered = False
 
     def start(self):
         if os.name != "nt":
@@ -28,6 +29,7 @@ class Hotkeys:
         # MOD_CONTROL | MOD_ALT | MOD_NOREPEAT
         wake = bool(user.RegisterHotKey(None, 1, 0x4003, 0x41))
         stop = bool(user.RegisterHotKey(None, 2, 0x4003, 0x1B))
+        self.stop_registered = stop
         self.registered = wake and stop
         self.ready.set()
         try:

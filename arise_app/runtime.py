@@ -49,6 +49,9 @@ class Runtime:
         self.settled.set()
         self.busy = False
         self.desktop = False
+        self.desktop_halted = False
+        self.desktop_generation = 0
+        self.stop_lock=threading.Lock()
         self.dialogs = {}
         self.tasks = {}
         self.current_task = None
@@ -142,6 +145,9 @@ class Runtime:
 
     def connect_mcp(self, name):
         with self.connect_lock:
+            if name in ('inputcontrol','screenview') and self.desktop_halted:
+                raise RuntimeError('Manos y ojos detenidos. Reactívalos expresamente desde el chat.')
+            generation=self.desktop_generation
             spec = self.storage.config["mcp"].get(name)
             if not spec or not spec.get("enabled"):
                 raise ValueError("El MCP no está habilitado.")
@@ -150,6 +156,8 @@ class Runtime:
             if name in self.mcp:
                 self.mcp.pop(name).close()
             client = McpClient(spec["command"], cwd=self.storage.config["workspace"])
+            if name in ('inputcontrol','screenview','forge') and generation!=self.desktop_generation:
+                client.close();raise RuntimeError('Conexión cancelada por la parada de emergencia.')
             self.mcp[name] = client
             self.emit("notice", {"text": f"{name}: {len(client.tools)} herramientas descubiertas."})
             return client
@@ -346,6 +354,28 @@ class Runtime:
         if handled and self.current_task == identity: self.finish_task()
 
     def stop(self):
+        with self.stop_lock:return self._stop_owned()
+
+    def _stop_owned(self):
+        self.desktop=False;self.desktop_halted=True;self.desktop_generation+=1
+        # Close owned observers/controllers before waiting for Pi. Closed pipes
+        # reject already queued calls; reconnecting cannot restore permission.
+        import concurrent.futures
+        clients={name:self.mcp.pop(name) for name in ('inputcontrol','screenview','forge') if name in self.mcp}
+        def halt(item):
+            name,client=item
+            if name=='inputcontrol':
+                try:client.rpc.request({'jsonrpc':'2.0','method':'tools/call','params':{'name':'stop_control','arguments':{}}},timeout=.4)
+                except Exception:pass
+            client.close()
+            if client.rpc.process.poll() is None:raise RuntimeError(name+' sigue activo')
+        errors=[]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+            futures=[pool.submit(halt,item) for item in clients.items()]
+            for future in futures:
+                try:future.result()
+                except Exception as error:errors.append(str(error))
+        self.emit('desktop_stopped',{'confirmed':not errors,'errors':errors})
         for dialog in list(self.dialogs):
             if self.pi:
                 self.pi.send({"type": "extension_ui_response", "id": dialog, "cancelled": True})
@@ -361,11 +391,6 @@ class Runtime:
             except Exception:
                 self.disconnect_pi()
         self.desktop = False
-        if "inputcontrol" in self.mcp:
-            try:
-                self.mcp["inputcontrol"].call("stop_control", {}, timeout=5)
-            except Exception:
-                self.emit("error", {"text": "No se pudo confirmar stop_control. Usa Ctrl+Alt+Esc en Windows."})
         self.finish_task("Tarea detenida por el usuario.")
         return self.status()
 
@@ -510,6 +535,8 @@ class Runtime:
                 raise ValueError("Gmail solo permite buscar, leer y crear borradores.")
             result = getattr(self.gmail, tool)(**arguments)
         elif service in self.mcp:
+            if self.desktop_halted and (service in ('inputcontrol','screenview') or service=='forge' and tool not in ('forge_speak','forge_audio_emit')):
+                raise RuntimeError('Manos y ojos detenidos. No se reanudan automáticamente.')
             if service == "inputcontrol" and tool not in ("control_status", "stop_control", "get_screen_size", "get_mouse_position") and not self.desktop:
                 raise RuntimeError("Activa Control del PC desde la interfaz antes de actuar.")
             if service == "forge" and tool not in ("forge_speak", "forge_capture_frame", "forge_get_state", "forge_get_snapshot", "forge_list_sessions", "forge_list_skills", "forge_get_skill", "forge_get_templates", "forge_get_observation_status") and not self.desktop:

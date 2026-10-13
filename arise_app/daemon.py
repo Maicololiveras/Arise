@@ -112,6 +112,7 @@ def main():
     hotkeys = Hotkeys(voice.wake, lambda: (voice.end_session(), threading.Thread(target=runtime.stop, daemon=True).start()))
     if not args.no_audio:
         voice.start(); hotkeys.start()
+        runtime.emit('notice',{'text':'Ctrl+Alt+Esc: parada de manos y ojos '+('registrada por ARISE.' if hotkeys.stop_registered else 'NO disponible; usa el botón Detener manos y ojos.')})
     temporary = root / "daemon.tmp"
     temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "pid": os.getpid(), "version": __version__}))
     if os.name != "nt": temporary.chmod(0o600)

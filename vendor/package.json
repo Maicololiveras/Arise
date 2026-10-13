@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@earendil-works/pi-coding-agent": "1.2.0",
-    "gentle-pi": "4.2.0"
+    "gentle-pi": "4.2.0",
+    "msedge-tts": "2.0.4"
   }
 }
