@@ -53,7 +53,7 @@ def check_update(current=__version__, opener=urllib.request.urlopen, channel=Non
     if len(raw) > 128*1024: raise ValueError('Manifiesto demasiado grande.')
     return validate_manifest(json.loads(raw), current, channel)
 
-def download_update(manifest, root, opener=urllib.request.urlopen, channel=None):
+def download_update(manifest, root, opener=urllib.request.urlopen, channel=None, progress=None):
     manifest = validate_manifest(manifest, channel=channel)
     if not manifest: raise ValueError('La versión ya está instalada.')
     folder = Path(root) / 'updates' / manifest['version']; folder.mkdir(parents=True, exist_ok=True)
@@ -69,6 +69,7 @@ def download_update(manifest, root, opener=urllib.request.urlopen, channel=None)
                 size += len(block)
                 if size > manifest['size']: raise ValueError('La descarga supera el tamaño publicado.')
                 digest.update(block); output.write(block)
+                if progress: progress(size, manifest['size'])
         if size != manifest['size'] or digest.hexdigest() != manifest['sha256']: raise ValueError('El instalador no coincide con el SHA-256 publicado en su canal.')
         with temporary.open('rb') as file:
             if file.read(2) != b'MZ': raise ValueError('El archivo no es un instalador Windows.')

@@ -66,6 +66,15 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-',ignore_cleanup_errors=T
         if engine.is_file():subprocess.run([str(engine),'--shutdown','--data-dir',str(data)],env=env,timeout=45)
     try:
         run_setup();descriptor=ready();remote=RemoteAssistant(descriptor,data)
+        icon=install/f'arise-{__version__}.ico'
+        if not icon.is_file() or icon.read_bytes()!=Path('artifacts/arise.ico').read_bytes():
+            raise RuntimeError('Installed orb icon does not match the packaged brand')
+        import win32com.client
+        shortcut=Path(os.environ['APPDATA'])/'Microsoft/Windows/Start Menu/Programs/ARISE/ARISE.lnk'
+        icon_location=win32com.client.Dispatch('WScript.Shell').CreateShortCut(str(shortcut)).IconLocation
+        shortcut_icon=Path(icon_location.rsplit(',',1)[0].strip('"'))
+        if not shortcut.is_file() or not shortcut_icon.is_file() or not os.path.samefile(shortcut_icon,icon):
+            raise RuntimeError('Start menu shortcut does not reference the versioned orb icon')
         remote.settings({'agent_provider':'arise-smoke','agent_model':'fixture','thinking':'off','pi_extra_args':['--offline','--no-extensions','--no-skills','--no-context-files']})
         if not remote.connect_pi().get('gentleVerified'):raise RuntimeError('Installed Pi/Gentle unavailable')
         remote.call_tool('memory.save',{'text':'Survives installer replacement'})
@@ -81,7 +90,7 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-',ignore_cleanup_errors=T
         notes=json.loads(new_remote.call_tool('memory.search',{'query':'Survives'})['content'][0]['text'])['notes']
         if not notes or new_remote.status()['version']!=__version__:raise RuntimeError('Version or persisted memory incorrect')
         if not (install/'bundle/python/python.exe').is_file():raise RuntimeError('Missing runtime for private tools')
-        report={'fresh_install':'passed','replace_running_ui_daemon_pi':'passed','owned_children_closed':len(old_children),'user_chat_preserved':'passed','memory_preserved':'passed','stale_managed_file_removed':'passed','restarted_version':__version__}
+        report={'versioned_shortcut_icon':'passed','fresh_install':'passed','replace_running_ui_daemon_pi':'passed','owned_children_closed':len(old_children),'user_chat_preserved':'passed','memory_preserved':'passed','stale_managed_file_removed':'passed','restarted_version':__version__}
     except Exception as error:
         report['error']=str(error)
         Path('artifacts/installer-upgrade.json').write_text(json.dumps(report,indent=2),encoding='utf-8')

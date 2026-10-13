@@ -45,6 +45,9 @@ class Storage:
         CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY,payload TEXT,created REAL);
         CREATE TABLE IF NOT EXISTS voice_turns(id INTEGER PRIMARY KEY AUTOINCREMENT,conversation TEXT,payload TEXT,created REAL);
         """)
+        if 'images' not in {row[1] for row in self.db.execute('PRAGMA table_info(messages)')}:
+            self.db.execute("ALTER TABLE messages ADD COLUMN images TEXT NOT NULL DEFAULT '[]'")
+            self.db.commit()
         self.config_path = self.root / "settings.json"
         self.config = json.loads(json.dumps(DEFAULTS))
         if self.config_path.exists():
@@ -73,12 +76,12 @@ class Storage:
 
     def messages(self, conversation):
         with self.lock:
-            return [dict(r) for r in self.db.execute("SELECT * FROM messages WHERE conversation=? ORDER BY created,rowid", (conversation,))]
+            return [{**dict(r), "images":json.loads(r["images"])} for r in self.db.execute("SELECT * FROM messages WHERE conversation=? ORDER BY created,rowid", (conversation,))]
 
-    def message(self, conversation, role, text):
+    def message(self, conversation, role, text, images=None):
         identity = uuid.uuid4().hex
         with self.lock, self.db:
-            self.db.execute("INSERT INTO messages VALUES(?,?,?,?,?)", (identity, conversation, role, text, time.time()))
+            self.db.execute("INSERT INTO messages(id,conversation,role,text,created,images) VALUES(?,?,?,?,?,?)", (identity, conversation, role, text, time.time(), json.dumps(images or [])))
             if role == "user":
                 self.db.execute("UPDATE conversations SET title=? WHERE id=? AND title='Nueva conversación'", (text[:45], conversation))
         return identity

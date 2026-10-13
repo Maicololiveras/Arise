@@ -1,4 +1,4 @@
-#define AppVersion "0.4.11"
+#define AppVersion "0.4.12"
 [Setup]
 AppId={{E99B270E-3F4F-421C-9D9F-705E523F3ED6}
 AppName=ARISE
@@ -21,23 +21,33 @@ CloseApplications=yes
 RestartApplications=no
 SetupMutex=ARISE-Setup
 VersionInfoVersion={#AppVersion}
-UninstallDisplayIcon={app}\ARISE.exe
+UninstallDisplayIcon={app}\arise-{#AppVersion}.ico
 [Files]
+Source: "..\artifacts\arise.ico"; DestDir: "{app}"; DestName: "arise-{#AppVersion}.ico"; Flags: ignoreversion
 Source: "..\arise_app\resources\stop-arise.ps1"; Flags: dontcopy
 Source: "..\dist\ARISE\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\_internal"
 Type: filesandordirs; Name: "{app}\bundle\node"
 [Icons]
-Name: "{group}\ARISE"; Filename: "{app}\ARISE.exe"; IconFilename: "{app}\ARISE.exe"; AppUserModelID: "PRAXISGENAI.ARISE"
-Name: "{group}\Configurar ARISE"; Filename: "{app}\ARISE.exe"; Parameters: "--settings"
-Name: "{autodesktop}\ARISE"; Filename: "{app}\ARISE.exe"; IconFilename: "{app}\ARISE.exe"; AppUserModelID: "PRAXISGENAI.ARISE"; Tasks: desktopicon
+Name: "{group}\ARISE"; Filename: "{app}\ARISE.exe"; IconFilename: "{app}\arise-{#AppVersion}.ico"; AppUserModelID: "PRAXISGENAI.ARISE"
+Name: "{group}\Configurar ARISE"; Filename: "{app}\ARISE.exe"; Parameters: "--settings"; IconFilename: "{app}\arise-{#AppVersion}.ico"
+Name: "{autodesktop}\ARISE"; Filename: "{app}\ARISE.exe"; IconFilename: "{app}\arise-{#AppVersion}.ico"; AppUserModelID: "PRAXISGENAI.ARISE"; Tasks: desktopicon
 [Tasks]
 Name: desktopicon; Description: "Crear acceso directo en el escritorio"; Flags: unchecked
 [Run]
 Filename: "{app}\ARISE.exe"; Parameters: "{code:LaunchParameters}"; Description: "Abrir ARISE Assistant"; Flags: nowait postinstall
 
 [Code]
+procedure SHChangeNotify(EventId: Integer; Flags: Cardinal; Item1, Item2: Integer);
+  external 'SHChangeNotify@shell32.dll stdcall';
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    SHChangeNotify($08000000, 0, 0, 0);
+end;
+
 function DataDirectory(): String;
 begin
   Result := ExpandConstant('{param:ARISE-DATA}');

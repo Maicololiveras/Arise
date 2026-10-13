@@ -288,12 +288,16 @@ class Runtime:
                 self.current_task = None
         self.emit("settled", {})
 
-    def prompt(self, text):
+    def prompt(self, text, images=None):
         with self.transition_lock:
-            return self._prompt(text)
+            return self._prompt(text, images)
 
-    def _prompt(self, text):
+    def _prompt(self, text, images=None):
+        from .attachments import validate_images
+        images = validate_images(images)
+        if images and not str(text).strip(): text = "Describe estas imágenes."
         text = str(text).strip()
+        if images and text.startswith("/"): raise ValueError("Envía las imágenes sin comando /.")
         if not text or len(text) > 30000:
             raise ValueError("Escribe un mensaje de hasta 30.000 caracteres.")
         with self.lock:
@@ -309,15 +313,15 @@ class Runtime:
                 self.tasks.pop(next(iter(self.tasks)))
         try:
             self.connect_pi()
-            self.storage.message(self.conversation, "user", text)
-            self.emit("user", {"text": text})
+            self.storage.message(self.conversation, "user", text, images)
+            self.emit("user", {"text": text, "images":images})
             command_name = text.split()[0][1:] if text.startswith("/") else ""
             registered = command_name in self.pi_commands
             process, epoch = self.pi, self.pi_epoch
             if registered:
                 threading.Thread(target=self._submit_command, args=(text, identity, process, epoch), daemon=True).start()
             else:
-                self._submit_prompt(text, identity, process, epoch, False)
+                self._submit_prompt(text, identity, process, epoch, False, images)
             return {"task_id": identity}
         except Exception as error:
             self.finish_task(str(error))
@@ -329,8 +333,10 @@ class Runtime:
             if epoch == self.pi_epoch and self.current_task == identity:
                 self.finish_task(str(error)); self.emit("error", {"text": str(error)[:300]})
 
-    def _submit_prompt(self, text, identity, process, epoch, registered):
-        result = process.request({"type": "prompt", "message": text}, timeout=600 if registered else 30)
+    def _submit_prompt(self, text, identity, process, epoch, registered, images=None):
+        payload = {"type": "prompt", "message": text}
+        if images: payload["images"] = images
+        result = process.request(payload, timeout=600 if registered else 30)
         state = process.request({"type": "get_state"}).get("data", {})
         if epoch != self.pi_epoch: return
         state["gentleVerified"] = self.pi_state.get("gentleVerified", False)

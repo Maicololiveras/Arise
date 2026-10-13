@@ -64,6 +64,23 @@ class NativeTests(unittest.TestCase):
         self.assertEqual(panel.mic_button.toolTip(), "Hablar con ARISE")
         self.assertEqual(panel.windowTitle(), "ARISE Assistant")
 
+    def test_failed_image_send_keeps_draft_then_success_clears_it(self):
+        from PySide6.QtGui import QImage
+        from PySide6.QtCore import QMimeData
+        panel=self.c.panel
+        image=QImage(30,20,QImage.Format_RGB32);image.fill(Qt.cyan)
+        mime=QMimeData();mime.setImageData(image);panel.input.insertFromMimeData(mime)
+        panel.input.setPlainText('Revisa la captura')
+        self.assertEqual(len(panel.attachments),1)
+        with patch.object(self.r,'steer',side_effect=RuntimeError('Sin conexión')):
+            panel.send();QTest.qWait(100)
+        self.assertEqual(panel.input.toPlainText(),'Revisa la captura')
+        self.assertEqual(len(panel.attachments),1);self.assertFalse(panel.input.isReadOnly())
+        with patch.object(self.r,'steer',return_value={'task_id':'fixture'}) as send:
+            panel.send();QTest.qWait(100)
+            self.assertEqual(send.call_args.args[1][0]['mimeType'],'image/png')
+        self.assertEqual(panel.input.toPlainText(),'');self.assertEqual(panel.attachments,[])
+
     def test_rpc_editor_returns_multiline_text_and_chat_change_closes_dialog(self):
         answers=[]
         with patch.object(self.r,'answer_dialog',side_effect=lambda record:answers.append(record)):
@@ -86,8 +103,8 @@ class NativeTests(unittest.TestCase):
             self.assertFalse(self.c.panel.isVisible()); self.assertTrue(self.orb.isVisible()); wake.assert_not_called()
 
     def test_panel_follows_orb_position_is_saved_and_offscreen_is_clamped(self):
-        self.c.show_panel(); self.orb.move(400, 30); QTest.qWait(350)
-        self.assertEqual(self.r.storage.config['orb_position'], [400, 30])
+        self.c.show_panel(); self.orb.move(500, 30); QTest.qWait(350)
+        self.assertEqual(self.r.storage.config['orb_position'], [500, 30])
         self.assertEqual(self.c.panel.x(), self.orb.x()-self.c.panel.width()-12)
         self.assertEqual(self.c.panel.y(), 30)
         self.orb.move(-10000,-10000); QTest.qWait(350)
