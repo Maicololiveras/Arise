@@ -83,14 +83,11 @@ def control_icon(name):
 
 
 def icon():
-    pix = QPixmap(64, 64); pix.fill(Qt.transparent)
-    p = QPainter(pix)
-    from PySide6.QtSvg import QSvgRenderer
-    import assets
-    source = Path(assets.__file__).parent / "icon.svg"
-    QSvgRenderer(str(source)).render(p)
-    p.end()
-    return QIcon(pix)
+    from .brand import icon_image
+    result = QIcon()
+    for size in (16, 24, 32, 48, 64, 128, 256):
+        result.addPixmap(QPixmap.fromImage(icon_image(size)))
+    return result
 
 class Settings(QDialog):
     saved = Signal()

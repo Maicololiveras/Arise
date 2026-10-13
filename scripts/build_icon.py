@@ -1,22 +1,20 @@
-"""Render ARISE's existing vector orb as a multi-resolution Windows icon."""
+"""Package the real animated ARISE orb as a multi-resolution Windows icon."""
 from pathlib import Path
 import os
 import struct
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
-from PySide6.QtCore import QBuffer, QIODevice, Qt
-from PySide6.QtGui import QImage, QPainter
-from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtCore import QBuffer, QIODevice
 from PySide6.QtWidgets import QApplication
+from arise_app.brand import icon_image
 
 
 def build(destination):
     app=QApplication.instance() or QApplication([])
-    renderer=QSvgRenderer(str(Path(__file__).resolve().parents[1]/'assets/icon.svg'))
-    if not renderer.isValid(): raise RuntimeError('Invalid orb SVG')
     images=[]
     for size in (16,24,32,48,64,128,256):
-        canvas=QImage(size,size,QImage.Format_ARGB32);canvas.fill(Qt.transparent)
-        painter=QPainter(canvas);renderer.render(painter);painter.end()
+        canvas=icon_image(size)
         buffer=QBuffer();buffer.open(QIODevice.WriteOnly)
         if not canvas.save(buffer,'PNG'): raise RuntimeError('Could not render icon')
         images.append((size,bytes(buffer.data())))
