@@ -34,3 +34,24 @@ Los manifiestos `herramientas/manifests/{forge,screenview,inputcontrol}.json` si
 La memoria existente no se migra ni se borra. Gentle 4.2 incluye el core Engram 3.4.0, pero un servidor global antiguo debe actualizarse/reiniciarse por su propietario; sus reglas de compatibilidad siguen aplicando. Las credenciales y las decisiones del asistente oficial no pueden completarse en nombre del usuario sin sus datos.
 
 Validación local: suite completa aprobada, incluyendo Pi real con modelo HTTP de prueba (sin cuentas externas), protocolos MCP, comandos/perfiles, modelos y rollback. El reporte del nuevo instalador privado tiene una prueba de integración con fixtures. La descarga y SHA del ZIP oficial y la sintaxis de sus adaptadores fueron comprobados. La instalación final del EXE requiere el gate Windows de GitHub Actions; una prueba local Linux no acredita esa ejecución.
+
+## Existing user installation and Windows delivery
+
+The setup entry point now checks for an existing installation before opening the
+Gentle wizard. It recognizes the fixed `%USERPROFILE%/.pi/agent/npm/node_modules/gentle-pi`
+Windows launcher with `--link`, preserving its linked agent home. It resolves the
+adjacent Pi first (or the linked launcher's Pi on PATH), validates package metadata,
+compatibility and Gentle's own native binary resolver, then verifies `gentle:status`
+over the real Pi RPC connection. Failed RPC adoption disconnects the candidate and
+restores the previous settings. Unknown custom launchers are not executed by discovery.
+The existing global pnpm probe now uses PNPM_HOME instead of assuming AppData.
+
+Windows builds render the existing ARISE orb SVG into a multiresolution ICO and
+embed it in both application and setup EXEs. The desktop/Start shortcuts and Qt
+process share the PRAXISGENAI.ARISE application ID for taskbar identity.
+
+CI runs native Windows protocol tests and Windows model preparation independently
+of the executable build. A Windows offline job joins the tested executable and
+model artifacts, checks real inference, and creates the complete ZIP. Publication
+still requires every verification job. The previous historical EXE reuse shortcut
+was removed to prevent reusing an executable without the new icon or setup logic.

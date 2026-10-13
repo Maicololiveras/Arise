@@ -106,6 +106,22 @@ def validate_result(result, node):
     if prefix and (not Path(prefix).is_absolute() or not Path(prefix).is_dir()): raise ValueError('Entorno privado de Gentle inválido.')
     return {'gentle_bundle_root':prefix, 'pi_command':[str(node),str(cli)],'gentle_path':str(gentle),'gentle_agent_home':str(home),'gentle_channel':result['channel']}
 
+def adopt_gentle(runtime, changes):
+    """Commit an engine selection only after its real RPC commands are available."""
+    with runtime.transition_lock:
+        if runtime.busy: raise RuntimeError('Detén la tarea activa antes de configurar Gentle.')
+        previous={key:runtime.storage.config.get(key,'') for key in changes}
+        runtime.disconnect()
+        runtime.settings(changes)
+        try:
+            if not runtime.connect_pi().get('gentleVerified'):
+                raise RuntimeError('Pi inició, pero no registró los comandos de Gentle.')
+        except Exception:
+            runtime.disconnect()
+            runtime.settings(previous)
+            raise
+
+
 def install_gentle(runtime, timeout=3600):
     if os.name!='nt':raise RuntimeError('Este instalador de Gentle requiere Windows.')
     if not LOCK.acquire(blocking=False):raise RuntimeError('El instalador de Gentle ya está abierto.')
@@ -113,6 +129,18 @@ def install_gentle(runtime, timeout=3600):
         with runtime.transition_lock:
             if runtime.busy:raise RuntimeError('Detén la tarea activa antes de instalar Gentle.')
             runtime.disconnect()
+        from .windows_prerequisites import refresh_path
+        from .discovery import detect_gentle_installation
+        env=refresh_path(os.environ)
+        existing=detect_gentle_installation(env)
+        if existing:
+            os.environ['PATH']=env['PATH']
+            runtime.emit('notice',{'text':'Gentle existente detectado: '+existing['gentle_path']+'. Verificando su motor y comandos.'})
+            adopt_gentle(runtime,existing)
+            runtime.emit('notice',{'text':'ARISE usa tu Gentle existente y su carpeta de agente. No fue necesario reinstalarlo.'})
+            from .tool_setup import auto_setup
+            auto_setup(runtime)
+            return {'installed':False,'reused':True,'channel':existing['gentle_channel'],'verified':True}
         bundle=application_root()/'bundle'
         source=bundle/'gentle-installer'
         if not (source/'scripts/bootstrap.cmd').is_file():raise RuntimeError('Usa el ZIP nuevo de ARISE: falta el instalador oficial de Gentle.')
@@ -136,16 +164,7 @@ def install_gentle(runtime, timeout=3600):
         changes=validate_result(result,Path(result.get('node') or bundle/'node/node.exe'))
         # Pi starts in this daemon too: inherit installed Git/Go without a restart.
         os.environ['PATH']=refresh_path(env)['PATH']
-        with runtime.transition_lock:
-            if runtime.busy:raise RuntimeError('Gentle está instalado. Detén la tarea y vuelve a configurar para conectarlo.')
-            previous={key:runtime.storage.config.get(key,'') for key in changes}
-            runtime.settings(changes)
-            try:
-                if not runtime.connect_pi().get('gentleVerified'):
-                    raise RuntimeError('Pi inició, pero no registró los comandos de Gentle.')
-            except Exception:
-                runtime.settings(previous)
-                raise
+        adopt_gentle(runtime,changes)
         runtime.emit('notice',{'text':'Gentle '+result['channel']+' instalado y conectado. Sus comandos se verificaron en Pi.'})
         from .tool_setup import auto_setup
         auto_setup(runtime)

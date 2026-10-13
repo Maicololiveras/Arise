@@ -917,6 +917,9 @@ def main():
     if args.shutdown:
         from .updates import shutdown_application
         return shutdown_application(args.data_dir)
+    if os.name == 'nt':
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('PRAXISGENAI.ARISE')
     app = QApplication.instance() or QApplication(sys.argv); app.setApplicationName("ARISE"); app.setWindowIcon(icon()); app.setQuitOnLastWindowClosed(False)
     import hashlib
     address = "ARISE-" + hashlib.sha256(str(Path(args.data_dir).resolve()).encode()).hexdigest()[:20]
