@@ -127,7 +127,7 @@ def _install(runtime, archive):
             sock.bind(('127.0.0.1',0));port = sock.getsockname()[1]
         command = [str(target/manifest['server']), '--model',str(target/'models/dialogue.gguf'),
             '--alias','arise-local','--host','127.0.0.1','--port',str(port),'--ctx-size','4096' if light else '8192','--jinja','--n-gpu-layers','0']
-        speech = {'piper_command':[str(target/manifest['piper'])], 'piper_model':str(target/manifest['piper_model']), 'local_tts':'forge', 'voice':'Piper es-MX Ald'} if manifest.get('piper') else {}
+        speech = {'piper_command':[str(target/manifest['piper'])], 'piper_model':str(target/manifest['piper_model']), 'local_tts':'system', 'voice':'Piper es-MX Ald'} if manifest.get('piper') else {}
         runtime.settings({**speech, 'voice_task_engine':'gentle', 'onboarding_complete':True,'voice_provider':'local','local_stt_engine':'vosk' if light else 'openai-whisper',
             'local_stt_model':str(target/'models/small.pt'),'wake_model':str(target/'models'/VOSK_NAME),
             'local_dialogue_enabled':True,'local_dialogue_url':f'http://127.0.0.1:{port}/v1',

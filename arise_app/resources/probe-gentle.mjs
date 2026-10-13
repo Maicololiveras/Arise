@@ -16,7 +16,17 @@ for (const base of require.resolve.paths(name) || []) {
   const candidate = join(base,name);
   if (existsSync(join(candidate,'package.json'))) { pi = realpathSync(candidate); break; }
 }
-if (!pi) throw Error('No adjacent Pi; refusing unrelated global fallback');
+// The linked launcher falls back to Pi on PATH when it has no adjacent Pi.
+if (!pi && process.argv.includes('--link') && process.argv.includes('--pi-cli')) {
+  const fallback=realpathSync(process.argv[process.argv.indexOf('--pi-cli')+1]);
+  let parent=dirname(fallback);
+  for(let depth=0;depth<4;depth++,parent=dirname(parent)) {
+    if (!existsSync(join(parent,'package.json'))) continue;
+    const candidate=read(join(parent,'package.json'));
+    if(candidate.name===name && typeof candidate.bin?.pi==='string' && realpathSync(join(parent,candidate.bin.pi))===fallback) {pi=parent;break;}
+  }
+}
+if (!pi) throw Error('No verified Pi runtime for this Gentle installation');
 const meta = read(join(pi,'package.json'));
 if (meta.name !== name || typeof meta.bin?.pi !== 'string') throw Error('Invalid Pi metadata');
 const cli = realpathSync(join(pi,meta.bin.pi));
@@ -26,6 +36,9 @@ const launcher = await import(pathToFileURL(join(root,'runtime/gentle-shell-laun
 let config;
 try { config = launcher.parseLauncherConfig(readFileSync(launcher.launcherConfigPath(homedir()),'utf8')); }
 catch(e) { if(e.code !== 'ENOENT') throw e; }
-const home = resolve(launcher.resolveHome({args:{link:false,isolated:false},env:process.env,homedir:homedir(),config}).dir);
+const home = resolve(launcher.resolveHome({args:{link:process.argv.includes('--link'),isolated:false},env:process.env,homedir:homedir(),config}).dir);
 if (!statSync(home).isDirectory() || !existsSync(join(home,'settings.json'))) throw Error('Run Gentle first to provision its home');
+// Apply Gentle's own integrity/development-override policy; never skip verification.
+const native = await import(pathToFileURL(join(root,'runtime/gentle-ai-binary.mjs')).href);
+native.resolveGentleAiBinary(root);
 console.log(JSON.stringify({status:'ready', channel:shell.version.includes('-main.')?'main':'release', pi_root:pi,gentle_root:root,agent_home:home,version:shell.version}));

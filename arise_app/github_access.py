@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import urllib.request
 import urllib.error
+import urllib.response
 from urllib.parse import urlparse
 
 class PrivateRedirect(urllib.request.HTTPRedirectHandler):
@@ -34,7 +35,8 @@ def github_opener(token=''):
     opener=urllib.request.build_opener(PrivateRedirect())
     def open_request(request,timeout=30):
         if isinstance(request,str): request=urllib.request.Request(request)
-        if urlparse(request.full_url).netloc != 'api.github.com': raise ValueError('Las solicitudes autenticadas solo se envían a api.github.com.')
+        url=urlparse(request.full_url)
+        if url.scheme != 'https' or url.netloc != 'api.github.com': raise ValueError('Las solicitudes autenticadas solo se envían a https://api.github.com.')
         gh=gh_executable()
         if gh:
             # gh follows GitHub's archive redirects without forwarding the token
@@ -51,7 +53,10 @@ def github_opener(token=''):
                 result=subprocess.run(command,env=env,stdout=output,stderr=subprocess.DEVNULL,timeout=max(timeout,120),creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
                 if result.returncode:raise RuntimeError('gh no pudo descargar el componente. Comprueba la conexion y el acceso de GitHub a los repositorios privados.')
                 output.seek(0)
-                return output
+                # Match urllib's response interface, including geturl() and
+                # context-managed closing. gh handles the transport redirects;
+                # this URL identifies the validated HTTPS API request.
+                return urllib.response.addinfourl(output, {}, request.full_url, code=200)
             except Exception:
                 output.close()
                 raise

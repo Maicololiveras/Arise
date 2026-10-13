@@ -1,4 +1,4 @@
-FROM node:24.13.1-bookworm-slim AS node
+FROM node:24.21.0-bookworm-slim AS node
 FROM rust:1.90-slim-bookworm AS host
 WORKDIR /src
 COPY host/ ./

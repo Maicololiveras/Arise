@@ -100,7 +100,27 @@ def validate_result(result, node):
     cli=(pi/metadata['bin']['pi']).resolve()
     if not cli.is_relative_to(pi.resolve()) or not cli.is_file() or not (gentle/'extensions').is_dir() or not Path(node).is_file():
         raise ValueError('La instalación de Pi/Gentle está incompleta.')
-    return {'pi_command':[str(node),str(cli)],'gentle_path':str(gentle),'gentle_agent_home':str(home),'gentle_channel':result['channel']}
+    from .gentle_compat import require_compatible_pi
+    require_compatible_pi(shell, metadata.get('version'))
+    prefix=result.get('bundle_root', '')
+    if prefix and (not Path(prefix).is_absolute() or not Path(prefix).is_dir()): raise ValueError('Entorno privado de Gentle inválido.')
+    return {'gentle_bundle_root':prefix, 'pi_command':[str(node),str(cli)],'gentle_path':str(gentle),'gentle_agent_home':str(home),'gentle_channel':result['channel']}
+
+def adopt_gentle(runtime, changes):
+    """Commit an engine selection only after its real RPC commands are available."""
+    with runtime.transition_lock:
+        if runtime.busy: raise RuntimeError('Detén la tarea activa antes de configurar Gentle.')
+        previous={key:runtime.storage.config.get(key,'') for key in changes}
+        runtime.disconnect()
+        runtime.settings(changes)
+        try:
+            if not runtime.connect_pi().get('gentleVerified'):
+                raise RuntimeError('Pi inició, pero no registró los comandos de Gentle.')
+        except Exception:
+            runtime.disconnect()
+            runtime.settings(previous)
+            raise
+
 
 def install_gentle(runtime, timeout=3600):
     if os.name!='nt':raise RuntimeError('Este instalador de Gentle requiere Windows.')
@@ -109,9 +129,24 @@ def install_gentle(runtime, timeout=3600):
         with runtime.transition_lock:
             if runtime.busy:raise RuntimeError('Detén la tarea activa antes de instalar Gentle.')
             runtime.disconnect()
+        from .windows_prerequisites import refresh_path
+        from .discovery import detect_gentle_installation
+        env=refresh_path(os.environ)
+        existing=detect_gentle_installation(env)
+        if existing:
+            os.environ['PATH']=env['PATH']
+            runtime.emit('notice',{'text':'Gentle existente detectado: '+existing['gentle_path']+'. Verificando su motor y comandos.'})
+            adopt_gentle(runtime,existing)
+            runtime.emit('notice',{'text':'ARISE usa tu Gentle existente y su carpeta de agente. No fue necesario reinstalarlo.'})
+            from .tool_setup import auto_setup
+            auto_setup(runtime)
+            return {'installed':False,'reused':True,'channel':existing['gentle_channel'],'verified':True}
         bundle=application_root()/'bundle'
         source=bundle/'gentle-installer'
         if not (source/'scripts/bootstrap.cmd').is_file():raise RuntimeError('Usa el ZIP nuevo de ARISE: falta el instalador oficial de Gentle.')
+        from .windows_prerequisites import prepare_shell_prerequisites, refresh_path
+        env=prepare_shell_prerequisites(bundle,runtime.storage.root/'prerequisites',
+            lambda message:runtime.emit('notice',{'text':message}))
         jobs=runtime.storage.root/'installers';jobs.mkdir(exist_ok=True)
         # Keep the job if the UI closes; the installer may still own files in it.
         job=Path(tempfile.mkdtemp(prefix='gentle-',dir=jobs))
@@ -120,32 +155,16 @@ def install_gentle(runtime, timeout=3600):
         result_file=job/'arise-result.json'
         log_file=job/'bootstrap.log'
         command=str(Path(os.environ['SystemRoot'])/'System32/cmd.exe')
-        stage,env=prepare_installer_stage()
-        process=None
-        try:
-            with log_file.open('wb') as log:
-                process=subprocess.Popen([command,'/d','/c','bootstrap.cmd'],cwd=str(job/'scripts'),env=env,
-                    stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
-                runtime.emit('notice',{'text':f'Preparando Gentle en una carpeta privada. El asistente se abrirá en el navegador. Diagnóstico: {log_file}'})
-                wait_for_installer(process,result_file,log_file,timeout)
-        finally:
-            # The wizard may still be open after producing its result.
-            # Keep in-use or nonempty staging; never delete another process's files.
-            if process is None or process.poll() is not None:
-                try:stage.rmdir()
-                except OSError:pass
+        with log_file.open('wb') as log:
+            process=subprocess.Popen([command,'/d','/c','bootstrap.cmd'],cwd=str(job/'scripts'),env=env,
+                stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
+            runtime.emit('notice',{'text':f'Gentle preparará su entorno privado y abrirá el asistente. Diagnóstico: {log_file}'})
+            wait_for_installer(process,result_file,log_file,timeout)
         result=json.loads(result_file.read_text(encoding='utf-8'))
-        changes=validate_result(result,bundle/'node/node.exe')
-        with runtime.transition_lock:
-            if runtime.busy:raise RuntimeError('Gentle está instalado. Detén la tarea y vuelve a configurar para conectarlo.')
-            previous={key:runtime.storage.config.get(key,'') for key in changes}
-            runtime.settings(changes)
-            try:
-                if not runtime.connect_pi().get('gentleVerified'):
-                    raise RuntimeError('Pi inició, pero no registró los comandos de Gentle.')
-            except Exception:
-                runtime.settings(previous)
-                raise
+        changes=validate_result(result,Path(result.get('node') or bundle/'node/node.exe'))
+        # Pi starts in this daemon too: inherit installed Git/Go without a restart.
+        os.environ['PATH']=refresh_path(env)['PATH']
+        adopt_gentle(runtime,changes)
         runtime.emit('notice',{'text':'Gentle '+result['channel']+' instalado y conectado. Sus comandos se verificaron en Pi.'})
         from .tool_setup import auto_setup
         auto_setup(runtime)

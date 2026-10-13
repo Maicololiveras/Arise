@@ -44,12 +44,14 @@ def configure_bundle(runtime):
     # Gentle 4 requires a compatible Pi even if an older global launcher exists.
     selected = changes.get("gentle_path", config.get("gentle_path", ""))
     try:
-        gentle_version = json.loads((Path(selected) / "package.json").read_text(encoding="utf-8")).get("version")
+        package = json.loads((Path(selected) / "package.json").read_text(encoding="utf-8"))
+        from .gentle_compat import pi_floor
+        floor = pi_floor(package)
         pi_version = installed_pi_version(changes.get("pi_command", config.get("pi_command")))
-        old_pi = pi_version and tuple(int(n) for n in pi_version.split(".")[:3]) < (0, 99, 1)
+        old_pi = floor and pi_version and tuple(int(n) for n in pi_version.split(".")[:3]) < floor
     except (OSError, ValueError, TypeError):
         gentle_version, old_pi = None, False
-    if not official and gentle_version == "4.0.0" and old_pi:
+    if not official and old_pi:
         command = candidates.get("pi_command")
         if not command_available(command):
             raise RuntimeError("Falta el Pi compatible incluido en el ZIP de ARISE.")

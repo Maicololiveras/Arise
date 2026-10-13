@@ -1,4 +1,4 @@
-#define AppVersion "0.4.8"
+#define AppVersion "0.4.10"
 [Setup]
 AppId={{E99B270E-3F4F-421C-9D9F-705E523F3ED6}
 AppName=ARISE
@@ -15,6 +15,7 @@ OutputBaseFilename=ARISE-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\artifacts\arise.ico
 UsePreviousAppDir=yes
 CloseApplications=yes
 RestartApplications=no
@@ -28,9 +29,9 @@ Source: "..\dist\ARISE\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Type: filesandordirs; Name: "{app}\_internal"
 Type: filesandordirs; Name: "{app}\bundle\node"
 [Icons]
-Name: "{group}\ARISE"; Filename: "{app}\ARISE.exe"
+Name: "{group}\ARISE"; Filename: "{app}\ARISE.exe"; IconFilename: "{app}\ARISE.exe"; AppUserModelID: "PRAXISGENAI.ARISE"
 Name: "{group}\Configurar ARISE"; Filename: "{app}\ARISE.exe"; Parameters: "--settings"
-Name: "{autodesktop}\ARISE"; Filename: "{app}\ARISE.exe"; Tasks: desktopicon
+Name: "{autodesktop}\ARISE"; Filename: "{app}\ARISE.exe"; IconFilename: "{app}\ARISE.exe"; AppUserModelID: "PRAXISGENAI.ARISE"; Tasks: desktopicon
 [Tasks]
 Name: desktopicon; Description: "Crear acceso directo en el escritorio"; Flags: unchecked
 [Run]
@@ -49,7 +50,8 @@ var
 begin
   Result := '--data-dir "' + DataDirectory() + '"';
   Models := ExpandConstant('{param:ARISE-MODELS}');
-  if Models <> '' then Result := Result + ' --setup-pack "' + Models + '"';
+  if Models <> '' then Result := Result + ' --setup-pack "' + Models + '"'
+  else Result := Result + ' --setup';
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

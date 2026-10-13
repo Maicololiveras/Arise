@@ -1,6 +1,7 @@
 """Detect installed Pi and Gentle Shell without installing or running unknown code."""
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -58,33 +59,58 @@ def installed_pi_version(command):
     return None
 
 
-def detect_gentle_installation():
-    """Recover a provisioned pnpm Gentle install after an interrupted wizard."""
-    node = shutil.which("node")
-    pnpm = shutil.which("pnpm")
-    if not pnpm and os.name == "nt":
-        candidate = Path(os.getenv("LOCALAPPDATA", "")) / "pnpm/pnpm.cmd"
-        if candidate.is_file(): pnpm = str(candidate)
-    if not node or not pnpm: return None
-    options = dict(capture_output=True, text=True, encoding="utf-8", timeout=20,
-                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+def linked_gentle_candidate(env):
+    """Recognize the fixed Pi-managed --link launcher without executing CMD."""
+    launcher=shutil.which('gentle-shell', path=env.get('PATH'))
+    if not launcher or Path(launcher).suffix.lower() != '.cmd': return None
     try:
-        listing_env = dict(os.environ)
-        if os.name == "nt":
-            pnpm_bin = str(Path(os.getenv("LOCALAPPDATA", "")) / "pnpm/bin")
-            listing_env["PATH"] = pnpm_bin + os.pathsep + listing_env.get("PATH", "")
-        listing = subprocess.run([pnpm, "list", "-g", "--depth", "0", "--json"], env=listing_env, **options)
-        if listing.returncode: return None
-        roots = [item.get("dependencies", {}).get("gentle-pi", {}).get("path")
-                 for item in json.loads(listing.stdout)]
-        roots = [root for root in roots if root]
-        if len(roots) != 1 or not gentle_valid(roots[0]): return None
-        probe = Path(__file__).parent / "resources/probe-gentle.mjs"
-        result = subprocess.run([node, str(probe), roots[0]], **options)
+        text=Path(launcher).read_text(encoding='utf-8-sig')
+    except (OSError, UnicodeError): return None
+    # Deliberately narrow: unknown custom launchers require manual configuration.
+    pattern=r'(?im)^node\s+"%USERPROFILE%[\\/]\.pi[\\/]agent[\\/]npm[\\/]node_modules[\\/]gentle-pi[\\/]bin[\\/]gentle-shell\.mjs"\s+--link\s+%\*\s*$'
+    if not re.search(pattern,text): return None
+    return Path(env.get('USERPROFILE') or Path.home())/'.pi/agent/npm/node_modules/gentle-pi'
+
+
+def detect_gentle_installation(env=None):
+    """Prefer the user's recognized linked launcher, then a global pnpm install."""
+    env=dict(os.environ if env is None else env)
+    node=shutil.which('node', path=env.get('PATH'))
+    if not node: return None
+    options=dict(capture_output=True,text=True,encoding='utf-8',timeout=30,env=env,
+                 creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+    probe=Path(__file__).parent/'resources/probe-gentle.mjs'
+    linked=linked_gentle_candidate(env)
+    candidates=[(str(linked),True)] if linked else []
+    def inspect(root, link):
+        if not gentle_valid(root): return None
+        command=[node,str(probe),root]
+        if link:
+            command.append('--link')
+            pi_command=resolve_pi()
+            if pi_command and len(pi_command)==2 and Path(pi_command[1]).is_file():
+                command.extend(['--pi-cli',pi_command[1]])
+        result=subprocess.run(command,**options)
         if result.returncode: return None
         from .gentle_setup import validate_result
-        return validate_result(json.loads(result.stdout), node)
-    except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired):
+        return validate_result(json.loads(result.stdout),node)
+    try:
+        if candidates:
+            # A broken explicitly selected launcher must not silently switch engines.
+            return inspect(*candidates[0])
+        pnpm=shutil.which('pnpm',path=env.get('PATH'))
+        if not pnpm: return None
+        pnpm_home=env.get('PNPM_HOME')
+        if pnpm_home:
+            env['PATH']=str(Path(pnpm_home)/'bin')+os.pathsep+env.get('PATH','')
+        listing=subprocess.run([pnpm,'list','-g','--depth','0','--json'],**options)
+        if listing.returncode: return None
+        roots=[item.get('dependencies',{}).get('gentle-pi',{}).get('path')
+               for item in json.loads(listing.stdout)]
+        roots=[root for root in roots if root]
+        if len(roots)!=1:return None
+        return inspect(roots[0],False)
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.TimeoutExpired):
         return None
 
 
