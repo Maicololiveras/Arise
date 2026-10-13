@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "channel": "main",
-  "version": "0.4.11",
-  "notes": "# ARISE 0.4.11\n\n- Icono real de ARISE: utiliza el mismo orbe, halo y part\u00edculas de la aplicaci\u00f3n en el instalador, accesos directos y barra de tareas.\n- Gentle Shell 4.2.0 y Pi 1.2.0 integrados; detecci\u00f3n de instalaciones existentes y sus perfiles.\n- Instalador de Windows con comprobaci\u00f3n y preparaci\u00f3n de dependencias antes de configurar Gentle.\n- Descarga individual de herramientas p\u00fablicas y modelos desde Ajustes.\n- Icono del orbe en el ejecutable, accesos directos y barra de tareas.\n- La instalaci\u00f3n de herramientas en segundo plano conserva la conexi\u00f3n de Pi.\n- Correcci\u00f3n de las descargas del actualizador mediante GitHub CLI.\n- Publicaci\u00f3n autom\u00e1tica de los enlaces del README despu\u00e9s de superar las validaciones.\n\nPara actualizar, ejecuta ARISE-Setup.exe sobre la misma carpeta de instalaci\u00f3n. Conserva los datos. El ZIP completo con modelos es opcional. Cada canal recibe sus propias actualizaciones: main para producci\u00f3n y qa para pruebas.\n",
-  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/v0.4.11/ARISE-Setup.exe",
-  "asset_id": 637855990,
-  "sha256": "516f5bb976c34095797f229a41ba5be7ea417bcab53e6214956c5def2f77bca5",
-  "size": 399737621,
-  "source_commit": "925714723a5f7196f4fc98cfc038c8ebd63e929c"
+  "version": "0.4.12",
+  "notes": "# ARISE 0.4.12\n\n- Pega im\u00e1genes con Ctrl+V o adj\u00fantalas desde el chat, revisa miniaturas y env\u00edalas a un modelo con visi\u00f3n. Las im\u00e1genes permanecen en el historial local.\n- Respuestas Markdown con t\u00edtulos, listas, tablas y c\u00f3digo seleccionable; chat m\u00e1s ancho y borrador conservado si el env\u00edo falla.\n- Descarga de actualizaciones por streaming, con progreso en MB y verificaci\u00f3n SHA-256, sin el l\u00edmite global de 120 segundos de gh.\n- Accesos directos con archivo de icono del orbe versionado y aviso de actualizaci\u00f3n de iconos a Windows.\n",
+  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/v0.4.12/ARISE-Setup.exe",
+  "asset_id": 638049937,
+  "sha256": "2ebf1654e267c5c87f8655b5d4d553a042e6b9ea4a81081c2e75206aae9060c9",
+  "size": 399720998,
+  "source_commit": "792422a9afc11d2d0a492efac31a5d27b836dafc"
 }
