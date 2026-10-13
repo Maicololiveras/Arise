@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "channel": "qa",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "notes": "# ARISE 0.4.9 QA\n\n- Comprueba las dependencias de Windows antes de iniciar el asistente de Gentle Shell.\n- Reutiliza Node/npm integrados y verifica el tar.exe de Windows.\n- Detecta Git con Bash y Go >=1.25.10; instala los ausentes con WinGet y vuelve a verificarlos antes de continuar.\n- Prepara pnpm 11.1.1 y npm en una carpeta propia sin reemplazar los gestores globales del usuario.\n- Refresca PATH para el proceso del instalador, sin exigir reiniciar ARISE.\n- Si falta WinGet, hay una cancelaci\u00f3n o un requisito sigue sin funcionar, muestra una acci\u00f3n manual y no inicia Gentle.\n\nExtrae el ZIP completo y ejecuta Configurar ARISE.cmd. Se requiere Internet para preparar dependencias. Windows puede solicitar autorizaci\u00f3n para instalar Git o Go. La autenticaci\u00f3n GitHub y la del proveedor del agente se realizan por separado.\n",
-  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.9/ARISE-Setup.exe",
-  "asset_id": 629412119,
-  "sha256": "5860ed6ce1703c3768330917571d57f43e8af16a4489623ee55208d068dfaed4",
-  "size": 401032338,
-  "source_commit": "08e3c20f384f9214522df7f41f1b58937b839e4f"
+  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.10/ARISE-Setup.exe",
+  "asset_id": 637557477,
+  "sha256": "bd8e3f3a23d2442ff4547699f7966990732b48260ad00749f4ffa0ba2831bdeb",
+  "size": 399595019,
+  "source_commit": "a3b4b3e35c4aec7b7833116961fb07924bc44456"
 }
