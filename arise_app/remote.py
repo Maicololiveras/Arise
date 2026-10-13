@@ -80,7 +80,7 @@ class RemoteAssistant:
         return type("Catalog", (), {"tools": data["tools"]})()
     def settings(self, changes):
         result = self.request("config", changes); self.storage.config = self.request("config"); return result
-    def steer(self, text): return self.request("prompt", {"text": text})
+    def steer(self, text, images=None): return self.request("prompt", {"text": text, "images":images or []})
     def stop(self): return self.request("stop", {})
     def switch_conversation(self, identity=None):
         result = self.request("conversation", {"id": identity}); self.storage.config = self.request("config"); return result

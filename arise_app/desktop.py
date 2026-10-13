@@ -1,6 +1,7 @@
 """Native ARISE orb, setup, conversation panel and tray. No embedded browser."""
 from __future__ import annotations
 import argparse
+import base64
 import html
 import json
 import os
@@ -8,12 +9,12 @@ import sys
 import threading
 import time
 from pathlib import Path
-from PySide6.QtCore import Qt, QTimer, QObject, Signal, QEvent, QPoint, QSize
-from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor
+from PySide6.QtCore import Qt, QTimer, QObject, Signal, QEvent, QPoint, QSize, QBuffer, QIODevice
+from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QImage, QDesktopServices
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import (QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QPushButton, QLineEdit, QTextBrowser, QTextEdit, QComboBox, QCheckBox, QTabWidget,
-    QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QSpinBox, QDialogButtonBox, QInputDialog, QWidgetAction, QScrollArea)
+    QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QSpinBox, QDialogButtonBox, QInputDialog, QWidgetAction, QScrollArea, QProgressDialog)
 from .orb import build_orb
 from .assistant import Assistant
 from .audio import Audio
@@ -31,7 +32,7 @@ QPushButton:hover {background:#205368;} QPushButton:disabled {color:#7292A8;}
 QLabel#title {font-size:24px;font-weight:700;color:#74F6FF;}
 QLabel#chatTitle {font-size:18px;font-weight:600;color:#EDF8FF;}
 QLabel#chatStatus,QLabel#chatPrivacy {font-size:11px;color:#9DB3C7;}
-QTextBrowser#chatHistory {background:transparent;border:0;padding:3px;}
+QTextBrowser#chatHistory {background:transparent;border:0;padding:6px;font-size:15px;}
 QPushButton#iconButton {padding:6px;border:0;background:transparent;border-radius:8px;}
 QPushButton#iconButton:hover {background:#17364C;}
 QPushButton#iconButton:checked {background:#205368;border:1px solid #74F6FF;}
@@ -55,6 +56,17 @@ class Worker(QObject):
 
 class ChatInput(QTextEdit):
     submitted = Signal()
+    image_pasted = Signal(QImage)
+
+    def canInsertFromMimeData(self, source):
+        return source.hasImage() or super().canInsertFromMimeData(source)
+
+    def insertFromMimeData(self, source):
+        if source.hasImage():
+            image = QImage(source.imageData())
+            if not image.isNull(): self.image_pasted.emit(image)
+        else: super().insertFromMimeData(source)
+
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key_Return, Qt.Key_Enter) and not event.modifiers() & Qt.ShiftModifier:
@@ -411,15 +423,20 @@ class Settings(QDialog):
 class Panel(QWidget):
     def __init__(self, controller):
         super().__init__(); self.controller = controller; self.runtime = controller.runtime
-        self.setWindowTitle("ARISE Assistant"); self.resize(360, 540); self.setMinimumSize(320, 400); self.setMaximumWidth(520); self.setStyleSheet(STYLE)
+        self.setWindowTitle("ARISE Assistant"); self.setWindowIcon(icon()); self.resize(420, 540); self.setMinimumSize(320, 400); self.setMaximumWidth(900); self.setStyleSheet(STYLE)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 12, 14, 10); layout.setSpacing(7)
         title = QLabel("ARISE Assistant"); title.setObjectName("chatTitle"); layout.addWidget(title)
         self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); self.status.hide()
         self.privacy = QLabel("Micrófono apagado · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); self.privacy.hide()
-        self.history = QTextBrowser(); self.history.setObjectName("chatHistory"); self.history.setOpenExternalLinks(False); layout.addWidget(self.history, 1)
-        self.input = ChatInput(); self.input.setPlaceholderText("Escribe a ARISE…"); self.input.setFixedHeight(58)
-        self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea"); self.input.submitted.connect(self.send); layout.addWidget(self.input)
+        from .chat_content import ChatHistory
+        self.history = ChatHistory(); self.history.setObjectName("chatHistory"); self.history.setOpenExternalLinks(False); layout.addWidget(self.history, 1)
+        self.attachments=[]
+        self.attachment_bar=QWidget(); self.attachment_layout=QHBoxLayout(self.attachment_bar)
+        self.attachment_layout.setContentsMargins(0,0,0,0);layout.addWidget(self.attachment_bar);self.attachment_bar.hide()
+        self.history.anchorClicked.connect(self.open_link)
+        self.input = ChatInput(); self.input.setAcceptRichText(False); self.input.setPlaceholderText("Escribe o pega una imagen con Ctrl+V…"); self.input.setFixedHeight(58)
+        self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea"); self.input.submitted.connect(self.send); self.input.image_pasted.connect(self.add_image); layout.addWidget(self.input)
         row = QHBoxLayout(); row.setSpacing(3); layout.addLayout(row)
         self.navigation = self.icon_button(row, "menu", "Proyectos, chats y comandos")
         self.navigation_menu = QMenu(self.navigation)
@@ -438,6 +455,7 @@ class Panel(QWidget):
         permission = QWidgetAction(self.navigation_menu); permission.setDefaultWidget(self.control); self.navigation_menu.addAction(permission)
         self.navigation.setMenu(self.navigation_menu)
         self.folder_button = self.icon_button(row, "folder", "Elegir carpeta del proyecto", self.open_project)
+        self.icon_button(row, "plus", "Adjuntar imagen", self.choose_image)
         self.icon_button(row, "settings", "Ajustes", controller.show_settings)
         row.addStretch(1)
         self.icon_button(row, "stop", "Detener voz y tarea", controller.stop)
@@ -459,14 +477,55 @@ class Panel(QWidget):
             else: self.controller.voice.wake()
         self.controller.background(operation)
 
-    def append(self, role, text):
-        self.history.append(f'<p><b style="color:#74F6FF">{html.escape(role)}</b><br>{html.escape(text).replace(chr(10), "<br>")}</p>')
+    def open_link(self, url):
+        if url.scheme() in ('https','http'):
+            if QMessageBox.question(self,'Abrir enlace',url.toString()) == QMessageBox.Yes:
+                QDesktopServices.openUrl(url)
+
+    def choose_image(self):
+        path,_=QFileDialog.getOpenFileName(self,'Adjuntar imagen',filter='Imágenes (*.png *.jpg *.jpeg *.webp)')
+        if path:
+            image=QImage(path)
+            if image.isNull(): QMessageBox.warning(self,'Imagen','No se pudo abrir la imagen.')
+            else: self.add_image(image)
+
+    def add_image(self, image):
+        if self.input.isReadOnly(): return
+        from .attachments import MAX_IMAGES, MAX_IMAGE_BYTES
+        if len(self.attachments)>=MAX_IMAGES:
+            QMessageBox.warning(self,'Imágenes','Puedes adjuntar hasta cuatro imágenes.');return
+        image=image.scaled(1600,1600,Qt.KeepAspectRatio,Qt.SmoothTransformation)
+        buffer=QBuffer();buffer.open(QIODevice.WriteOnly);image.save(buffer,'PNG')
+        raw=bytes(buffer.data())
+        if len(raw)>MAX_IMAGE_BYTES:
+            QMessageBox.warning(self,'Imagen','La imagen supera 2 MB. Recórtala o reduce su tamaño.');return
+        self.attachments.append({'type':'image','mimeType':'image/png','data':base64.b64encode(raw).decode()})
+        self.refresh_attachments()
+
+    def refresh_attachments(self):
+        while self.attachment_layout.count():
+            item=self.attachment_layout.takeAt(0)
+            if item.widget(): item.widget().deleteLater()
+        for index,item in enumerate(self.attachments):
+            button=QPushButton();button.setIcon(QIcon(QPixmap.fromImage(QImage.fromData(base64.b64decode(item['data'])))))
+            button.setIconSize(QSize(64,48));button.setFixedSize(100,66);button.setText('×');button.setToolTip('Quitar imagen '+str(index+1))
+            button.setAccessibleName('Quitar imagen '+str(index+1))
+            button.clicked.connect(lambda checked=False,i=index:self.remove_image(i))
+            self.attachment_layout.addWidget(button)
+        self.attachment_layout.addStretch(1)
+        self.attachment_bar.setVisible(bool(self.attachments))
+
+    def remove_image(self,index):
+        self.attachments.pop(index);self.refresh_attachments()
+
+    def append(self, role, text, images=None):
+        self.history.append_message(role,text,images)
 
     def reload(self):
         catalog = self.runtime.project_catalog(); self.current_chat = catalog["active"]["conversation"]
         self.history.clear()
         for message in self.runtime.storage.messages(self.current_chat):
-            self.append({"user":"Tú","voice_user":"Voz · Tú","voice_assistant":"Voz · ARISE"}.get(message["role"],"ARISE"), message["text"])
+            self.append({"user":"Tú","voice_user":"Voz · Tú","voice_assistant":"Voz · ARISE"}.get(message["role"],"ARISE"), message["text"], message.get("images"))
         self.conversations.blockSignals(True); self.conversations.clear()
         for c in catalog["chats"]: self.conversations.addItem(c["title"], c["id"])
         self.conversations.setCurrentIndex(max(0, self.conversations.findData(self.current_chat))); self.conversations.blockSignals(False)
@@ -514,11 +573,19 @@ class Panel(QWidget):
             self.controller.background(lambda: self.runtime.select_project(path), lambda _: self.reload())
 
     def send(self):
-        text = self.input.toPlainText().strip()
-        if text:
-            self.input.clear()
-            if text.startswith("/"): self.run_command(text)
-            else: self.controller.background(lambda: self.runtime.steer(text))
+        text=self.input.toPlainText().strip();images=list(self.attachments)
+        if self.input.isReadOnly() or (not text and not images):return
+        if text.startswith('/'):
+            if images:
+                QMessageBox.warning(self,'Imágenes','Envía las imágenes con un mensaje, sin comando /.');return
+            self.input.clear();self.run_command(text);return
+        self.send_button.setEnabled(False);self.input.setReadOnly(True)
+        def done(_):
+            self.input.clear();self.attachments.clear();self.refresh_attachments()
+            self.send_button.setEnabled(True);self.input.setReadOnly(False);self.input.setFocus()
+        def failed(_):
+            self.send_button.setEnabled(True);self.input.setReadOnly(False)
+        self.controller.background(lambda:self.runtime.steer(text,images) if images else self.runtime.steer(text),done,failed)
 
     def select_conversation(self):
         identity = self.conversations.currentData()
@@ -700,7 +767,11 @@ class Controller(QObject):
         from .bundle import application_root
         if self.update_busy: return
         self.update_busy = True; self.tray.setToolTip("ARISE · Descargando actualización…")
+        self.update_progress=QProgressDialog('Conectando con GitHub…','',0,100,self.panel)
+        self.update_progress.setCancelButton(None);self.update_progress.setWindowTitle('Actualizar ARISE')
+        self.update_progress.setAutoClose(False);self.update_progress.setValue(0);self.update_progress.show()
         def complete(installer):
+            self.update_progress.close()
             try:
                 launch_update(installer, manifest, self.runtime.storage.root, application_root())
             except Exception as error: failed(str(error)); return
@@ -708,9 +779,10 @@ class Controller(QObject):
             self.background(self.runtime.shutdown if getattr(self.runtime, "is_remote", False) else self.runtime.close, lambda _:self.quit(), lambda _:self.quit())
         def failed(message):
             self.update_busy = False; self.tray.setToolTip("ARISE Assistant")
+            self.update_progress.close()
             box = QMessageBox(self.orb); box.setWindowTitle("ARISE · Actualización")
-            box.setTextFormat(Qt.PlainText); box.setText(message); self.update_dialog = box; box.open()
-        self.background(lambda:Path(self.runtime.request("updates/download",{"manifest":manifest},timeout=600)["path"]) if getattr(self.runtime,"is_remote",False) else download_update(manifest, self.runtime.storage.root), complete, failed)
+            box.setTextFormat(Qt.PlainText); box.setText("No se pudo completar la descarga. Puedes reintentarlo desde Ajustes.\n\n"+message); self.update_dialog = box; box.open()
+        self.background(lambda:Path(self.runtime.request("updates/download",{"manifest":manifest},timeout=7200)["path"]) if getattr(self.runtime,"is_remote",False) else download_update(manifest, self.runtime.storage.root), complete, failed)
 
     def reconfigure(self):
         c = self.runtime.storage.config
@@ -788,8 +860,12 @@ class Controller(QObject):
                 self.panel.privacy.setText("Micrófono " + ("activo" if data["microphone"] else "apagado") + " · Pantalla " + ("activa" if data["screen"] else "apagada") + " · Control " + ("activo" if data["control"] else "apagado"))
                 self.panel.control.blockSignals(True); self.panel.control.setChecked(data["control"]); self.panel.control.blockSignals(False)
                 self.panel.mic_button.setChecked(data["microphone"] and data["state"] not in ("idle", "wake_detected"))
+            elif kind == 'update_progress' and getattr(self,'update_progress',None):
+                received=data['received'];total=data['total']
+                self.update_progress.setValue(int(100*received/total))
+                self.update_progress.setLabelText(f"Descargando: {received/1048576:.1f} de {total/1048576:.1f} MB")
             elif kind in ("user", "assistant_end", "notice", "error"):
-                self.panel.append({"user": "Tú", "assistant_end": "ARISE", "notice": "Aviso", "error": "Revisar"}[kind], data.get("text", ""))
+                self.panel.append({"user": "Tú", "assistant_end": "ARISE", "notice": "Aviso", "error": "Revisar"}[kind], data.get("text", ""), data.get("images"))
                 if kind == "error":
                     self.runtime.orb.update("error")
                     self.tray.setToolTip('ARISE · '+data.get('text','Revisar aviso')[:200])
@@ -937,6 +1013,7 @@ def main():
     rect = app.primaryScreen().availableGeometry()
     x, y = pos if pos else (rect.right() - c["orb_size"] - 24, rect.top() + 40)
     app, orb = build_orb(app, c["orb_size"], x, y, c.get("orb_animation", "sprite"))
+    orb.setWindowIcon(icon())
     app.setQuitOnLastWindowClosed(False)
     controller = Controller(app, runtime, orb, start_voice=not bool(args.screenshot))
     server = None

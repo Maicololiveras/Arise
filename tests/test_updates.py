@@ -77,3 +77,11 @@ class UpdateTests(unittest.TestCase):
             self.assertEqual(target.read_bytes(), BODY)
             self.assertFalse(target.with_name('ARISE-Setup.download').exists())
         self.assertTrue(all(stream.closed for stream in streams))
+
+    def test_streaming_update_bypasses_gh_and_reports_progress(self):
+        transport=SimpleNamespace(open=lambda request,timeout:Response(BODY))
+        progress=[]
+        with patch('arise_app.github_access.gh_executable',return_value='gh'), patch('arise_app.github_access.urllib.request.build_opener',return_value=transport), patch('arise_app.github_access.subprocess.run') as gh, tempfile.TemporaryDirectory() as root:
+            file=download_update(MANIFEST,root,github_opener('fixture-secret',stream=True),progress=lambda received,total:progress.append((received,total)))
+            self.assertEqual(file.read_bytes(),BODY);gh.assert_not_called()
+            self.assertEqual(progress[-1],(len(BODY),len(BODY)))

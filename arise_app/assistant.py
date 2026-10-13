@@ -53,22 +53,27 @@ class Assistant(Runtime):
         elif event.get("type") == "process_closed":
             self.orb.update("error", task=None, control=False, screen=False)
 
-    def prompt(self, text):
+    def prompt(self, text, images=None):
         self.orb.update("understanding")
         try:
-            result = super().prompt(text)
+            result = super().prompt(text, images)
             self.persist_task(self.tasks[result["task_id"]])
             return result
         except Exception:
             self.orb.update("error")
             raise
 
-    def steer(self, text):
+    def steer(self, text, images=None):
+        from .attachments import validate_images
+        images=validate_images(images)
+        if images and not str(text).strip(): text="Describe estas imágenes."
         if not self.busy:
-            return self.prompt(text)
-        self.storage.message(self.conversation, "user", text)
-        self.pi.request({"type": "steer", "message": text})
-        self.emit("user", {"text": text})
+            return self.prompt(text, images)
+        self.storage.message(self.conversation, "user", text, images)
+        payload={"type":"steer", "message":text}
+        if images: payload["images"]=images
+        self.pi.request(payload)
+        self.emit("user", {"text": text, "images":images})
         return {"task_id": self.current_task, "steering": True}
 
     def finish_task(self, error=None):

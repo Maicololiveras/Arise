@@ -31,14 +31,14 @@ def github_token(credentials):
         if result.returncode==0: return result.stdout.strip()
     return ''
 
-def github_opener(token=''):
+def github_opener(token='', stream=False):
     opener=urllib.request.build_opener(PrivateRedirect())
     def open_request(request,timeout=30):
         if isinstance(request,str): request=urllib.request.Request(request)
         url=urlparse(request.full_url)
         if url.scheme != 'https' or url.netloc != 'api.github.com': raise ValueError('Las solicitudes autenticadas solo se envían a https://api.github.com.')
         gh=gh_executable()
-        if gh:
+        if gh and not stream:
             # gh follows GitHub's archive redirects without forwarding the token
             # to another host. Secrets travel only through its environment.
             env=os.environ.copy()
@@ -57,6 +57,9 @@ def github_opener(token=''):
                 # context-managed closing. gh handles the transport redirects;
                 # this URL identifies the validated HTTPS API request.
                 return urllib.response.addinfourl(output, {}, request.full_url, code=200)
+            except subprocess.TimeoutExpired:
+                output.close()
+                raise RuntimeError('La descarga agotó el tiempo de espera. Comprueba la conexión e inténtalo de nuevo.') from None
             except Exception:
                 output.close()
                 raise

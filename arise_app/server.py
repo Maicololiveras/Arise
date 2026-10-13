@@ -60,12 +60,13 @@ def make_server(runtime, port=0):
                 self.reply({"error": "Se requiere JSON"}, 415); return
             try:
                 length = int(self.headers.get("Content-Length", "0"))
-                if not 0 < length <= 2_000_000: raise ValueError("Tamaño inválido")
+                limit = 12_000_000 if urllib.parse.urlparse(self.path).path == "/api/prompt" else 2_000_000
+                if not 0 < length <= limit: raise ValueError("Tamaño inválido")
                 data = json.loads(self.rfile.read(length))
                 if not isinstance(data, dict): raise ValueError("Se requiere un objeto")
                 route = urllib.parse.urlparse(self.path).path
                 if route == "/api/tools/call": value = runtime.call_tool(data.get("name", ""), data.get("arguments", {}))
-                elif route == "/api/prompt": value = runtime.steer(data.get("text", ""))
+                elif route == "/api/prompt": value = runtime.steer(data.get("text", ""), data.get("images"))
                 elif route == "/api/stop": value = runtime.stop()
                 elif route == "/api/config":
                     if runtime.voice_service:
@@ -84,12 +85,12 @@ def make_server(runtime, port=0):
                 elif route in ("/api/updates/check", "/api/updates/download"):
                     from .updates import check_update, download_update
                     from .github_access import github_token, github_opener
-                    opener=github_opener(github_token(runtime.credentials))
+                    opener=github_opener(github_token(runtime.credentials), stream=route.endswith('/download'))
                     manifest=check_update(opener=opener)
                     if route.endswith('/check'): value={'manifest':manifest}
                     else:
                         if not manifest or manifest!=data.get('manifest'): raise ValueError('La versión publicada cambió. Busca actualizaciones otra vez.')
-                        value={'path':str(download_update(manifest,runtime.storage.root,opener=opener))}
+                        value={'path':str(download_update(manifest,runtime.storage.root,opener=opener,progress=lambda received,total:runtime.emit('update_progress',{'received':received,'total':total})))}
                 elif route == '/api/models/download':
                     from .model_setup import install_models
                     value=install_models(runtime,data.get('components'))
