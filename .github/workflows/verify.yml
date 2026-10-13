@@ -213,6 +213,9 @@ jobs:
           path: artifacts/offline-pack-validation.json
 
   publish-update:
+    concurrency:
+      group: arise-release-metadata
+      cancel-in-progress: false
     if: github.event_name == 'push' && (github.ref == 'refs/heads/qa' || github.ref == 'refs/heads/main')
     needs: [docker, prerequisites, windows, windows-tests, offline-models, windows-offline]
     runs-on: ubuntu-latest

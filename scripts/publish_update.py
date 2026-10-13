@@ -1,5 +1,4 @@
 """Publish a tested release and update only its own branch manifest."""
-import base64
 import hashlib
 import json
 import os
@@ -15,6 +14,8 @@ tag=('qa-v' if channel=='qa' else 'v')+__version__
 setup=Path('release/dist/ARISE-Setup.exe')
 if not setup.is_file():raise RuntimeError('Tested installer artifact missing')
 notes=Path('packaging/RELEASE-NOTES.md').read_text(encoding='utf-8')
+notes = '# ARISE ' + __version__ + (' QA' if channel == 'qa' else '') + '\n' + notes.partition('\n')[2]
+Path('packaging/RELEASE-NOTES.md').write_text(notes, encoding='utf-8')
 digest=hashlib.sha256(setup.read_bytes()).hexdigest()
 checksum=setup.with_suffix('.exe.sha256');checksum.write_text(digest+'  ARISE-Setup.exe\n')
 def gh(*args):return subprocess.run(['gh',*args],check=True,text=True,capture_output=True).stdout
@@ -33,10 +34,15 @@ gh('release','create',tag,*assets,'--repo',REPO,'--target',commit,'--title','ARI
 release=json.loads(gh('api',f'repos/{REPO}/releases/tags/{tag}'))
 asset=next(a for a in release['assets'] if a['name']=='ARISE-Setup.exe')
 manifest={'schema':1,'channel':channel,'version':__version__,'notes':notes[:12000],'installer_url':asset['browser_download_url'],'asset_id':asset['id'],'sha256':digest,'size':asset['size'],'source_commit':commit}
-try:old=json.loads(gh('api',f'repos/{REPO}/contents/updates/windows.json?ref={channel}'))
-except subprocess.CalledProcessError:old=None
-payload={'message':f'Publish tested Windows update {tag} [skip ci]','branch':channel,'content':base64.b64encode((json.dumps(manifest,indent=2)+'\n').encode()).decode()}
-if old:payload['sha']=old['sha']
-file=Path('channel-update-request.json');file.write_text(json.dumps(payload))
-gh('api',f'repos/{REPO}/contents/updates/windows.json','--method','PUT','--input',str(file))
-print('Published '+tag+' and '+channel+'/updates/windows.json')
+# Publish links only after the release and verified installer asset exist.
+from scripts.release_readme import publish_metadata
+
+def api(endpoint, payload=None, method='POST'):
+    if payload is None:
+        return json.loads(gh('api', endpoint))
+    file = Path('channel-update-request.json')
+    file.write_text(json.dumps(payload), encoding='utf-8')
+    return json.loads(gh('api', endpoint, '--method', method, '--input', str(file)))
+
+publish_metadata(api, channel, manifest)
+print('Published '+tag+'; channel manifest and README download links synchronized')
