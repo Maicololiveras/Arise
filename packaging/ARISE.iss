@@ -51,7 +51,8 @@ begin
   Result := '--data-dir "' + DataDirectory() + '"';
   Models := ExpandConstant('{param:ARISE-MODELS}');
   if Models <> '' then Result := Result + ' --setup-pack "' + Models + '"'
-  else Result := Result + ' --setup';
+  else if ExpandConstant('{param:ARISE-SETUP|1}') <> '0' then
+    Result := Result + ' --setup';
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
