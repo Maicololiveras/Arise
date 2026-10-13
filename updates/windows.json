@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "channel": "qa",
-  "version": "0.4.12",
-  "notes": "# ARISE 0.4.12 QA\n\n- Pega im\u00e1genes con Ctrl+V o adj\u00fantalas desde el chat, revisa miniaturas y env\u00edalas a un modelo con visi\u00f3n. Las im\u00e1genes permanecen en el historial local.\n- Respuestas Markdown con t\u00edtulos, listas, tablas y c\u00f3digo seleccionable; chat m\u00e1s ancho y borrador conservado si el env\u00edo falla.\n- Descarga de actualizaciones por streaming, con progreso en MB y verificaci\u00f3n SHA-256, sin el l\u00edmite global de 120 segundos de gh.\n- Accesos directos con archivo de icono del orbe versionado y aviso de actualizaci\u00f3n de iconos a Windows.\n",
-  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.12/ARISE-Setup.exe",
-  "asset_id": 638038260,
-  "sha256": "1d9a58ecfc2e4fd33f027060f160490b74f5a341fd195063afe90ef6a08e0ff8",
-  "size": 399744063,
-  "source_commit": "0e6844e0b7c81fcce3b3d89f17aab972a9229268"
+  "version": "0.4.13",
+  "notes": "# ARISE 0.4.13 QA\n\n- Selecci\u00f3n expl\u00edcita de Gonzalo (es-CO-GonzaloNeural), +5%, mediante Forge/Edge. Necesita Internet y Forge; nunca sustituye autom\u00e1ticamente por Windows.\n- Dictado con pausa configurable (1400 ms por defecto), separado de la s\u00edntesis y reproducci\u00f3n de voz.\n- Un clic en el orbe abre el chat. Estado y bot\u00f3n Detener manos y ojos visibles; cierre de observadores y controladores antes de esperar al agente.\n- Ajustes adaptables, selectores protegidos contra la rueda y cierre que descarta cambios sin guardar.\n- Errores 503 explicados y recuperaci\u00f3n manual del borrador sin reenviarlo autom\u00e1ticamente.\n\nQA pendiente en PC real: escuchar Gonzalo, probar el micr\u00f3fono y verificar Ctrl+Alt+Esc con InputControl y ScreenView activos.\n",
+  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.13/ARISE-Setup.exe",
+  "asset_id": 638262896,
+  "sha256": "5f5c04cd7ff8ee63d2d1799ea149132c77e52cb22424762fc3d65c6bd9f9d522",
+  "size": 400275790,
+  "source_commit": "b3ac3481d8e7d79adbcaeb2dd97914e9aaff87d7"
 }
