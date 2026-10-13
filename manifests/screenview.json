@@ -1,6 +1,11 @@
 {
   "schema": 1,
   "tool": "screenview",
-  "status": "pending",
-  "platform": "windows-x64"
+  "version": "0.2.0",
+  "tag": "herramientas-screenview-v0.2.0-e5cf8c896b17",
+  "platform": "windows-x64",
+  "entry": "screenview-mcp.exe",
+  "sha256": "e20056ac7bd0e0f45d5faca57ce62a8982834dff84ecb537deb80c5c1bf869fd",
+  "size": 38756577,
+  "url": "https://github.com/Maicololiveras/Arise/releases/download/herramientas-screenview-v0.2.0-e5cf8c896b17/screenview-mcp-windows-x64.zip"
 }
