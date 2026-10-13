@@ -1,0 +1,66 @@
+name: Diagnose packaged Windows startup
+on:
+  push:
+    branches: [fix/frozen-startup-diagnostic]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 38413858125
+          name: arise-windows-build-and-tests
+          path: .
+      - name: Instrument isolated fixture launcher
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+          log = Path('artifacts/frozen-startup-diagnostic.log').resolve()
+          log.parent.mkdir(exist_ok=True)
+          log.write_text('', encoding='utf-8')
+          targets = [p for p in Path('dist/ARISE').rglob('gentle-shell.mjs') if p.parent.name == 'resources']
+          assert len(targets) == 1, targets
+          prelude = '''
+          import { appendFileSync as diagnosticAppend } from 'node:fs';
+          const diagnosticSecrets = Object.entries(process.env)
+            .filter(([k,v]) => /TOKEN|SECRET|PASSWORD|API_KEY/.test(k) && v && v.length > 3).map(([,v])=>v);
+          function diagnosticWrite(kind, chunk) {
+            let text = String(chunk);
+            for (const value of diagnosticSecrets) text = text.replaceAll(value, '[redacted]');
+            diagnosticAppend(DIAGNOSTIC_LOG, kind + ': ' + text.slice(-16384) + '\\n');
+          }
+          for (const [kind, stream] of [['stdout',process.stdout],['stderr',process.stderr]]) {
+            const original = stream.write.bind(stream);
+            stream.write = (...args) => { diagnosticWrite(kind,args[0]); return original(...args); };
+          }
+          process.on('uncaughtExceptionMonitor', error => diagnosticWrite('uncaught',error.stack));
+          process.on('exit', code => diagnosticWrite('exit',code));
+          diagnosticWrite('node',process.version);
+          '''.replace('DIAGNOSTIC_LOG', json.dumps(str(log)))
+          target = targets[0]
+          target.write_text(prelude + target.read_text(encoding='utf-8').removeprefix('#!/usr/bin/env node\n'), encoding='utf-8')
+      - name: Reproduce frozen application startup
+        run: python scripts/smoke_frozen.py dist/ARISE
+      - name: Show bounded fixture diagnostics
+        if: always()
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('artifacts/frozen-startup-diagnostic.log')
+          print(p.read_text(encoding='utf-8',errors='replace')[-24000:] if p.exists() else 'Launcher was not reached')
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frozen-startup-diagnostic
+          path: artifacts/frozen-startup-diagnostic.log
