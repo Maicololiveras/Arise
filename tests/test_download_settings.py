@@ -24,4 +24,4 @@ class DownloadSettingsTests(unittest.TestCase):
                     failure('fallo de descarga')
                     self.assertTrue(window.isEnabled())
                     self.assertIn('fallo de descarga',window.message.text())
-            finally:window.close();runtime.close()
+            finally:window.close();runtime.close();runtime.storage.db.close()

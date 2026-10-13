@@ -157,8 +157,8 @@ class Runtime:
                 from .discovery import installed_pi_version
                 package = json.loads((Path(config['gentle_path']) / 'package.json').read_text(encoding='utf-8'))
                 version = installed_pi_version(config['pi_command'])
-                if package.get('version') == '4.0.0' and version and tuple(int(n) for n in version.split('.')[:3]) < (0,99,1):
-                    raise RuntimeError('Gentle 4.0.0 necesita Pi 0.99.1 o superior. Usa el motor integrado o actualiza tu Pi.')
+                from .gentle_compat import require_compatible_pi
+                require_compatible_pi(package, version)
             launcher = config["pi_command"]
             if len(launcher) == 2 and Path(launcher[0]).stem.lower() == "node" and launcher[1].endswith(".js"):
                 launcher = [launcher[0], str(Path(__file__).parent / "resources" / "gentle-shell.mjs"), launcher[1]]
@@ -172,6 +172,8 @@ class Runtime:
                 env["PI_CODING_AGENT_DIR"] = config["gentle_agent_home"]
                 env["ARISE_GENTLE_ROOT"] = config["gentle_path"]
                 env["ARISE_GENTLE_HOME"] = config["gentle_agent_home"]
+            if config.get('gentle_bundle_root'):
+                env['ARISE_GENTLE_PREFIX'] = config['gentle_bundle_root']
             self.pi_epoch += 1
             epoch = self.pi_epoch
             if hasattr(self, "credentials"):

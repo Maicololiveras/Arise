@@ -191,3 +191,17 @@ def prepare_prerequisites(bundle, root, notify=lambda message: None, env=None):
     env = refresh_path(env, [node.parent, managers])
     notify('Dependencias listas: Node, npm, pnpm, Git/Bash, Go y tar. Abriendo Gentle Shell…')
     return env
+
+
+def prepare_shell_prerequisites(bundle, root, notify=lambda message:None):
+    """Gentle 4.2 owns Node/npm/pnpm/Go acquisition; ARISE supplies Git/Bash."""
+    root=Path(root);root.mkdir(parents=True,exist_ok=True)
+    env=refresh_path(dict(os.environ), [Path(bundle)/'node'])
+    found=find_git(env,root)
+    if not found:
+        install_native('Git',env,root,notify)
+        env=refresh_path(env);found=find_git(env,root)
+    if not found: raise RuntimeError('Git/Bash no están disponibles después de instalarlos.')
+    git,bash=found
+    notify('Git/Bash verificados. Gentle gestionará sus propios runtimes y memoria.')
+    return refresh_path(env,[git.parent,bash.parent])

@@ -12,6 +12,8 @@ def build(application, models, output):
     temporary=output.with_suffix('.tmp')
     with zipfile.ZipFile(temporary,'w',zipfile.ZIP_DEFLATED,compresslevel=1,allowZip64=True) as archive:
         archive.write(installer,'ARISE-Setup.exe',compress_type=zipfile.ZIP_STORED)
+        inventory=application/'bundle/installation-inventory.json'
+        if inventory.is_file(): archive.write(inventory,'CONTENIDO-INSTALACION.json')
         archive.write(models,'ARISE-Models-Windows.zip',compress_type=zipfile.ZIP_STORED)
         archive.writestr('Configurar ARISE.cmd','@echo off\r\n"%~dp0ARISE-Setup.exe" "/ARISE-MODELS=%~dp0ARISE-Models-Windows.zip"\r\n')
         archive.writestr('LEEME.txt',
@@ -23,10 +25,10 @@ def build(application, models, output):
             'El instalador actualiza ARISE en su carpeta existente, cierra sus procesos y conserva conversaciones y configuracion. '
             'Despues abre ARISE desde Inicio. Puedes borrar el ZIP tras completar la configuracion.\n\n'
             'Incluye modelos Vosk espanol, Whisper small, Qwen2.5-1.5B-Instruct Q4_K_M y llama.cpp Windows CPU. '
-            'Voz neuronal Piper es-MX Ald gestionada por Forge. Con 8 GB se elige CPU y Vosk. La conversacion usa el mismo Gentle del chat; su proveedor puede ser local o remoto.\n\n'
-            'Incluye GitHub CLI (gh). Para manos y ojos necesitas una sesion gh auth login con acceso a los repositorios privados, '
-            'o conectar GitHub en Credenciales. ARISE descarga e instala los MCP y verifica sus catalogos. '
-            'No se incluyen credenciales ni codigo privado. Los proveedores del agente y Gmail requieren sus propias cuentas.\n')
+            'Voz neuronal Piper es-MX Ald con motor propio, sin depender de Forge. Con 8 GB se elige CPU y Vosk. La conversacion usa el mismo Gentle del chat; su proveedor puede ser local o remoto.\n\n'
+            'Incluye GitHub CLI (gh). Forge, ScreenView e InputControl se configuran desde el bundle cuando estan incluidos, '
+            'o desde Ajustes con sus paquetes publicos cuando esten publicados. Transcripcion privada necesita gh auth login. '
+            'No se incluyen credenciales. Los proveedores del agente y Gmail requieren sus propias cuentas.\n')
     temporary.replace(output)
     print(str(output),output.stat().st_size,flush=True)
 

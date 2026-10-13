@@ -12,7 +12,7 @@ from unittest.mock import patch
 from arise_app.assistant import Assistant
 from arise_app.server import make_server
 
-CLI = Path(os.environ.get("PI_TEST_CLI", Path(__file__).resolve().parents[1] / "vendor/node_modules/@earendil-works/pi-coding-agent/dist/cli.js"))
+CLI = Path(os.environ.get("PI_TEST_CLI", Path(__file__).resolve().parents[1] / "vendor/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"))
 
 @unittest.skipUnless(CLI.is_file() and shutil.which("node"), "Pi real no está instalado; usar npm ci --prefix vendor")
 class RealPiTests(unittest.TestCase):
@@ -49,7 +49,7 @@ class RealPiTests(unittest.TestCase):
             runtime = Assistant(Path(root) / "arise")
             runtime.storage.config.update({"pi_command": [shutil.which("node"), str(CLI)], "pi_extra_args": ["--offline", "--no-extensions", "--no-skills", "--no-context-files", "--no-builtin-tools"],
                 "agent_provider": "arise-test", "agent_model": "arise-test", "thinking": "off",
-                "gentle_path": str(CLI.parents[3] / "gentle-pi")})
+                "gentle_path": str(CLI.parents[4] / "gentle-pi")})
             bridge = make_server(runtime); threading.Thread(target=bridge.serve_forever, daemon=True).start()
             try:
                 with patch.dict(os.environ, {"PI_CODING_AGENT_DIR": str(agent), "PI_OFFLINE": "1", "PI_TELEMETRY": "0", "GENTLE_PI_CONFIG_HOME": str(Path(root)/"gentle-config")}):

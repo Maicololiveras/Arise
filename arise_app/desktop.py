@@ -904,6 +904,7 @@ def main():
     parser.add_argument("--shutdown", action="store_true", help="Cerrar interfaz, daemon y sus procesos para actualizar")
     parser.add_argument("--background", action="store_true")
     parser.add_argument("--settings", action="store_true")
+    parser.add_argument("--setup", action="store_true", help="Completar la configuración de Gentle y herramientas después de instalar")
     parser.add_argument("--setup-pack", help="Configurar modelos y servidor desde el ZIP offline")
     parser.add_argument("--screenshot", help=argparse.SUPPRESS)
     parser.add_argument("--voice-smoke", help=argparse.SUPPRESS)
@@ -921,7 +922,7 @@ def main():
     address = "ARISE-" + hashlib.sha256(str(Path(args.data_dir).resolve()).encode()).hexdigest()[:20]
     client = QLocalSocket(); client.connectToServer(address)
     if client.waitForConnected(300):
-        client.write(("setup-pack:"+str(Path(args.setup_pack).resolve())+"\n").encode() if args.setup_pack else (b"settings\n" if args.settings else b"wake\n")); client.flush(); client.waitForBytesWritten(500); return 0
+        client.write(("setup-pack:"+str(Path(args.setup_pack).resolve())+"\n").encode() if args.setup_pack else (b"setup\n" if args.setup else b"settings\n" if args.settings else b"wake\n")); client.flush(); client.waitForBytesWritten(500); return 0
     local = QLocalServer()
     if not args.screenshot and not local.listen(address):
         QLocalServer.removeServer(address)
@@ -948,6 +949,7 @@ def main():
             if command == "shutdown": controller.quit_all()
             elif command == "settings": controller.show_settings()
             elif command == "wake": controller.wake()
+            elif command == "setup": controller.install_gentle()
             elif command.startswith("setup-pack:"): controller.install_model_pack(command[len("setup-pack:"):])
             sock.disconnectFromServer()
         sock.readyRead.connect(read)
@@ -955,6 +957,7 @@ def main():
         if sock.bytesAvailable(): read()
     local.newConnection.connect(connection)
     if args.setup_pack: QTimer.singleShot(100,lambda:controller.install_model_pack(str(Path(args.setup_pack).resolve())))
+    elif args.setup: QTimer.singleShot(100,controller.install_gentle)
     elif args.settings or not c["onboarding_complete"]: controller.show_settings()
     if args.screenshot:
         QTimer.singleShot(300, lambda: (orb.grab().save(args.screenshot), controller.quit()))

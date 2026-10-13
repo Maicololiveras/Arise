@@ -110,23 +110,23 @@ MODELS = '''
 def extension_for_rpc(gentle, cache, source=None):
     gentle=Path(gentle).resolve();source=Path(source or gentle/'extensions/gentle-ai.ts')
     package=json.loads((gentle/'package.json').read_text(encoding='utf-8'))
-    if package.get('name')!='gentle-pi' or package.get('version') not in ('3.3.0', '4.0.0'):return source
+    if package.get('name')!='gentle-pi' or package.get('version') not in ('3.3.0', '4.0.0', '4.2.0'):return source
     original=source.read_text(encoding='utf-8');text=original;patterns=[]
     if source.name == 'gentle-ai.ts':
-        profiles = PROFILES.replace('ARISE_PIN_ACTIONS', '["Fijar perfil en este clon", "Fijar perfil en el repositorio"]' if package['version']=='4.0.0' else '[]')
+        profiles = PROFILES.replace('ARISE_PIN_ACTIONS', '["Fijar perfil en este clon", "Fijar perfil en el repositorio"]' if package['version'] in ('4.0.0','4.2.0') else '[]')
         patterns=[(r'(async function showProfilesPanel\([\s\S]*?\): Promise<ProfilesPanelResult> \{)',profiles),
                   (r'(async function showSddModelPanel\([\s\S]*?\): Promise<ModelPanelResult> \{)',MODELS)]
-    elif package['version'] == '4.0.0' and source.name == 'gentle-shell.ts':
+    elif package['version'] in ('4.0.0','4.2.0') and source.name == 'gentle-shell.ts':
         patterns=[(r'(async function showCommandPalette\([^\n]+\): Promise<void> \{)',PALETTE),
                   (r'(async function showChangesOverlay\([^\n]+\): Promise<void> \{)',CHANGES)]
         text,count=re.subn(r'const openUsage = \(ctx: ExtensionContext\) =>', 'const openUsage = '+USAGE, text, count=1)
         if count != 1: raise RuntimeError('El panel de uso de Gentle cambió; revisa el adaptador.')
         text,count=re.subn(r'(\n\tpi.registerCommand\(USAGE_COMMAND_NAME,)', '\n\t};\\1', text, count=1)
         if count != 1: raise RuntimeError('No se pudo adaptar el panel de uso de Gentle.')
-    elif package['version'] == '4.0.0' and source.name in ('gentle-agents.ts','gentle-stats.ts'):
+    elif package['version'] in ('4.0.0','4.2.0') and source.name in ('gentle-agents.ts','gentle-stats.ts'):
         patterns=[(r'(const openOverlay = async \(ctx: ExtensionContext\) => \{)', AGENTS if source.name=='gentle-agents.ts' else STATS)]
         if source.name=='gentle-stats.ts': text=text.replace('createStatsLoader, currentSessionStats,', 'aggregateStats, createStatsLoader, currentSessionStats,')
-    elif package['version'] == '4.0.0' and source.name == 'index.ts' and source.parent.name == 'history':
+    elif package['version'] in ('4.0.0','4.2.0') and source.name == 'index.ts' and source.parent.name == 'history':
         patterns=[(r'(async function runPromptHistorySelection\([\s\S]*?\): Promise<PromptRecord \| null> \{)', HISTORY)]
     else: return source
     for pattern,body in patterns:
