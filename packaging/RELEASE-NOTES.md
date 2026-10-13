@@ -1,5 +1,6 @@
-# ARISE 0.4.10
+# ARISE 0.4.11
 
+- Icono real de ARISE: utiliza el mismo orbe, halo y partículas de la aplicación en el instalador, accesos directos y barra de tareas.
 - Gentle Shell 4.2.0 y Pi 1.2.0 integrados; detección de instalaciones existentes y sus perfiles.
 - Instalador de Windows con comprobación y preparación de dependencias antes de configurar Gentle.
 - Descarga individual de herramientas públicas y modelos desde Ajustes.
