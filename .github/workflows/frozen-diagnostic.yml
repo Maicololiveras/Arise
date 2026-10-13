@@ -40,7 +40,13 @@ jobs:
           function diagnosticWrite(kind, chunk) {
             let text = String(chunk);
             for (const value of diagnosticSecrets) text = text.replaceAll(value, '[redacted]');
-            diagnosticAppend(DIAGNOSTIC_LOG, kind + ': ' + text.slice(-16384) + '\\n');
+            if (kind === 'stdout') {
+              try {
+                const value = JSON.parse(text);
+                text = JSON.stringify({type:value.type,id:value.id,command:value.command,success:value.success,method:value.method,bytes:Buffer.byteLength(text),commands:value.data?.commands?.length,gentle:value.data?.commands?.some(c=>c.name==='gentle:status')});
+              } catch { text = 'non-JSON chunk bytes=' + Buffer.byteLength(text) + ' ' + text.slice(0,120); }
+            }
+            diagnosticAppend(DIAGNOSTIC_LOG, new Date().toISOString() + ' ' + kind + ': ' + text.slice(-16384) + '\\n');
           }
           for (const [kind, stream] of [['stdout',process.stdout],['stderr',process.stderr]]) {
             const original = stream.write.bind(stream);
@@ -48,12 +54,20 @@ jobs:
           }
           process.on('uncaughtExceptionMonitor', error => diagnosticWrite('uncaught',error.stack));
           process.on('exit', code => diagnosticWrite('exit',code));
+          const diagnosticExit = process.exit.bind(process);
+          process.exit = code => { diagnosticWrite('exit-call',new Error('exit '+code).stack); diagnosticExit(code); };
           diagnosticWrite('node',process.version);
           '''.replace('DIAGNOSTIC_LOG', json.dumps(str(log)))
           target = targets[0]
           target.write_text(prelude + target.read_text(encoding='utf-8').removeprefix('#!/usr/bin/env node\n'), encoding='utf-8')
       - name: Reproduce frozen application startup
-        run: python scripts/smoke_frozen.py dist/ARISE
+        shell: python
+        run: |
+          import subprocess, sys
+          for attempt in range(3):
+            print('Frozen startup attempt', attempt + 1, flush=True)
+            result = subprocess.run([sys.executable,'scripts/smoke_frozen.py','dist/ARISE'])
+            print('Result', result.returncode, flush=True)
       - name: Show bounded fixture diagnostics
         if: always()
         shell: python
