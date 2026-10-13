@@ -2,10 +2,10 @@
   "schema": 1,
   "tool": "forge",
   "version": "0.2.0",
-  "tag": "herramientas-forge-v0.2.0-f50935c6541e",
+  "tag": "herramientas-forge-v0.2.0-cf4551349e17",
   "platform": "windows-x64",
   "entry": "forge-mcp.exe",
-  "sha256": "be36ca6087cbb434f233a5c1dd5f2fd182971d7a2c888480f880cabedb7a7037",
-  "size": 43100670,
-  "url": "https://github.com/Maicololiveras/Arise/releases/download/herramientas-forge-v0.2.0-f50935c6541e/forge-mcp-windows-x64.zip"
+  "sha256": "dec843e0c11a153af8758e87cc68fbc51a96008b08b63f9707ab8b8d054922e7",
+  "size": 43100623,
+  "url": "https://github.com/Maicololiveras/Arise/releases/download/herramientas-forge-v0.2.0-cf4551349e17/forge-mcp-windows-x64.zip"
 }
