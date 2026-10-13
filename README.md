@@ -33,9 +33,15 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 
 ## Instalar y configurar
 
-[Producción](https://github.com/Maicololiveras/Arise/releases/latest) · [QA 0.4.8](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.8). Descarga `ARISE-Windows-Complete.zip`, extráelo y ejecuta `Configurar ARISE.cmd`. Después abre ARISE desde Inicio. Las releases se publican después de las pruebas de Docker, Windows y reemplazo de instalación.
+- **Producción:** [última versión estable](https://github.com/Maicololiveras/Arise/releases/latest).
+- **QA 0.4.10 (pruebas y novedades del orbe):** [descargar ARISE-Setup.exe — aproximadamente 400 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.10/ARISE-Setup.exe) · [ver release y ZIP completo con modelos](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.10).
+- [Consultar todas las publicaciones QA](https://github.com/Maicololiveras/Arise/releases?q=qa-v&expanded=true) para comprobar si hay una versión posterior.
 
-Consulta la [guía para instalar en otro computador y autenticar GitHub](docs/INSTALL-WINDOWS.md). QA recibe actualizaciones de `qa`; producción recibe actualizaciones de `main`. El canal de Gentle se elige por separado.
+Para actualizar una instalación existente, ejecuta `ARISE-Setup.exe` y selecciona la misma carpeta donde está ARISE; se conservan los datos. El ZIP completo con modelos es opcional para esta actualización: si lo eliges, extráelo y ejecuta `Configurar ARISE.cmd`.
+
+Cada instalación busca actualizaciones de su propio canal: **QA → qa; producción → main**. Para pasar de producción a QA, instala manualmente el instalador QA. En 0.4.4 existe un fallo del actualizador al descargar mediante `gh`; usa el instalador directo para ese primer salto a QA 0.4.10. Si el icono anclado conserva la imagen anterior, abre el nuevo acceso y vuelve a anclarlo.
+
+Las releases se publican después de las validaciones de Docker, Windows, reemplazo de instalación y paquete con modelos.
 
 La versión 0.4.0 incorpora [versionamiento, actualización y repos privados](docs/UPDATES.md). El primer salto desde 0.3.0 se instala manualmente. El build base incluye Pi 1.1.0, Gentle Shell/Gentle AI 4.0.0, Vosk español y los motores Whisper CPU. Los cuatro repos de MCP son privados: para incluirlos desde GitHub Actions configura el secret `ARISE_COMPONENTS_TOKEN` con lectura de esos repos; sin él, se construye el paquete base y puedes detectar/importar las herramientas ya instaladas. La conexión GitHub de ChatGPT no entrega automáticamente su permiso a Actions.
 
