@@ -16,7 +16,10 @@ from arise_app import __version__
 setup=Path('dist/ARISE-Setup.exe').resolve()
 if os.name!='nt':raise RuntimeError('Installer smoke requires Windows')
 report={}
-with tempfile.TemporaryDirectory(prefix='arise-upgrade-') as temporary:
+diagnostics=Path('artifacts/installer-diagnostics').resolve()
+diagnostics.mkdir(parents=True,exist_ok=True)
+setup_attempt=0
+with tempfile.TemporaryDirectory(prefix='arise-upgrade-',ignore_cleanup_errors=True) as temporary:
     root=Path(temporary); install=root/'Installed ARISE'; data=root/'data'; data.mkdir()
     config={**DEFAULTS,'onboarding_complete':True,'wake_enabled':False,'workspace':str(root/'Workspace'),'pi_command':[str(install/'bundle/node/node.exe'),str(install/'bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/cli.js')],'gentle_path':str(install/'bundle/node/node_modules/gentle-pi')}
     (data/'settings.json').write_text(json.dumps(config),encoding='utf-8')
@@ -25,8 +28,32 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-') as temporary:
     (agent/'models.json').write_text(json.dumps({'providers':{'arise-smoke':{'baseUrl':'http://127.0.0.1:1/v1','api':'openai-completions','apiKey':'fixture-only','models':[{'id':'fixture','input':['text'],'contextWindow':32000,'maxTokens':1000}]}}}),encoding='utf-8')
     env={**os.environ,'PI_CODING_AGENT_DIR':str(agent),'PI_OFFLINE':'1','QT_QPA_PLATFORM':'offscreen','ARISE_SKIP_NETWORK_SETUP':'1'}
     def run_setup():
-        result=subprocess.run([str(setup),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',f'/DIR={install}',f'/ARISE-DATA={data}',f'/LOG={root / "setup.log"}'],env=env,timeout=240)
-        if result.returncode:raise RuntimeError('Installer failed: '+str(result.returncode)+' '+(root/'setup.log').read_text(errors='replace')[-4000:])
+        global setup_attempt
+        setup_attempt+=1
+        log=diagnostics/f'setup-{setup_attempt}.log'
+        print(f'Installer attempt {setup_attempt}: starting',flush=True)
+        # Keep the installed UI/daemon running, but do not open the interactive
+        # Gentle provisioning wizard while testing the bundled Pi fixture.
+        command=[str(setup),'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',
+            '/ARISE-SETUP=0',f'/DIR={install}',f'/ARISE-DATA={data}',f'/LOG={log}']
+        process=subprocess.Popen(command,env=env)
+        try:
+            code=process.wait(timeout=600)
+        except subprocess.TimeoutExpired:
+            # Inno has a bootstrap parent and a child holding setup.log/files.
+            # Kill only this test's installer tree before temporary cleanup.
+            parent=psutil.Process(process.pid)
+            children=parent.children(recursive=True)
+            for child in reversed(children):
+                try:child.kill()
+                except psutil.NoSuchProcess:pass
+            process.kill();process.wait(timeout=15)
+            psutil.wait_procs(children,timeout=15)
+            raise
+        finally:
+            if log.exists():print(log.read_text(errors='replace')[-6000:],flush=True)
+        if code:raise RuntimeError('Installer failed: '+str(code))
+        print(f'Installer attempt {setup_attempt}: completed',flush=True)
     def ready(previous_pid=None):
         deadline=time.monotonic()+45
         while time.monotonic()<deadline:
@@ -55,6 +82,10 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-') as temporary:
         if not notes or new_remote.status()['version']!=__version__:raise RuntimeError('Version or persisted memory incorrect')
         if not (install/'bundle/python/python.exe').is_file():raise RuntimeError('Missing runtime for private tools')
         report={'fresh_install':'passed','replace_running_ui_daemon_pi':'passed','owned_children_closed':len(old_children),'user_chat_preserved':'passed','memory_preserved':'passed','stale_managed_file_removed':'passed','restarted_version':__version__}
+    except Exception as error:
+        report['error']=str(error)
+        Path('artifacts/installer-upgrade.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+        raise
     finally:stop()
 Path('artifacts/installer-upgrade.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
 print(json.dumps(report,indent=2))
