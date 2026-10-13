@@ -15,6 +15,7 @@ COPY arise_app/ arise_app/
 COPY assets/ assets/
 RUN pip install --no-cache-dir .
 COPY vendor/package*.json vendor/
+COPY vendor/forge-voice/ vendor/forge-voice/
 RUN npm ci --prefix vendor --ignore-scripts --no-audit --no-fund
 COPY web/ web/
 COPY tests/ tests/
