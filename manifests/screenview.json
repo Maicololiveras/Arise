@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "tool": "screenview",
-  "version": "0.2.0",
-  "tag": "herramientas-screenview-v0.2.0-e5cf8c896b17",
+  "version": "0.2.1",
+  "tag": "herramientas-screenview-v0.2.1-81646de03b6d",
   "platform": "windows-x64",
   "entry": "screenview-mcp.exe",
-  "sha256": "e20056ac7bd0e0f45d5faca57ce62a8982834dff84ecb537deb80c5c1bf869fd",
-  "size": 38756577,
-  "url": "https://github.com/Maicololiveras/Arise/releases/download/herramientas-screenview-v0.2.0-e5cf8c896b17/screenview-mcp-windows-x64.zip"
+  "sha256": "5903547b9cdec9463ed848cf4e2a2fc6928af47fa4d166eba240776ec410e17d",
+  "size": 38900095,
+  "url": "https://github.com/Maicololiveras/Arise/releases/download/herramientas-screenview-v0.2.1-81646de03b6d/screenview-mcp-windows-x64.zip"
 }
