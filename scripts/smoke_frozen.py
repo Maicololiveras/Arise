@@ -22,7 +22,9 @@ with tempfile.TemporaryDirectory(prefix='arise-frozen-') as temporary:
     (data/'settings.json').write_text(json.dumps({'onboarding_complete':True,
         'pi_command':[str(package/'bundle/node/node.exe'),str(root/'deleted/cli.js')],
         'gentle_path':str(root/'deleted/gentle')}),encoding='utf-8')
-    env={**os.environ,'PI_CODING_AGENT_DIR':str(agent),'PI_OFFLINE':'1','QT_QPA_PLATFORM':'offscreen','ARISE_CHAT_ROOT':str(root/'chats')}
+    # This checks shipped dependencies; public tool acquisition has its own
+    # tests and must not race the isolated fixture or depend on network timing.
+    env={**os.environ,'PI_CODING_AGENT_DIR':str(agent),'PI_OFFLINE':'1','ARISE_SKIP_NETWORK_SETUP':'1','QT_QPA_PLATFORM':'offscreen','ARISE_CHAT_ROOT':str(root/'chats')}
     engine=package/'ARISE.exe';host=package/'ARISE-host.exe'
     process=subprocess.Popen([str(host),'--engine',str(engine),'--data-dir',str(root/'data')],env=env)
     remote=None

@@ -116,12 +116,23 @@ class Runtime:
                 raise ValueError("Cada MCP necesita command como lista.")
         if not all(isinstance(config[k], str) and 0 < len(config[k]) < 120 for k in ("voice", "voice_model")):
             raise ValueError("Modelo o voz inválidos.")
+        # Background tool installation updates MCP only. It must not terminate
+        # Pi while its RPC handshake (or an idle connected session) is active.
+        mcp_only = set(changes) == {"mcp"}
+        if mcp_only:
+            previous = self.storage.config["mcp"]
+            changed = {name for name in previous.keys() | config["mcp"].keys()
+                       if previous.get(name) != config["mcp"].get(name)}
+            for name in changed:
+                client = self.mcp.pop(name, None)
+                if client: client.close()
+            if changed: self.desktop = False
         # Saving unchanged MCP settings must not discard a verified catalog.
-        if config["mcp"] != self.storage.config["mcp"] or config["workspace"] != self.storage.config["workspace"]:
+        elif config["mcp"] != self.storage.config["mcp"] or config["workspace"] != self.storage.config["workspace"]:
             self.disconnect()
         else:
             self.disconnect_pi()
-        self.model_service.close()
+        if not mcp_only: self.model_service.close()
         self.pi_retry_after = 0.0
         self.storage.save_config(config)
         self.sessions.save_preferences(self.conversation)

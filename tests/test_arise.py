@@ -77,6 +77,46 @@ class RuntimeTests(unittest.TestCase):
         self.runtime.pi_event({"type": "agent_settled"})
         self.assertFalse(self.runtime.busy)
 
+    def test_tool_install_during_pi_handshake_does_not_close_agent(self):
+        entered, resume = threading.Event(), threading.Event()
+        original = JsonProcess.request
+        errors = []
+        def delayed(process, record, **kwargs):
+            if record.get('type') == 'get_state':
+                entered.set()
+                if not resume.wait(3): raise TimeoutError('Test handshake was not released')
+            return original(process, record, **kwargs)
+        def connect():
+            try: self.runtime.connect_pi()
+            except Exception as error: errors.append(error)
+        with patch.object(JsonProcess, 'request', delayed):
+            thread = threading.Thread(target=connect)
+            thread.start()
+            try:
+                self.assertTrue(entered.wait(3))
+                agent = self.runtime.pi
+                self.runtime.settings({'mcp': {'fixture': {'command': FIXTURE, 'enabled': True}}})
+                self.assertIs(self.runtime.pi, agent)
+                self.assertIsNone(agent.process.poll())
+            finally:
+                resume.set(); thread.join(4)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual(self.runtime.pi_state['model']['id'], 'fixture')
+
+    def test_tool_update_closes_changed_catalog_but_preserves_agent(self):
+        self.runtime.connect_pi()
+        agent = self.runtime.pi
+        self.runtime.settings({'mcp': {'fixture': {'command': FIXTURE, 'enabled': True}}})
+        client = self.runtime.connect_mcp('fixture')
+        self.runtime.settings({'mcp': {'fixture': {'command': FIXTURE, 'enabled': True}}})
+        self.assertIs(self.runtime.mcp['fixture'], client)
+        self.runtime.settings({'mcp': {'fixture': {'command': FIXTURE, 'enabled': False}}})
+        self.assertNotIn('fixture', self.runtime.mcp)
+        self.assertIsNotNone(client.rpc.process.poll())
+        self.assertIs(self.runtime.pi, agent)
+        self.assertEqual(agent.request({'type': 'get_state'})['data']['model']['id'], 'fixture')
+
     def test_cancel_then_send_second_message(self):
         first = self.runtime.prompt("wait")["task_id"]
         self.runtime.stop()
