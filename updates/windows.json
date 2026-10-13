@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "channel": "qa",
-  "version": "0.4.10",
-  "notes": "# ARISE 0.4.9 QA\n\n- Comprueba las dependencias de Windows antes de iniciar el asistente de Gentle Shell.\n- Reutiliza Node/npm integrados y verifica el tar.exe de Windows.\n- Detecta Git con Bash y Go >=1.25.10; instala los ausentes con WinGet y vuelve a verificarlos antes de continuar.\n- Prepara pnpm 11.1.1 y npm en una carpeta propia sin reemplazar los gestores globales del usuario.\n- Refresca PATH para el proceso del instalador, sin exigir reiniciar ARISE.\n- Si falta WinGet, hay una cancelaci\u00f3n o un requisito sigue sin funcionar, muestra una acci\u00f3n manual y no inicia Gentle.\n\nExtrae el ZIP completo y ejecuta Configurar ARISE.cmd. Se requiere Internet para preparar dependencias. Windows puede solicitar autorizaci\u00f3n para instalar Git o Go. La autenticaci\u00f3n GitHub y la del proveedor del agente se realizan por separado.\n",
-  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.10/ARISE-Setup.exe",
-  "asset_id": 637557477,
-  "sha256": "bd8e3f3a23d2442ff4547699f7966990732b48260ad00749f4ffa0ba2831bdeb",
-  "size": 399595019,
-  "source_commit": "a3b4b3e35c4aec7b7833116961fb07924bc44456"
+  "version": "0.4.11",
+  "notes": "# ARISE 0.4.11 QA\n\n- Icono real de ARISE: utiliza el mismo orbe, halo y part\u00edculas de la aplicaci\u00f3n en el instalador, accesos directos y barra de tareas.\n- Gentle Shell 4.2.0 y Pi 1.2.0 integrados; detecci\u00f3n de instalaciones existentes y sus perfiles.\n- Instalador de Windows con comprobaci\u00f3n y preparaci\u00f3n de dependencias antes de configurar Gentle.\n- Descarga individual de herramientas p\u00fablicas y modelos desde Ajustes.\n- Icono del orbe en el ejecutable, accesos directos y barra de tareas.\n- La instalaci\u00f3n de herramientas en segundo plano conserva la conexi\u00f3n de Pi.\n- Correcci\u00f3n de las descargas del actualizador mediante GitHub CLI.\n- Publicaci\u00f3n autom\u00e1tica de los enlaces del README despu\u00e9s de superar las validaciones.\n\nPara actualizar, ejecuta ARISE-Setup.exe sobre la misma carpeta de instalaci\u00f3n. Conserva los datos. El ZIP completo con modelos es opcional. Cada canal recibe sus propias actualizaciones: main para producci\u00f3n y qa para pruebas.\n",
+  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.11/ARISE-Setup.exe",
+  "asset_id": 637871427,
+  "sha256": "87944913ba64a541b431e5fcfdf5a3d5fb87ff2c6b3b67c6147357d8924cecd8",
+  "size": 399732663,
+  "source_commit": "18f52edb39beaac3e24a8b2ca5d71ccecf090c74"
 }
