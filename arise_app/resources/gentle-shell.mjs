@@ -9,6 +9,15 @@ if (!cli) throw new Error('gentle-shell requires the configured Pi CLI path');
 let piArgs = [resolve(cli), ...args];
 const root = process.env.ARISE_GENTLE_ROOT;
 const home = process.env.ARISE_GENTLE_HOME;
+if (root && home && process.env.ARISE_GENTLE_PREFIX) {
+  const managed = await import(pathToFileURL(join(root,'scripts/bundled-install.mjs')).href);
+  const layout = managed.prefixLayout({platform:process.platform, env:process.env, home:homedir(), root:process.env.ARISE_GENTLE_PREFIX});
+  const id = managed.activeVersion(layout);
+  if (!id) throw new Error('Gentle no tiene una versión activa; repara su instalación.');
+  const managedEnv=managed.setupEnvironment(layout, {env:process.env, id});
+  for (const key of Object.keys(process.env)) { if (!(key in managedEnv)) delete process.env[key]; }
+  Object.assign(process.env, managedEnv);
+}
 if (root && home) {
   // Use the installed Gentle launch rules and its configured home. Let Pi
   // load existing packages once instead of injecting a second Gentle copy.

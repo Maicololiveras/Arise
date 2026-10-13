@@ -6,6 +6,7 @@ import unittest
 import urllib.request
 from unittest.mock import patch
 from pathlib import Path
+from types import SimpleNamespace
 from arise_app import __version__
 from arise_app.updates import validate_manifest, check_update, download_update, MANIFEST_URL
 from arise_app.github_access import PrivateRedirect, github_opener
@@ -55,4 +56,24 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(same.get_header('Authorization'),'Bearer fixture-secret')
         with self.assertRaises(RuntimeError):PrivateRedirect().redirect_request(request,None,302,'found',{},'http://evil.example')
     def test_authenticated_request_refuses_non_github_endpoint(self):
-        with self.assertRaises(ValueError):github_opener('fixture-secret')('https://evil.example')
+        for url in ('https://evil.example', 'http://api.github.com/repos/owner/repo'):
+            with self.assertRaises(ValueError):github_opener('fixture-secret')(url)
+
+    def test_gh_download_response_and_integrity_checks(self):
+        streams=[]
+        payload=BODY
+        def run(command, **kwargs):
+            self.assertNotIn('fixture-secret', ' '.join(command))
+            self.assertEqual(kwargs['env']['GH_TOKEN'], 'fixture-secret')
+            streams.append(kwargs['stdout'])
+            kwargs['stdout'].write(payload)
+            return SimpleNamespace(returncode=0)
+        with patch('arise_app.github_access.gh_executable', return_value='gh'), patch('arise_app.github_access.subprocess.run', side_effect=run), tempfile.TemporaryDirectory() as root:
+            opener=github_opener('fixture-secret')
+            target=download_update(MANIFEST, root, opener)
+            self.assertEqual(target.read_bytes(), BODY)
+            for payload in (BODY[:-1], BODY+b'extra', b'MZ'+b'X'*(len(BODY)-2)):
+                with self.assertRaises(ValueError):download_update(MANIFEST, root, opener)
+            self.assertEqual(target.read_bytes(), BODY)
+            self.assertFalse(target.with_name('ARISE-Setup.download').exists())
+        self.assertTrue(all(stream.closed for stream in streams))

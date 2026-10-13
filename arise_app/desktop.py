@@ -167,7 +167,7 @@ class Settings(QDialog):
         for provider in ("openai", "gemini", "anthropic", "github-updates", "local-dialogue", "forge-local"):
             entry = QLineEdit(); entry.setEchoMode(QLineEdit.Password); entry.setPlaceholderText("Dejar vacío conserva la clave existente")
             self.keys[provider] = entry; f.addRow(provider, entry)
-        f.addRow(QLabel("GitHub: acceso a actualizaciones y herramientas privadas. Se detecta también una sesión existente de gh."))
+        f.addRow(QLabel("Forge, ScreenView e InputControl no requieren GitHub. Transcripción privada sí requiere acceso; se detecta tu sesión de gh."))
         self.persist = QCheckBox("Guardar claves protegidas por Windows (DPAPI)"); self.persist.setChecked(os.name == "nt")
         f.addRow(self.persist)
         f.addRow(QLabel("Desmarcado: claves solo durante esta ejecución. Nunca se guardan en settings.json."))
@@ -181,11 +181,23 @@ class Settings(QDialog):
             command = QLineEdit(json.dumps(spec["command"], ensure_ascii=False))
             self.mcp[name] = (enabled, command)
             f.addRow(enabled, command)
-        self.button(f, "Instalar y reparar dependencias", self.setup_desktop_tools)
+        for name, label in (("forge", "Forge"), ("screenview", "ScreenView"), ("inputcontrol", "InputControl"), ("transcripcion", "Transcripción · requiere GitHub")):
+            self.button(f, "Descargar / reparar " + label, lambda checked=False, name=name: self.setup_desktop_tools([name]))
+        self.button(f, "Descargar las tres herramientas públicas", lambda: self.setup_desktop_tools())
+        f.addRow(QLabel("Los paquetes aún no publicados se indicarán como pendientes. Se conserva tu instalación si una descarga falla."))
         self.button(f, "Guardar y comprobar herramientas", self.connect_tools)
         self.button(f, "Importar configuración MCP", self.import_tools)
         self.text_field(f, "extra_mcp", "MCP adicionales (objeto JSON)", "{}")
         f.addRow(QLabel("Los comandos son listas de ejecutables y argumentos; no cadenas de shell."))
+        models = QWidget(); f = QFormLayout(models); tabs.addTab(models, "Descargas")
+        intro = QLabel("Instala solo lo que necesitas. Al terminar se guardan las rutas y se configura cada componente automáticamente.")
+        intro.setWordWrap(True); f.addRow(intro)
+        for name, label in (("vosk", "Vosk español · activación · ~40 MB"), ("whisper", "Whisper small · transcripción · ~465 MB"), ("piper", "Piper español · voz y motor"), ("dialogue", "Qwen · conversación local y servidor · más de 1 GB")):
+            self.button(f, "Descargar " + label, lambda checked=False, name=name: self.download_models([name]))
+        self.button(f, "Descargar y configurar todos los modelos", lambda: self.download_models(["vosk", "whisper", "piper", "dialogue"]))
+        self.button(f, "Instalar modelos desde ZIP existente", controller.install_model_pack)
+        note = QLabel("Requiere conexión y espacio libre. Si falla, puedes reintentar; tu configuración anterior se conserva. Los modelos se descargan de sus fuentes oficiales.")
+        note.setWordWrap(True); f.addRow(note)
         ui = QWidget(); f = QFormLayout(ui); tabs.addTab(ui, "Orbe")
         size = QSpinBox(); size.setRange(48, 240); size.setValue(config["orb_size"]); self.fields["orb_size"] = size
         f.addRow("Tamaño", size)
@@ -242,7 +254,7 @@ class Settings(QDialog):
         changes["wake_phrases"] = [v.strip().lower() for v in changes["wake_phrases"].split(",") if v.strip()]
         extra = json.loads(changes.pop("extra_mcp"))
         if not isinstance(extra, dict): raise ValueError("MCP adicionales debe ser un objeto JSON")
-        changes["mcp"] = {**{name: {"command": json.loads(command.text()), "enabled": enabled.isChecked()} for name, (enabled, command) in self.mcp.items()}, **extra}
+        changes["mcp"] = {**{name: {**self.runtime.storage.config["mcp"].get(name, {}), "command": json.loads(command.text()), "enabled": enabled.isChecked()} for name, (enabled, command) in self.mcp.items()}, **extra}
         changes["onboarding_complete"] = True
         return changes
 
@@ -311,14 +323,41 @@ class Settings(QDialog):
         from .downloads import install_voice_pack
         self.controller.background(lambda: install_voice_pack(filename, self.runtime.storage.root), lambda path: self.fields["wake_model"].setText(path))
 
-    def setup_desktop_tools(self):
+    def setup_desktop_tools(self, selected=None):
         if not self.save(): return
-        self.message.setText('Instalando pantalla, control, transcripción y Forge…')
+        self.message.setText('Descargando y configurando '+', '.join(selected or ['Forge', 'ScreenView', 'InputControl'])+'…')
+        self.setEnabled(False)
         def complete(result):
-            self.message.setText('Dependencias instaladas. Herramientas: '+str(result.get('catalogs',{})))
+            self.setEnabled(True)
             self.controller.settings_window=None; self.hide()
             self.controller.show_settings()
-        self.controller.background(lambda:self.runtime.request('tools/setup-desktop',{},timeout=2400),complete,lambda message:self.message.setText(message))
+            self.controller.settings_window.message.setText('Herramientas configuradas: '+', '.join(result.get('components', {})))
+        def failed(message):
+            self.setEnabled(True); self.message.setText(str(message))
+        def download():
+            if getattr(self.runtime, 'is_remote', False):
+                return self.runtime.request('tools/setup-desktop', {'components':selected}, timeout=2400)
+            from .tool_setup import setup_desktop_tools
+            return setup_desktop_tools(self.runtime, selected)
+        self.controller.background(download, complete, failed)
+
+    def download_models(self, selected):
+        if not self.save(): return
+        self.message.setText('Descargando y verificando '+', '.join(selected)+'… Esto puede tardar varios minutos.')
+        self.setEnabled(False)
+        def complete(result):
+            self.setEnabled(True)
+            self.controller.settings_window=None; self.hide()
+            self.controller.show_settings()
+            self.controller.settings_window.message.setText("Modelos descargados y configurados: "+", ".join(result["installed"]))
+        def failed(message):
+            self.setEnabled(True); self.message.setText('No se completó la instalación: '+str(message))
+        def download():
+            if getattr(self.runtime, 'is_remote', False):
+                return self.runtime.request('models/download', {'components':selected}, timeout=14400)
+            from .model_setup import install_models
+            return install_models(self.runtime, selected)
+        self.controller.background(download, complete, failed)
 
     def detect_agent(self):
         from .discovery import detect
@@ -865,6 +904,7 @@ def main():
     parser.add_argument("--shutdown", action="store_true", help="Cerrar interfaz, daemon y sus procesos para actualizar")
     parser.add_argument("--background", action="store_true")
     parser.add_argument("--settings", action="store_true")
+    parser.add_argument("--setup", action="store_true", help="Completar la configuración de Gentle y herramientas después de instalar")
     parser.add_argument("--setup-pack", help="Configurar modelos y servidor desde el ZIP offline")
     parser.add_argument("--screenshot", help=argparse.SUPPRESS)
     parser.add_argument("--voice-smoke", help=argparse.SUPPRESS)
@@ -877,12 +917,15 @@ def main():
     if args.shutdown:
         from .updates import shutdown_application
         return shutdown_application(args.data_dir)
+    if os.name == 'nt':
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('PRAXISGENAI.ARISE')
     app = QApplication.instance() or QApplication(sys.argv); app.setApplicationName("ARISE"); app.setWindowIcon(icon()); app.setQuitOnLastWindowClosed(False)
     import hashlib
     address = "ARISE-" + hashlib.sha256(str(Path(args.data_dir).resolve()).encode()).hexdigest()[:20]
     client = QLocalSocket(); client.connectToServer(address)
     if client.waitForConnected(300):
-        client.write(("setup-pack:"+str(Path(args.setup_pack).resolve())+"\n").encode() if args.setup_pack else (b"settings\n" if args.settings else b"wake\n")); client.flush(); client.waitForBytesWritten(500); return 0
+        client.write(("setup-pack:"+str(Path(args.setup_pack).resolve())+"\n").encode() if args.setup_pack else (b"setup\n" if args.setup else b"settings\n" if args.settings else b"wake\n")); client.flush(); client.waitForBytesWritten(500); return 0
     local = QLocalServer()
     if not args.screenshot and not local.listen(address):
         QLocalServer.removeServer(address)
@@ -909,6 +952,7 @@ def main():
             if command == "shutdown": controller.quit_all()
             elif command == "settings": controller.show_settings()
             elif command == "wake": controller.wake()
+            elif command == "setup": controller.install_gentle()
             elif command.startswith("setup-pack:"): controller.install_model_pack(command[len("setup-pack:"):])
             sock.disconnectFromServer()
         sock.readyRead.connect(read)
@@ -916,6 +960,7 @@ def main():
         if sock.bytesAvailable(): read()
     local.newConnection.connect(connection)
     if args.setup_pack: QTimer.singleShot(100,lambda:controller.install_model_pack(str(Path(args.setup_pack).resolve())))
+    elif args.setup: QTimer.singleShot(100,controller.install_gentle)
     elif args.settings or not c["onboarding_complete"]: controller.show_settings()
     if args.screenshot:
         QTimer.singleShot(300, lambda: (orb.grab().save(args.screenshot), controller.quit()))

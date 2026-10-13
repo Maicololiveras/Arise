@@ -10,15 +10,17 @@ from .processes import JsonProcess
 def voice_command(runtime):
     spec=runtime.storage.config.get('mcp',{}).get('forge',{})
     command=spec.get('command',[])
-    if not spec.get('enabled') or len(command)!=2:
+    retained=spec.get('voice_command', [])
+    if retained and (len(retained)!=2 or not all(Path(p).is_file() for p in retained)): retained=[]
+    if not spec.get('enabled') or (not retained and len(command)!=2):
         raise RuntimeError('Instala o repara Forge para activar su voz.')
-    entry=Path(command[1]).parent.parent/'voice/forge-voice.js'
+    entry=Path(retained[1]) if retained else Path(command[1]).parent.parent/'voice/forge-voice.js'
     if not entry.is_file():raise RuntimeError('Actualiza Forge: esta versión no incluye el puente de voz.')
     if runtime.storage.config.get('piper_model'):
         try: ready=json.loads((entry.parent/'capabilities.json').read_text()).get('neural_piper') is True
         except (OSError,ValueError): ready=False
         if not ready: raise RuntimeError('Actualiza Forge desde Instalar y reparar dependencias para usar la voz neuronal.')
-    return [command[0],str(entry)]
+    return [retained[0] if retained else command[0],str(entry)]
 
 
 def speak(runtime,text,voice,cancel,active,shutdown):

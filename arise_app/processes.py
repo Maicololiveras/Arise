@@ -21,9 +21,13 @@ def executable_argv(command):
     if os.name == "nt" and resolved.lower().endswith((".cmd", ".bat")):
         from pathlib import Path
         if Path(resolved).stem.lower() == "pi":
-            root = Path(resolved).parent / "node_modules" / "@earendil-works" / "pi-coding-agent" / "dist" / "cli.js"
-            if root.is_file() and shutil.which("node"):
-                return [shutil.which("node"), str(root), *command[1:]]
+            package = Path(resolved).parent / "node_modules" / "@earendil-works" / "pi-coding-agent"
+            try:
+                metadata = json.loads((package / 'package.json').read_text(encoding='utf-8'))
+                root = (package / metadata['bin']['pi']).resolve()
+                if metadata.get('name') == '@earendil-works/pi-coding-agent' and root.is_relative_to(package.resolve()) and root.is_file() and shutil.which('node'):
+                    return [shutil.which('node'), str(root), *command[1:]]
+            except (OSError, ValueError, KeyError, TypeError): pass
         raise RuntimeError("Configura un ejecutable directo, por ejemplo [node, ruta/cli.js]; no un .cmd.")
     return [resolved, *command[1:]]
 

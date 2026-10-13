@@ -13,7 +13,7 @@ Copy-Item -LiteralPath (Join-Path $root 'vendor/package-lock.json') -Destination
 & node (Join-Path $PSScriptRoot 'install-gentle-native.mjs') (Join-Path $nodeRoot 'node_modules/gentle-pi')
 Check-Exit 'Gentle AI nativo verificado (Windows requiere Go 1.25.10+)'
 # Ship npm for private-tool provisioning on PCs without any Node installation.
-& npm install --prefix $nodeRoot --ignore-scripts --no-save --package-lock=false --no-audit --no-fund 'npm@11.10.0'
+& npm install --prefix $nodeRoot --ignore-scripts --no-save --package-lock=false --no-audit --no-fund 'npm@11.19.0'
 Check-Exit 'npm integrado para instalación automática de herramientas'
 $gentle='@bundle/node/node_modules/gentle-pi'
 if($GentlePath){
@@ -26,7 +26,7 @@ $manifest=@{
     pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     gentle_path=$gentle
     wake_model='@bundle/models/vosk-model-small-es-0.42'
-    versions=@{pi='1.1.0';gentle='4.0.0';arise='0.4.9';vosk='small-es-0.42'}
+    versions=@{pi='1.2.0';gentle='4.2.0';arise='0.4.10';vosk='small-es-0.42'}
     mcp=@{}
 }
 & python (Join-Path $PSScriptRoot 'prepare_voice_pack.py') --destination $bundle --output (Join-Path (Split-Path $Target -Parent) 'ARISE-Voice-Models-es.zip')
@@ -77,4 +77,6 @@ Check-Exit 'Instalador oficial de Gentle (estable/main)'
 $ghRoot=Join-Path $bundle 'gh';New-Item -ItemType Directory -Path $ghRoot -Force | Out-Null
 Copy-Item -LiteralPath (Get-Command gh.exe).Source -Destination (Join-Path $ghRoot 'gh.exe')
 $manifest | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $bundle 'manifest.json') -Encoding UTF8
+& python (Join-Path $PSScriptRoot 'audit_bundle.py') $Target
+Check-Exit 'Inventario completo de instalación'
 Write-Host "Bundle preparado en $bundle"
