@@ -1,4 +1,4 @@
-#define AppVersion "0.4.13"
+#define AppVersion "0.4.14"
 [Setup]
 AppId={{E99B270E-3F4F-421C-9D9F-705E523F3ED6}
 AppName=ARISE

@@ -83,7 +83,7 @@ class ProjectSessions:
                     kind='copy'
             data={'conversation':conversation,'project':project['id'],'ordinal':ordinal,'folder':str(folder),'workspace':str(workspace),'kind':kind,'branch':branch}
             (folder/'session').mkdir()
-            (folder/'preferences.json').write_text(json.dumps({key:self.storage.config[key] for key in PREFERENCES},indent=2),encoding='utf-8')
+            (folder/'preferences.json').write_text(json.dumps({key:(False if key == "code_enabled" else self.storage.config[key]) for key in PREFERENCES},indent=2),encoding='utf-8')
             (folder/'session.json').write_text(json.dumps(data,indent=2),encoding='utf-8')
             with self.storage.lock,self.storage.db:
                 self.storage.db.execute('INSERT INTO chat_sessions VALUES(:conversation,:project,:ordinal,:folder,:workspace,:kind,:branch)',data)

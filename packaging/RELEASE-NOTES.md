@@ -1,9 +1,9 @@
-# ARISE 0.4.13 · QA
+# ARISE 0.4.14 · QA
 
-- Selección explícita de Gonzalo (es-CO-GonzaloNeural), +5%, mediante Forge/Edge. Necesita Internet y Forge; nunca sustituye automáticamente por Windows.
-- Dictado con pausa configurable (1400 ms por defecto), separado de la síntesis y reproducción de voz.
-- Un clic en el orbe abre el chat. Estado y botón Detener manos y ojos visibles; cierre de observadores y controladores antes de esperar al agente.
-- Ajustes adaptables, selectores protegidos contra la rueda y cierre que descarta cambios sin guardar.
-- Errores 503 explicados y recuperación manual del borrador sin reenviarlo automáticamente.
+- Sesión persistente entre mensajes y ajustes de voz; cambio de chat con historial propio y cierre controlado.
+- Capacidades reales visibles, autorización local por chat y ejecución mediante Gentle, sin activar escritorio.
+- Creación y lectura DOCX sin escritorio, con contenido verificado y plantilla DOCX opcional en modo añadir.
+- Actividad de ARISE: cuadro discreto y plegable, estados reales de herramientas/subagentes, modelo cuando se informa y progreso sin porcentajes inventados. No muestra razonamiento privado.
+- Parada conserva revocación de manos/ojos; cierra subagentes de fondo sin reiniciarlos automáticamente.
 
-QA pendiente en PC real: escuchar Gonzalo, probar el micrófono y verificar Ctrl+Alt+Esc con InputControl y ScreenView activos.
+Pruebas locales con Pi/Gentle reales y modelo simulado, DOCX real y UI Qt. Pendiente validación física de Windows, proveedor real y plantilla WEG del usuario. Detalles: docs/QA-ORCHESTRATOR-0.4.14.md.

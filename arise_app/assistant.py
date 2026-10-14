@@ -64,6 +64,10 @@ class Assistant(Runtime):
             raise
 
     def steer(self, text, images=None):
+        with self.transition_lock:
+            return self._steer_owned(text, images)
+
+    def _steer_owned(self, text, images=None):
         from .attachments import validate_images
         images=validate_images(images)
         if images and not str(text).strip(): text="Describe estas imágenes."
@@ -110,6 +114,7 @@ class Assistant(Runtime):
         pending = {"event": threading.Event(), "approved": False, "generation": self.stop_generation}
         with self.lock:
             self.approvals[identity] = pending
+        self.publish_activity({"type":"waiting"})
         self.orb.update("waiting_approval")
         self.emit("approval", {"id": identity, "action": action, "preview": preview})
         try:
@@ -130,17 +135,22 @@ class Assistant(Runtime):
             pending["event"].set()
 
     def stop(self):
-        self.stop_generation += 1
+        interrupted = self.current_task if self.busy else None
+        with self.lock:
+            self.stop_generation += 1
         self.desktop = False  # revoke before waiting for the agent to abort
         for pending in list(getattr(self, "approvals", {}).values()):
             pending["event"].set()
         result = super().stop()
+        if interrupted and interrupted in self.tasks: self.persist_task(self.tasks[interrupted])
         if hasattr(self, "orb"):
             self.orb.update(control=False, screen=False)
         return result
 
     def tool_catalog(self):
         catalog = super().tool_catalog()
+        from .documents import TOOLS
+        catalog["tools"].extend(TOOLS)
         catalog["tools"].extend([
             {"name": "files.write", "description": "Escribe UTF-8 dentro del workspace.", "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}, "text": {"type": "string"}}, "required": ["path", "text"]}},
             {"name": "gmail.send_draft", "description": "Solicita confirmación visible para enviar un borrador existente. Nunca repetir un envío ambiguo.", "inputSchema": {"type": "object", "properties": {"draft_id": {"type": "string"}}, "required": ["draft_id"]}},
@@ -153,6 +163,15 @@ class Assistant(Runtime):
     def call_tool(self, name, arguments):
         if not isinstance(arguments, dict):
             raise ValueError("arguments debe ser un objeto.")
+        if name.startswith("documents."):
+            from .documents import create_docx, read_docx
+            with self.action_lock:
+                if name == "documents.create_docx":
+                    result=create_docx(self, arguments)
+                    self.publish_activity({"type":"document_verified", "paragraphs":result["paragraphs_added"]})
+                    return self.wrap(result)
+                if name == "documents.read_docx": return self.wrap(read_docx(self.scoped_path(arguments["path"])))
+            raise ValueError("Herramienta de documentos desconocida.")
         if name == "files.write":
             path = self.scoped_path(arguments["path"])
             text = arguments["text"]

@@ -180,7 +180,11 @@ class Settings(QDialog):
             self.text_field(f, key, label, value)
         self.fields["thinking"] = WheelSafeCombo(); self.fields["thinking"].addItems(["off", "minimal", "low", "medium", "high", "xhigh"])
         self.fields["thinking"].setCurrentText(config["thinking"]); f.addRow("Esfuerzo", self.fields["thinking"])
-        self.check_field(f, "code_enabled", "Permitir herramientas de código y shell de Pi", config["code_enabled"])
+        self.check_field(f, "code_enabled", "Autorizar ejecución local en este chat", config["code_enabled"])
+        note = QLabel("Incluye shell y subagentes de Gentle. La carpeta es el directorio inicial, no una sandbox. "
+                      "Cada chat nuevo requiere autorización propia. Ocultar el panel o terminar la voz conserva la sesión.")
+        note.setWordWrap(True); f.addRow(note)
+        self.button(f, "Ver capacidades reales", self.show_capabilities)
         self.button(f, "Elegir carpeta de trabajo", lambda: self.pick("workspace", True))
         self.button(f, "Elegir Gentle Shell", lambda: self.pick("gentle_path", True))
         self.button(f, "Conectar y listar modelos", self.models)
@@ -458,6 +462,20 @@ class Settings(QDialog):
                 try: winreg.DeleteValue(key, "ARISE")
                 except FileNotFoundError: pass
 
+    def show_capabilities(self):
+        def operation():
+            self.runtime.connect_pi()
+            return self.runtime.status()["capabilities"]
+        def done(cap):
+            text = ("Carpeta: " + cap["workspace"] + "\nEjecución local autorizada: "
+                    + ("Sí" if cap["local_execution_authorized"] else "No")
+                    + "\nGentle verificado: " + ("Sí" if cap["gentle_verified"] else "No")
+                    + "\nWord: crear y leer DOCX dentro de la carpeta.\nHerramientas Pi observadas: "
+                    + (", ".join(cap["pi_tools_observed"]) or "Sin catálogo verificado")
+                    + "\n\n" + cap["shell_scope"])
+            QMessageBox.information(self, "Capacidades del chat", text)
+        self.controller.background(operation, done)
+
 class Panel(QWidget):
     def __init__(self, controller):
         super().__init__(); self.controller = controller; self.runtime = controller.runtime
@@ -466,13 +484,15 @@ class Panel(QWidget):
         layout.setContentsMargins(14, 12, 14, 10); layout.setSpacing(7)
         title = QLabel("ARISE Assistant"); title.setObjectName("chatTitle"); layout.addWidget(title)
         self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); layout.addWidget(self.status)
-        self.privacy = QLabel("Micrófono apagado · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); layout.addWidget(self.privacy)
+        self.privacy = QLabel("Micrófono apagado · Pantalla apagada · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); layout.addWidget(self.privacy)
         from .chat_content import ChatHistory
         self.emergency=QPushButton('Detener manos y ojos · Ctrl+Alt+Esc')
         self.emergency.setAccessibleName('Detener manos y ojos');self.emergency.clicked.connect(controller.stop)
         self.emergency.setStyleSheet('background:#6B2636;color:white;font-weight:600;');layout.addWidget(self.emergency)
         self.recovery=QPushButton('Recuperar último mensaje para revisar');self.recovery.hide();self.recovery.clicked.connect(self.restore_draft);layout.addWidget(self.recovery)
         self.last_submission=None
+        from .activity_widget import ActivityWidget
+        self.activity_view=ActivityWidget();layout.addWidget(self.activity_view)
         self.history = ChatHistory(); self.history.setObjectName("chatHistory"); self.history.setOpenExternalLinks(False); layout.addWidget(self.history, 1)
         self.attachments=[]
         self.attachment_bar=QWidget(); self.attachment_layout=QHBoxLayout(self.attachment_bar)
@@ -489,6 +509,7 @@ class Panel(QWidget):
         action = QWidgetAction(self.navigation_menu); action.setDefaultWidget(picker); self.navigation_menu.addAction(action)
         self.navigation_menu.addAction(control_icon("plus"), "Nuevo chat", self.new_conversation)
         self.navigation_menu.addAction(control_icon("folder"), "Elegir carpeta…", self.open_project)
+        self.navigation_menu.addAction("Cerrar sesión del chat (conservar historial)", lambda: controller.background(lambda:(controller.voice.end_session(), self.runtime.suspend_chat())))
         self.navigation_menu.addAction("Configurar todo desde ZIP…", controller.install_model_pack)
         self.navigation_menu.addAction(control_icon("settings"), "Ajustes…", controller.show_settings)
         menu = self.navigation_menu.addMenu("Comandos de la sesión"); self.commands_menu = menu; self.commands_loading = False
@@ -567,6 +588,7 @@ class Panel(QWidget):
     def reload(self):
         catalog = self.runtime.project_catalog(); self.current_chat = catalog["active"]["conversation"]
         self.history.clear()
+        self.activity_view.set_activity(self.runtime.status().get("activity", {}))
         for message in self.runtime.storage.messages(self.current_chat):
             self.append({"user":"Tú","voice_user":"Voz · Tú","voice_assistant":"Voz · ARISE"}.get(message["role"],"ARISE"), message["text"], message.get("images"))
         self.conversations.blockSignals(True); self.conversations.clear()
@@ -904,7 +926,9 @@ class Controller(QObject):
             if kind == "conversation_changed":
                 self.close_dialogs(); self.panel.reload(); continue
             if event.get("conversation") != self.panel.current_chat: continue
-            if kind == "orb":
+            if kind == "activity":
+                self.panel.activity_view.set_activity(data)
+            elif kind == "orb":
                 active = data["state"] != "idle"
                 self.orb.apply_state({"speaking": data["state"] == "speaking", "listening": data["state"] == "listening",
                     "reason": data["activity"], "state": data["state"], "privacy": data, "speaker": {"understanding": "subagent", "waiting_approval": "approval", "error": "error", "speaking": "human", "working": "working"}.get(data["state"], "orchestrator"),

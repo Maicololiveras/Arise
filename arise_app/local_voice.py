@@ -14,6 +14,7 @@ class LocalVoiceBridge:
     def __init__(self, runtime, audio, say, active, shutdown):
         self.runtime, self.audio, self.say, self.active, self.shutdown = runtime, audio, say, active, shutdown
         self.conversation = runtime.conversation
+        self.chat_generation = getattr(runtime,"chat_generation",0)
         self.closed = threading.Event(); self.lock = threading.RLock()
         self.generation = 0; self.cancel_speech = threading.Event(); self.interrupted = False
         self.commands = queue.Queue(maxsize=8); self.responses = queue.Queue(maxsize=8)
@@ -22,7 +23,7 @@ class LocalVoiceBridge:
         self.threads = [threading.Thread(target=self._commands,daemon=True,name='arise-local-delegate'),threading.Thread(target=self._responses,daemon=True,name='arise-local-speech'),threading.Thread(target=self._delegates,daemon=True,name='arise-gentle-dispatch')]
         for thread in self.threads: thread.start()
     def valid(self):
-        return not self.closed.is_set() and self.active.is_set() and not self.shutdown.is_set() and self.runtime.conversation == self.conversation
+        return not self.closed.is_set() and self.active.is_set() and not self.shutdown.is_set() and self.runtime.conversation == self.conversation and getattr(self.runtime,"chat_generation",0) == self.chat_generation
     def interrupt(self):
         with self.lock:
             self.generation += 1; self.cancel_speech.set(); self.interrupted = True

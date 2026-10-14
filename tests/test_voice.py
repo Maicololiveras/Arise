@@ -82,3 +82,12 @@ class VoiceTests(unittest.IsolatedAsyncioTestCase):
             session=VoiceSession(self.r,self.audio,self.active,connect=lambda *a,**kw:connect(url))
             with self.assertRaisesRegex(RuntimeError,"configurar"):await session.run()
         self.assertNotEqual(self.r.orb.value.state,"listening")
+
+    async def test_old_voice_cannot_dispatch_or_speak_after_chat_switch_and_return(self):
+        session=VoiceSession(self.r,self.audio,self.active)
+        original=self.r.conversation
+        self.r.switch_conversation();self.r.switch_conversation(original)
+        with self.assertRaisesRegex(RuntimeError,"cambió"):
+            await session.delegate("delegate_task",{"instruction":"No ejecutar"})
+        await session.openai_event({"type":"response.output_audio.delta","delta":base64.b64encode(b"12").decode()})
+        self.assertEqual(self.audio.played,[])

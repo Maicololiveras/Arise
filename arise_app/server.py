@@ -32,6 +32,9 @@ def make_server(runtime, port=0):
             chat = self.headers.get("X-Arise-Conversation")
             if chat and chat != runtime.conversation:
                 self.reply({"error": "El chat ya no está activo"}, 409); return False
+            epoch = self.headers.get("X-Arise-Session")
+            if epoch and epoch != str(runtime.pi_epoch):
+                self.reply({"error": "La sesión ya no está activa"}, 409); return False
             return True
 
         def do_GET(self):
@@ -65,7 +68,17 @@ def make_server(runtime, port=0):
                 data = json.loads(self.rfile.read(length))
                 if not isinstance(data, dict): raise ValueError("Se requiere un objeto")
                 route = urllib.parse.urlparse(self.path).path
-                if route == "/api/tools/call": value = runtime.call_tool(data.get("name", ""), data.get("arguments", {}))
+                if route == "/api/tools/call":
+                    # Recheck after reading the body. Scoped file/document calls
+                    # finish in their originating workspace before a chat switch.
+                    name=data.get("name", "")
+                    if name.startswith(("files.","documents.")):
+                        with runtime.transition_lock:
+                            if not self.authorize(): return
+                            value=runtime.call_tool(name, data.get("arguments", {}))
+                    else:
+                        if not self.authorize(): return
+                        value=runtime.call_tool(name, data.get("arguments", {}))
                 elif route == "/api/prompt": value = runtime.steer(data.get("text", ""), data.get("images"))
                 elif route == "/api/stop": value = runtime.stop()
                 elif route == "/api/config":
@@ -121,6 +134,26 @@ def make_server(runtime, port=0):
                 elif route == "/api/project":
                     if runtime.voice_service: runtime.voice_service.end_session()
                     value = runtime.select_project(data["path"])
+                elif route == "/api/session/capabilities":
+                    with runtime.lock:
+                        if (self.headers.get("X-Arise-Conversation") != runtime.conversation or
+                                self.headers.get("X-Arise-Session") != str(runtime.pi_epoch)):
+                            raise ValueError("El chat ya no está activo")
+                        if not isinstance(data.get("tools"), list) or not all(isinstance(t,str) for t in data["tools"]):
+                            raise ValueError("Catálogo inválido")
+                        runtime.pi_tools = data["tools"][:1000]
+                    value = {"ok": True}
+                elif route == "/api/session/activity":
+                    with runtime.lock:
+                        if (self.headers.get("X-Arise-Conversation") != runtime.conversation or
+                                self.headers.get("X-Arise-Session") != str(runtime.pi_epoch)):
+                            raise ValueError("La sesión ya no está activa")
+                        if data.get("type") != "subagent_status": raise ValueError("Evento no admitido")
+                        runtime.publish_activity(data)
+                    value = {"ok": True}
+                elif route == "/api/session/close":
+                    with runtime.transition_lock: runtime.suspend_chat()
+                    value = {"ok": True}
                 elif route == "/api/session/command": value = runtime.session_command(data["command"])
                 elif route == "/api/dialog": value = runtime.answer_dialog(data)
                 elif route == "/api/approval": runtime.approve(data["id"], data.get("approved")); value = {"ok": True}

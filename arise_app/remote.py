@@ -87,6 +87,7 @@ class RemoteAssistant:
     def project_catalog(self): return self.request("projects")
     def select_project(self, path):
         result = self.request("project", {"path": path}); self.storage.config = self.request("config"); return result
+    def suspend_chat(self): return self.request("session/close", {})
     def session_command(self, command): return self.request("session/command", {"command": command})
     def answer_dialog(self, data): return self.request("dialog", data)
     def approve(self, identity, approved): return self.request("approval", {"id": identity, "approved": approved})

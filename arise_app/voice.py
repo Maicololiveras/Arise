@@ -48,18 +48,30 @@ class VoiceSession:
         self.cancelled_calls = set()
         self.last_activity = time.monotonic()
         self.config = runtime.storage.config.copy()
+        self.conversation = runtime.conversation
+        self.chat_generation = getattr(runtime,"chat_generation",0)
         self.playback_seen = False
 
     async def send(self, record):
         await self.ws.send(json.dumps(record, ensure_ascii=False))
 
+    def same_chat(self):
+        return self.runtime.conversation == self.conversation and getattr(self.runtime,"chat_generation",0) == self.chat_generation
+
+    def _dispatch_to_chat(self, name, args):
+        with self.runtime.transition_lock:
+            if not self.same_chat() or not self.active.is_set():
+                raise RuntimeError("La sesión de voz cambió; la instrucción no se ejecutó.")
+            if name == "stop_task": return self.runtime.stop()
+            return self.runtime.steer(args["instruction"])
+
     async def delegate(self, name, args):
         if name == "stop_task":
-            await asyncio.to_thread(self.runtime.stop)
+            await asyncio.to_thread(self._dispatch_to_chat, name, args)
             return {"stopped": True}
         if name != "delegate_task" or not isinstance(args.get("instruction"), str):
             raise ValueError("Solicitud de voz inválida.")
-        task = await asyncio.to_thread(self.runtime.steer, args["instruction"])
+        task = await asyncio.to_thread(self._dispatch_to_chat, name, args)
         identity = task["task_id"]
         while self.active.is_set():
             status = self.runtime.tasks[identity]
@@ -76,7 +88,7 @@ class VoiceSession:
             result = await self.delegate(name, args)
         except Exception as error:
             result = {"error": str(error)[:500]}
-        if not self.active.is_set() or identity in self.cancelled_calls:
+        if not self.same_chat() or not self.active.is_set() or identity in self.cancelled_calls:
             return
         if self.config["voice_provider"] == "openai":
             await self.send({"type": "conversation.item.create", "item": {"type": "function_call_output",
@@ -92,6 +104,7 @@ class VoiceSession:
         task.add_done_callback(self.tasks.discard)
 
     async def openai_event(self, event):
+        if not self.same_chat(): return
         kind = event.get("type", "")
         if kind == "error":
             raise RuntimeError("El proveedor rechazó la sesión o un evento. Revisa el modelo, la voz y la cuenta.")
@@ -113,6 +126,7 @@ class VoiceSession:
             self.last_activity = time.monotonic()
 
     async def gemini_event(self, event):
+        if not self.same_chat(): return
         if event.get("error"):
             raise RuntimeError("Gemini rechazó la sesión. Revisa el modelo, la voz y la cuenta.")
         content = event.get("serverContent", {})
