@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "channel": "qa",
-  "version": "0.4.13",
-  "notes": "# ARISE 0.4.13 QA\n\n- Selecci\u00f3n expl\u00edcita de Gonzalo (es-CO-GonzaloNeural), +5%, mediante Forge/Edge. Necesita Internet y Forge; nunca sustituye autom\u00e1ticamente por Windows.\n- Dictado con pausa configurable (1400 ms por defecto), separado de la s\u00edntesis y reproducci\u00f3n de voz.\n- Un clic en el orbe abre el chat. Estado y bot\u00f3n Detener manos y ojos visibles; cierre de observadores y controladores antes de esperar al agente.\n- Ajustes adaptables, selectores protegidos contra la rueda y cierre que descarta cambios sin guardar.\n- Errores 503 explicados y recuperaci\u00f3n manual del borrador sin reenviarlo autom\u00e1ticamente.\n\nQA pendiente en PC real: escuchar Gonzalo, probar el micr\u00f3fono y verificar Ctrl+Alt+Esc con InputControl y ScreenView activos.\n",
-  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.13/ARISE-Setup.exe",
-  "asset_id": 638262896,
-  "sha256": "5f5c04cd7ff8ee63d2d1799ea149132c77e52cb22424762fc3d65c6bd9f9d522",
-  "size": 400275790,
-  "source_commit": "b3ac3481d8e7d79adbcaeb2dd97914e9aaff87d7"
+  "version": "0.4.14",
+  "notes": "# ARISE 0.4.14 QA\n\n- Sesi\u00f3n persistente entre mensajes y ajustes de voz; cambio de chat con historial propio y cierre controlado.\n- Capacidades reales visibles, autorizaci\u00f3n local por chat y ejecuci\u00f3n mediante Gentle, sin activar escritorio.\n- Creaci\u00f3n y lectura DOCX sin escritorio, con contenido verificado y plantilla DOCX opcional en modo a\u00f1adir.\n- Actividad de ARISE: cuadro discreto y plegable, estados reales de herramientas/subagentes, modelo cuando se informa y progreso sin porcentajes inventados. No muestra razonamiento privado.\n- Parada conserva revocaci\u00f3n de manos/ojos; cierra subagentes de fondo sin reiniciarlos autom\u00e1ticamente.\n\nPruebas locales con Pi/Gentle reales y modelo simulado, DOCX real y UI Qt. Pendiente validaci\u00f3n f\u00edsica de Windows, proveedor real y plantilla WEG del usuario. Detalles: docs/QA-ORCHESTRATOR-0.4.14.md.\n",
+  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.14/ARISE-Setup.exe",
+  "asset_id": 640896657,
+  "sha256": "b17883e5c0de39df3f7bbbf921ced3b17b8b47ad2ab2c7ab73e947de8afa6835",
+  "size": 402661131,
+  "source_commit": "adb5efe71636623782d132fc432c8da0330f94b8"
 }
