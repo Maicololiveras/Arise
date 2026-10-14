@@ -30,7 +30,7 @@ class ActivityWidget(QWidget):
         self.data=data
         model=data.get('model') or 'no informado'
         source='Modelo principal (respuesta)' if data.get('model_source')=='response' else 'Modelo principal (seleccionado)'
-        lines=[f'{source}: {model}', 'Modelo de subagentes: no informado.',
+        lines=['Estado: '+data.get('label','Esperando'), f'{source}: {model}', 'Modelo de subagentes: no informado.',
                f"Herramientas terminadas: {data.get('tools_completed',0)} · Total no informado",
                f"Subagentes activos informados: {data.get('subagents_active',0)}"]
         lines.extend(reversed(data.get('details',[])[-30:]))
@@ -41,7 +41,8 @@ class ActivityWidget(QWidget):
         self.refresh_text()
     def refresh_text(self):
         d=self.data
-        title=('▾' if self.toggle.isChecked() else '▸')+' Actividad de ARISE · '+d.get('label','Esperando')
+        # Keep the state visible before the decorative label on narrow/high-DPI Windows.
+        title=('▾' if self.toggle.isChecked() else '▸')+' '+d.get('label','Esperando')+' · Actividad de ARISE'
         self.toggle.setText(self.toggle.fontMetrics().elidedText(title,Qt.ElideRight,max(40,self.width()-10)));self.toggle.setToolTip(title)
         full=(d.get('tool') or 'Sin herramienta activa informada')+f" · {d.get('tools_completed',0)} terminadas"
         if d.get('subagents_active'):full+=f" · {d['subagents_active']} subagente(s)"

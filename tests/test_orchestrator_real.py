@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import threading
 import select
+import psutil
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -13,6 +14,22 @@ from docx import Document
 from arise_app.assistant import Assistant
 from arise_app.server import make_server
 from test_pi_real import CLI
+
+def peer_disconnected(connection):
+    try:
+        return connection.recv(1) == b''
+    except ConnectionResetError:
+        # Windows reports a force-closed socket as WSAECONNRESET (10054).
+        return True
+
+class SocketClosureTests(unittest.TestCase):
+    def test_eof_and_reset_confirm_close_but_timeout_does_not(self):
+        from unittest.mock import Mock
+        self.assertTrue(peer_disconnected(Mock(recv=Mock(return_value=b''))))
+        self.assertTrue(peer_disconnected(Mock(recv=Mock(side_effect=ConnectionResetError(10054,'reset')))))
+        self.assertFalse(peer_disconnected(Mock(recv=Mock(return_value=b'x'))))
+        with self.assertRaises(TimeoutError):
+            peer_disconnected(Mock(recv=Mock(side_effect=TimeoutError('still open'))))
 
 @unittest.skipUnless(CLI.is_file() and shutil.which('node'), 'Pi real requerido')
 class OrchestratorRealTests(unittest.TestCase):
@@ -31,7 +48,7 @@ class OrchestratorRealTests(unittest.TestCase):
                         child_started.set()
                         while not release_child.is_set():
                             if select.select([self.connection],[],[],.1)[0]:
-                                if not self.connection.recv(1):
+                                if peer_disconnected(self.connection):
                                     child_disconnected.set();return
                     delta['content']='CHILD_VERIFIED'
                 elif any(m['role']=='tool' for m in after):
@@ -92,10 +109,14 @@ class OrchestratorRealTests(unittest.TestCase):
                     self.assertNotIn('QA Word',str(r.storage.messages(other)))
                     prompt('background');self.assertTrue(child_started.wait(10))
                     parent=r.pi.process;self.assertIsNone(parent.poll(),str(list(r.events)[-10:]))
+                    children=psutil.Process(parent.pid).children(recursive=True) if os.name=='nt' else []
+                    if os.name=='nt':self.assertTrue(children,"No se observó el proceso del subagente Windows")
                     r.stop()
                     self.assertTrue(child_disconnected.wait(10),"El subagente no canceló su petición al modelo")
                     release_child.set()
                     self.assertIsNone(r.pi);self.assertIsNotNone(parent.poll())
+                    for child in children:
+                        self.assertFalse(child.is_running(),f"El proceso hijo {child.pid} sobrevivió a la parada")
                     self.assertTrue(r.desktop_halted)
                     self.assertEqual(r.activity.snapshot()['phase'],'stopped')
             finally:

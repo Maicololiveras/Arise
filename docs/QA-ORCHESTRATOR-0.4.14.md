@@ -43,7 +43,7 @@ Los estados finales, errores, parada y cambio de chat limpian/inactivan la vista
 
 ## Evidencia y límites
 
-Suite local: **175 pruebas aprobadas, sin omisiones**, `python scripts/test.py` (2026-10-14). El smoke del instalador Windows ahora exige crear y releer un DOCX desde el ejecutable empaquetado y conservarlo tras reemplazar la instalación; ese gate queda pendiente de Actions.
+Suite local: **176 pruebas aprobadas, sin omisiones**, `python scripts/test.py` (2026-10-14). El smoke del instalador Windows ahora exige crear y releer un DOCX desde el ejecutable empaquetado y conservarlo tras reemplazar la instalación; ese gate queda pendiente de Actions.
 
 - Pruebas con Pi y Gentle reales, proveedor HTTP local determinista: dos mensajes con mismo proceso/sessionId, Word generado por herramienta desde Pi, escritura autorizada, rechazo de delegación sin autorización, subagente real, cambio y retorno conservando sessionId y permisos separados.
 - Subagente real en segundo plano: parada cierra el padre y cancela su petición HTTP al modelo. La prueba no usa credenciales de nube.
@@ -53,3 +53,7 @@ Suite local: **175 pruebas aprobadas, sin omisiones**, `python scripts/test.py` 
 - Pendiente: instalador Windows generado por Actions, prueba física de voz/mouse/atajo, fuentes/DPI de Windows, proveedor de producción y documento E3 con la plantilla WEG real. No se entregó ni investigó aquí el informe E3.
 
 Ampliaciones no implementadas: relleno avanzado de plantillas, visor de resultados por subagente y cancel-all nativo que preserve el padre tras detener trabajos de fondo. Requieren priorización aparte.
+
+## Corrección de CI Windows (14 de octubre)
+
+El primer job Windows detectó dos fallos: el encabezado elidía la fase con las métricas de fuente de Windows, y la prueba HTTP no reconocía `ConnectionResetError / WinError 10054` como cierre. El log confirma reset en `recv` del subagente. Se prioriza la fase al inicio del encabezado y se reconoce EOF/reset, conservando fallo ante timeout. La prueba real ahora también exige que los procesos hijos observados en Windows hayan terminado. No se cambia el mecanismo de parada ni se relajan sus garantías.
