@@ -1,3 +1,10 @@
+# ARISE 0.4.18 QA
+
+- Ventana de actualización con novedades desplazables y botones siempre fuera del área de scroll.
+- Tamaño inicial adaptado al espacio disponible; texto ajustado al ancho, sin scroll horizontal.
+- Instalar requiere confirmación explícita; Cerrar, Más tarde y Escape no instalan.
+- Interfaz Qt comprobada a 340 × 440 en Linux; validación nativa en Windows pendiente de CI y prueba del usuario.
+
 # ARISE 0.4.17 QA
 
 - Recupera el entorno privado existente de Gentle y usa su Node, Pi y carpeta de agente, sin consultar pnpm global.

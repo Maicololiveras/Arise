@@ -830,13 +830,9 @@ class Controller(QObject):
 
     def offer_update(self, manifest):
         from . import __version__
-        box = QMessageBox(self.orb); box.setWindowTitle("Nueva versión de ARISE Assistant")
-        box.setTextFormat(Qt.PlainText)
-        box.setText(f"ARISE {manifest['version']} está disponible (actual: {__version__}).")
-        box.setInformativeText(manifest['notes'] + "\n\n¿Descargar e instalar? Se guardará la sesión y se cerrarán los procesos de ARISE.")
-        box.setStandardButtons(QMessageBox.Yes | QMessageBox.No); box.setDefaultButton(QMessageBox.No)
-        box.button(QMessageBox.Yes).setText("Instalar actualización"); box.button(QMessageBox.No).setText("Más tarde")
-        box.finished.connect(lambda result: self.download_and_install(manifest) if result == QMessageBox.Yes else None)
+        from .update_dialog import UpdateDialog
+        box = UpdateDialog(manifest, __version__, self.orb)
+        box.accepted.connect(lambda: self.download_and_install(manifest))
         self.update_dialog = box; box.open()
 
     def download_and_install(self, manifest):
