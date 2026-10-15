@@ -174,8 +174,15 @@ def make_server(runtime, port=0):
                     elif route.endswith("/mute"): voice.mute(data.get("muted") is True); value = {"ok": True}
                     else: raise ValueError("Operación de voz desconocida")
                 elif route == "/api/shutdown":
-                    runtime.stop(); value = {"ok": True}
-                    threading.Thread(target=self.server.shutdown, daemon=True).start()
+                    runtime.stop()
+                    # A daemon worker can be killed as soon as serve_forever exits.
+                    # Send the acknowledgement before allowing the main thread to exit.
+                    try:
+                        self.reply({"ok": True})
+                        self.wfile.flush()
+                    finally:
+                        threading.Thread(target=self.server.shutdown, daemon=True).start()
+                    return
                 else: self.reply({"error": "Ruta desconocida"}, 404); return
                 self.reply(value)
             except (BrokenPipeError, ConnectionResetError): pass
