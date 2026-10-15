@@ -1,5 +1,10 @@
 param([Parameter(Mandatory=$true)][string]$InstallDir, [string]$DataDir = (Join-Path $env:LOCALAPPDATA 'ARISE-Orb'))
 $ErrorActionPreference = 'Stop'
+[IO.Directory]::CreateDirectory($DataDir) | Out-Null
+function Trace([string]$message) {
+    ((Get-Date -Format o) + ' ' + $message) | Add-Content -LiteralPath (Join-Path $DataDir 'installer-stop.log')
+}
+Trace 'Starting process ownership check'
 # CIM returns long executable paths even when Setup was launched through an 8.3 path.
 Add-Type -TypeDefinition @'
 using System;
@@ -18,22 +23,33 @@ function CanonicalPath([string]$path) {
     return $full
 }
 $root = (CanonicalPath $InstallDir).TrimEnd('\') + '\' 
-function Snapshot { @(Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,ExecutablePath,CreationDate) }
+function Snapshot { @(Get-CimInstance Win32_Process -OperationTimeoutSec 10 | Select-Object ProcessId,ParentProcessId,ExecutablePath,CreationDate) }
 function Is-Arise($process) {
     $path = $process.ExecutablePath
     if($path) { $path = CanonicalPath $path }
     $path -and $path.StartsWith($root,[StringComparison]::OrdinalIgnoreCase) -and ([IO.Path]::GetFileName($path) -in @('ARISE.exe','ARISE-host.exe'))
 }
+Trace 'Querying process snapshot'
 $all = Snapshot
+Trace 'Process snapshot received'
 $owned = @{}; $protected = @{}
 # The helper and installer/launcher ancestors must outlive the application.
-$current = $PID
-while ($current) {
-    $record = $all | Where-Object ProcessId -eq $current | Select-Object -First 1
-    if (-not $record) { break }
-    if (-not (Is-Arise $record)) { $protected[[int]$current] = $true }
-    $current = $record.ParentProcessId
+function Protect-Ancestors($records, [int]$start, $protected) {
+    $visited = @{}
+    $current = $start
+    while ($current -and -not $visited.ContainsKey([int]$current)) {
+        $visited[[int]$current] = $true
+        $record = $records | Where-Object ProcessId -eq $current | Select-Object -First 1
+        if (-not $record) { break }
+        if (-not (Is-Arise $record)) { $protected[[int]$current] = $true }
+        # Parent PIDs can be reused after exit; a snapshot is not necessarily a tree.
+        $parent = $records | Where-Object ProcessId -eq $record.ParentProcessId | Select-Object -First 1
+        if ($parent -and $parent.CreationDate -gt $record.CreationDate) { break }
+        $current = $record.ParentProcessId
+    }
 }
+Protect-Ancestors $all $PID $protected
+Trace 'Ancestor check completed'
 foreach($record in $all) { if(Is-Arise $record) { $owned[[int]$record.ProcessId] = $record } }
 do {
     $changed = $false
@@ -57,7 +73,7 @@ if(Test-Path -LiteralPath $descriptor) {
 }
 $engine = Join-Path $InstallDir 'ARISE.exe'
 if($owned.Count -and (Test-Path -LiteralPath $engine)) {
-    try { $stop = Start-Process -FilePath $engine -ArgumentList @('--shutdown','--data-dir',('"'+$DataDir+'"')) -PassThru; if(-not $stop.WaitForExit(30000)){ $stop.Kill(); $stop.WaitForExit() } } catch { Write-Verbose 'Older UI requires the bounded fallback.' }
+    try { $stop = Start-Process -FilePath $engine -ArgumentList @('--shutdown','--data-dir',('"'+$DataDir+'"')) -PassThru; if(-not $stop.WaitForExit(30000)){ $stop.Kill(); if(-not $stop.WaitForExit(5000)) { throw 'Shutdown helper did not exit' } } } catch { Write-Verbose 'Older UI requires the bounded fallback.' }
 }
 # Give session persistence/voice/MCP shutdown a grace period before forced cleanup.
 $deadline = [DateTime]::UtcNow.AddSeconds(15)
@@ -66,7 +82,7 @@ do {
     if(-not $live.Count) { break }; Start-Sleep -Milliseconds 200
 } while([DateTime]::UtcNow -lt $deadline)
 foreach($record in $live) {
-    $now = Get-CimInstance Win32_Process -Filter ('ProcessId='+$record.ProcessId) -ErrorAction SilentlyContinue
+    $now = Get-CimInstance Win32_Process -OperationTimeoutSec 10 -Filter ('ProcessId='+$record.ProcessId) -ErrorAction SilentlyContinue
     if($now -and $now.CreationDate -eq $record.CreationDate -and -not $protected.ContainsKey([int]$record.ProcessId)) { Stop-Process -Id $record.ProcessId -Force -ErrorAction Stop }
 }
 Start-Sleep -Milliseconds 300

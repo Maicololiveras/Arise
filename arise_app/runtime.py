@@ -78,6 +78,8 @@ class Runtime:
         from .model_service import ModelService
         self.model_service = ModelService()
         self.memory_path = self.storage.root / "memory.json"
+        from .terminal_tasks import TerminalTasks
+        self.terminals = TerminalTasks(self)
 
     def emit(self, kind, data):
         with self.lock:
@@ -429,6 +431,8 @@ class Runtime:
                 try:future.result()
                 except Exception as error:errors.append(str(error))
         self.emit('desktop_stopped',{'confirmed':not errors,'errors':errors})
+        try: self.terminals.stop_all()
+        except Exception as error: self.emit('error',{'text':'Parada de terminales no confirmada: '+str(error)})
         for dialog in list(self.dialogs):
             if self.pi:
                 self.pi.send({"type": "extension_ui_response", "id": dialog, "cancelled": True})
@@ -627,6 +631,7 @@ class Runtime:
         self.pi_state = {}
 
     def disconnect(self):
+        self.terminals.stop_all()
         if self.desktop:
             self.stop()
         self.desktop = False

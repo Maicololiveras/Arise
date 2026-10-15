@@ -10,7 +10,7 @@ import threading
 import time
 from pathlib import Path
 from PySide6.QtCore import Qt, QTimer, QObject, Signal, QEvent, QPoint, QSize, QBuffer, QIODevice
-from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QImage, QDesktopServices
+from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QImage, QDesktopServices, QShortcut, QKeySequence
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import (QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QPushButton, QLineEdit, QTextBrowser, QTextEdit, QComboBox, QCheckBox, QTabWidget,
@@ -482,24 +482,33 @@ class Panel(QWidget):
         self.setWindowTitle("ARISE Assistant"); self.setWindowIcon(icon()); self.resize(420, 680); self.setMinimumSize(320, 400); self.setMaximumWidth(900); self.setStyleSheet(STYLE)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 12, 14, 10); layout.setSpacing(7)
-        title = QLabel("ARISE Assistant"); title.setObjectName("chatTitle"); layout.addWidget(title)
-        self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); layout.addWidget(self.status)
-        self.privacy = QLabel("Micrófono apagado · Pantalla apagada · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); layout.addWidget(self.privacy)
+        title = QLabel("ARISE Assistant"); title.setObjectName("chatTitle"); title.hide()
+        self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); self.status.hide()
+        self.privacy = QLabel("Micrófono apagado · Pantalla apagada · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); self.privacy.hide()
         from .chat_content import ChatHistory
-        self.emergency=QPushButton('Detener manos y ojos · Ctrl+Alt+Esc')
-        self.emergency.setAccessibleName('Detener manos y ojos');self.emergency.clicked.connect(controller.stop)
-        self.emergency.setStyleSheet('background:#6B2636;color:white;font-weight:600;');layout.addWidget(self.emergency)
-        self.recovery=QPushButton('Recuperar último mensaje para revisar');self.recovery.hide();self.recovery.clicked.connect(self.restore_draft);layout.addWidget(self.recovery)
+        self.emergency=QPushButton('■ Detener')
+        self.emergency.setAccessibleName('Detener manos y ojos')
+        self.emergency.setToolTip('Detener manos y ojos · Ctrl+Alt+Esc')
+        self.emergency.setFixedWidth(98);self.emergency.setMinimumHeight(36)
+        self.emergency.clicked.connect(controller.stop)
+        self.emergency.setStyleSheet('background:#6B2636;color:white;font-weight:600;padding:5px;')
         self.last_submission=None
+        self.recover_shortcut=QShortcut(QKeySequence('Alt+Q'),self)
+        self.recover_shortcut.setContext(Qt.WindowShortcut)
+        self.recover_shortcut.activated.connect(self.restore_draft)
         from .activity_widget import ActivityWidget
-        self.activity_view=ActivityWidget();layout.addWidget(self.activity_view)
+        self.activity_view=ActivityWidget()
+        activity_row=QHBoxLayout();activity_row.setSpacing(6)
+        activity_row.addWidget(self.activity_view,1)
+        activity_row.addWidget(self.emergency,0,Qt.AlignTop)
+        layout.addLayout(activity_row)
         self.history = ChatHistory(); self.history.setObjectName("chatHistory"); self.history.setOpenExternalLinks(False); layout.addWidget(self.history, 1)
         self.attachments=[]
         self.attachment_bar=QWidget(); self.attachment_layout=QHBoxLayout(self.attachment_bar)
         self.attachment_layout.setContentsMargins(0,0,0,0);layout.addWidget(self.attachment_bar);self.attachment_bar.hide()
         self.history.anchorClicked.connect(self.open_link)
         self.input = ChatInput(); self.input.setAcceptRichText(False); self.input.setPlaceholderText("Escribe o pega una imagen con Ctrl+V…"); self.input.setFixedHeight(58)
-        self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea"); self.input.submitted.connect(self.send); self.input.image_pasted.connect(self.add_image); layout.addWidget(self.input)
+        self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea · Alt+Q recupera el último mensaje"); self.input.submitted.connect(self.send); self.input.image_pasted.connect(self.add_image); layout.addWidget(self.input)
         row = QHBoxLayout(); row.setSpacing(3); layout.addLayout(row)
         self.navigation = self.icon_button(row, "menu", "Proyectos, chats y comandos")
         self.navigation_menu = QMenu(self.navigation)
@@ -510,6 +519,7 @@ class Panel(QWidget):
         self.navigation_menu.addAction(control_icon("plus"), "Nuevo chat", self.new_conversation)
         self.navigation_menu.addAction(control_icon("folder"), "Elegir carpeta…", self.open_project)
         self.navigation_menu.addAction("Cerrar sesión del chat (conservar historial)", lambda: controller.background(lambda:(controller.voice.end_session(), self.runtime.suspend_chat())))
+        self.navigation_menu.addAction("Recuperar último mensaje · Alt+Q", self.restore_draft)
         self.navigation_menu.addAction("Configurar todo desde ZIP…", controller.install_model_pack)
         self.navigation_menu.addAction(control_icon("settings"), "Ajustes…", controller.show_settings)
         menu = self.navigation_menu.addMenu("Comandos de la sesión"); self.commands_menu = menu; self.commands_loading = False
@@ -642,7 +652,7 @@ class Panel(QWidget):
         chat,text,images=self.last_submission
         if chat!=self.current_chat or self.input.toPlainText().strip() or self.attachments:
             self.status.setText('El borrador actual se conserva.');return
-        self.input.setPlainText(text);self.attachments=list(images);self.refresh_attachments();self.recovery.hide()
+        self.input.setPlainText(text);self.attachments=list(images);self.refresh_attachments();self.input.setFocus()
         self.status.setText('Borrador recuperado; no se ha reenviado.')
 
     def send(self):
@@ -934,14 +944,16 @@ class Controller(QObject):
                 self.panel.send_button.setToolTip(data["activity"])
                 self.panel.mic_button.setToolTip("Micrófono " + ("activo" if data["microphone"] else "apagado"))
                 self.panel.mic_button.setAccessibleName(self.panel.mic_button.toolTip())
-                if data['control']:self.panel.emergency.setText('Detener manos y ojos · Ctrl+Alt+Esc')
+                if data['control']:self.panel.emergency.setText('■ Detener')
                 self.panel.control.setText("Control del PC " + ("activo" if data["control"] else "apagado"))
                 self.panel.privacy.setText("Micrófono " + ("activo" if data["microphone"] else "apagado") + " · Pantalla " + ("activa" if data["screen"] else "apagada") + " · Control " + ("activo" if data["control"] else "apagado"))
+                self.panel.activity_view.setToolTip(data["activity"]+"\n"+self.panel.privacy.text())
                 self.panel.control.blockSignals(True); self.panel.control.setChecked(data["control"]); self.panel.control.blockSignals(False)
                 self.panel.mic_button.setChecked(data["microphone"] and data["state"] not in ("idle", "wake_detected"))
             elif kind == 'desktop_stopped':
                 self.panel.status.setText('Manos y ojos detenidos. Reactivación manual.' if data['confirmed'] else 'No se pudo confirmar la parada: '+', '.join(data['errors']))
-                self.panel.emergency.setText('Manos y ojos detenidos' if data['confirmed'] else 'Revisar parada de manos y ojos')
+                self.panel.emergency.setText('✓ Detenido' if data['confirmed'] else '⚠ Revisar')
+                self.panel.emergency.setToolTip(self.panel.status.text()+' · Ctrl+Alt+Esc')
             elif kind == 'update_progress' and getattr(self,'update_progress',None):
                 received=data['received'];total=data['total']
                 self.update_progress.setValue(int(100*received/total))
@@ -950,7 +962,7 @@ class Controller(QObject):
                 if kind=='error':
                     from .user_errors import friendly_error
                     data={**data,'text':friendly_error(data.get('text',''))}
-                    self.panel.recovery.setVisible(self.panel.last_submission is not None)
+                    self.panel.input.setToolTip("Alt+Q: recuperar último mensaje para revisarlo; no se reenvía automáticamente.")
                 self.panel.append({"user": "Tú", "assistant_end": "ARISE", "notice": "Aviso", "error": "Revisar"}[kind], data.get("text", ""), data.get("images"))
                 if kind == "error":
                     self.runtime.orb.update("error")

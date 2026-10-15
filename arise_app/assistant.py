@@ -151,6 +151,8 @@ class Assistant(Runtime):
         catalog = super().tool_catalog()
         from .documents import TOOLS
         catalog["tools"].extend(TOOLS)
+        from .terminal_tasks import TOOLS as TERMINAL_TOOLS
+        catalog["tools"].extend(TERMINAL_TOOLS)
         catalog["tools"].extend([
             {"name": "files.write", "description": "Escribe UTF-8 dentro del workspace.", "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}, "text": {"type": "string"}}, "required": ["path", "text"]}},
             {"name": "gmail.send_draft", "description": "Solicita confirmación visible para enviar un borrador existente. Nunca repetir un envío ambiguo.", "inputSchema": {"type": "object", "properties": {"draft_id": {"type": "string"}}, "required": ["draft_id"]}},
@@ -163,6 +165,12 @@ class Assistant(Runtime):
     def call_tool(self, name, arguments):
         if not isinstance(arguments, dict):
             raise ValueError("arguments debe ser un objeto.")
+        if name.startswith('terminal.'):
+            if name=='terminal.delegate':return self.wrap(self.terminals.delegate(arguments.get('task')))
+            with self.transition_lock:
+                if name=='terminal.list':return self.wrap({'terminals':self.terminals.list(self.conversation)})
+                if name=='terminal.cancel':return self.wrap(self.terminals.cancel(arguments.get('id'),self.conversation))
+            raise ValueError('Herramienta de terminal desconocida.')
         if name.startswith("documents."):
             from .documents import create_docx, read_docx
             with self.action_lock:

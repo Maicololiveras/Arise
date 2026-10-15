@@ -94,11 +94,12 @@ class NativeTests(unittest.TestCase):
 
     def test_orb_single_click_opens_and_error_restore_never_sends(self):
         self.assertFalse(self.c.panel.isVisible());QTest.mouseClick(self.orb,Qt.LeftButton);QTest.qWait(20)
-        self.assertTrue(self.c.panel.isVisible());self.assertTrue(self.c.panel.status.isVisible())
+        self.assertTrue(self.c.panel.isVisible());self.assertTrue(self.c.panel.activity_view.isVisible());self.assertFalse(self.c.panel.status.isVisible())
         panel=self.c.panel;panel.last_submission=(panel.current_chat,'Mi borrador',[])
         self.r.emit('error',{'text':'503 Service Unavailable'});self.c.poll()
         self.assertIn('temporalmente',panel.history.toPlainText())
-        with patch.object(self.r,'steer') as send:panel.restore_draft();send.assert_not_called()
+        with patch.object(self.r,'steer') as send:
+            panel.input.setFocus();QTest.keyClick(panel.input,Qt.Key_Q,Qt.AltModifier);QTest.qWait(20);send.assert_not_called()
         self.assertEqual(panel.input.toPlainText(),'Mi borrador')
 
     def test_rpc_editor_returns_multiline_text_and_chat_change_closes_dialog(self):

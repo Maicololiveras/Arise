@@ -1,4 +1,4 @@
-#define AppVersion "0.4.18"
+#define AppVersion "0.4.19"
 [Setup]
 AppId={{E99B270E-3F4F-421C-9D9F-705E523F3ED6}
 AppName=ARISE
@@ -72,7 +72,7 @@ var
 begin
   Result := '';
   ExtractTemporaryFile('stop-arise.ps1');
-  Args := '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\stop-arise.ps1') + '" -InstallDir "' + ExpandConstant('{app}') + '" -DataDir "' + DataDirectory() + '"';
+  Args := '-NonInteractive -NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\stop-arise.ps1') + '" -InstallDir "' + ExpandConstant('{app}') + '" -DataDir "' + DataDirectory() + '"';
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Args, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) or (ExitCode <> 0) then
     Result := 'No se pudieron cerrar los procesos de ARISE. Cierra ARISE y vuelve a intentar; no se reemplazaron archivos.';
 end;

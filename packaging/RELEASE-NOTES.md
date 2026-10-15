@@ -1,3 +1,11 @@
+# ARISE 0.4.19 QA
+
+- Actividad compacta a la izquierda y Detener a la derecha; más espacio para el chat.
+- Alt+Q recupera el último mensaje sin enviarlo ni sobrescribir el borrador.
+- Delegación explícita en terminal Gentle por chat, con consentimiento, resultados propios y cancelación.
+- Instalador: recorrido de antecesores protegido contra ciclos/PID reutilizados, consultas acotadas y diagnóstico de parada.
+- Validación nativa de instalación y terminal Windows pendiente de CI y prueba en PC; detalles en docs/QA-0.4.19.md.
+
 # ARISE 0.4.18 QA
 
 - Ventana de actualización con novedades desplazables y botones siempre fuera del área de scroll.

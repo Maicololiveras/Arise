@@ -52,6 +52,11 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-',ignore_cleanup_errors=T
             raise
         finally:
             if log.exists():print(log.read_text(errors='replace')[-6000:],flush=True)
+            stop_log=data/'installer-stop.log'
+            if stop_log.exists():
+                text=stop_log.read_text(errors='replace')
+                (diagnostics/f'stop-{setup_attempt}.log').write_text(text,encoding='utf-8')
+                print(text[-6000:],flush=True)
         if code:raise RuntimeError('Installer failed: '+str(code))
         print(f'Installer attempt {setup_attempt}: completed',flush=True)
     def ready(previous_pid=None):
