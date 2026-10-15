@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "channel": "qa",
-  "version": "0.4.14",
-  "notes": "# ARISE 0.4.14 QA\n\n- Sesi\u00f3n persistente entre mensajes y ajustes de voz; cambio de chat con historial propio y cierre controlado.\n- Capacidades reales visibles, autorizaci\u00f3n local por chat y ejecuci\u00f3n mediante Gentle, sin activar escritorio.\n- Creaci\u00f3n y lectura DOCX sin escritorio, con contenido verificado y plantilla DOCX opcional en modo a\u00f1adir.\n- Actividad de ARISE: cuadro discreto y plegable, estados reales de herramientas/subagentes, modelo cuando se informa y progreso sin porcentajes inventados. No muestra razonamiento privado.\n- Parada conserva revocaci\u00f3n de manos/ojos; cierra subagentes de fondo sin reiniciarlos autom\u00e1ticamente.\n\nPruebas locales con Pi/Gentle reales y modelo simulado, DOCX real y UI Qt. Pendiente validaci\u00f3n f\u00edsica de Windows, proveedor real y plantilla WEG del usuario. Detalles: docs/QA-ORCHESTRATOR-0.4.14.md.\n",
-  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.14/ARISE-Setup.exe",
-  "asset_id": 640896657,
-  "sha256": "b17883e5c0de39df3f7bbbf921ced3b17b8b47ad2ab2c7ab73e947de8afa6835",
-  "size": 402661131,
-  "source_commit": "adb5efe71636623782d132fc432c8da0330f94b8"
+  "version": "0.4.15",
+  "notes": "# ARISE 0.4.15 QA\n\n- Gentle: admite la junction local conocida de pnpm v11 y comprueba el destino y sus antecesores; rechaza otros enlaces y permisos de escritura no confiables.\n- Instalaci\u00f3n autom\u00e1tica de herramientas independiente: una transcripci\u00f3n fallida no descarta ScreenView, InputControl ni Forge.\n- Audio: distingue errores al abrir dispositivos y modelos Vosk ausentes o incompletos. No cambia la voz ni descarga modelos sin selecci\u00f3n.\n- Pendiente: prueba en el PC personal afectado. No se ha confirmado la causa de su fallo de audio.\n\n# ARISE 0.4.14 \u00b7 QA\n\n- Sesi\u00f3n persistente entre mensajes y ajustes de voz; cambio de chat con historial propio y cierre controlado.\n- Capacidades reales visibles, autorizaci\u00f3n local por chat y ejecuci\u00f3n mediante Gentle, sin activar escritorio.\n- Creaci\u00f3n y lectura DOCX sin escritorio, con contenido verificado y plantilla DOCX opcional en modo a\u00f1adir.\n- Actividad de ARISE: cuadro discreto y plegable, estados reales de herramientas/subagentes, modelo cuando se informa y progreso sin porcentajes inventados. No muestra razonamiento privado.\n- Parada conserva revocaci\u00f3n de manos/ojos; cierra subagentes de fondo sin reiniciarlos autom\u00e1ticamente.\n\nPruebas locales con Pi/Gentle reales y modelo simulado, DOCX real y UI Qt. Pendiente validaci\u00f3n f\u00edsica de Windows, proveedor real y plantilla WEG del usuario. Detalles: docs/QA-ORCHESTRATOR-0.4.14.md.\n",
+  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.15/ARISE-Setup.exe",
+  "asset_id": 642534403,
+  "sha256": "7032cfe9f1d385a12e5a470bf721dee5117652deb96245d856b9bde822f32fc1",
+  "size": 402600611,
+  "source_commit": "3d6650b4bb985cf929652e5c25d40c5f34ad3fab"
 }

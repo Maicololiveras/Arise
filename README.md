@@ -35,7 +35,7 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 
 <!-- arise-downloads:start -->
 - **Producción 0.4.12:** [instalador Windows — 400 MB](https://github.com/Maicololiveras/Arise/releases/download/v0.4.12/ARISE-Setup.exe) · [release y archivos disponibles](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.12).
-- **QA 0.4.14:** [instalador Windows — 403 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.14/ARISE-Setup.exe) · [release y archivos disponibles](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.14).
+- **QA 0.4.15:** [instalador Windows — 403 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.15/ARISE-Setup.exe) · [release y archivos disponibles](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.15).
 <!-- arise-downloads:end -->
 
 Para actualizar una instalación existente, ejecuta `ARISE-Setup.exe` y selecciona la misma carpeta donde está ARISE; se conservan los datos. El ZIP completo con modelos es opcional para esta actualización: si lo eliges, extráelo y ejecuta `Configurar ARISE.cmd`.
