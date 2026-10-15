@@ -1,9 +1,13 @@
 """Classify subprocess failures without returning arbitrary logs or credentials."""
 import subprocess
+import re
 import threading
 
 
 def failure_hint(text):
+    missing = re.search(r"ModuleNotFoundError: No module named '([A-Za-z_][A-Za-z0-9_.]{0,79})'", text)
+    if missing:
+        return 'Falta el módulo Python: ' + missing.group(1) + '.'
     text = text.lower()
     for needles, message in (
         (("epipe", "broken pipe"), "EPIPE: el proceso remoto cerró su canal de comunicación."),

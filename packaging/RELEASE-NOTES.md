@@ -1,3 +1,11 @@
+# ARISE 0.4.16 · QA
+
+- PowerShell: validación de pnpm transportada con EncodedCommand; los errores de E/S se clasifican sin exponer stderr. Las pruebas Windows invocan ahora Node y PowerShell como producción.
+- Forge: comprueba el adaptador Edge real; evita el aviso incorrecto basado en el puente antiguo.
+- Audio: identifica entrada/salida y código numérico de PortAudio; sin cambiar dispositivos o sustituir la voz.
+- Transcripción: identifica el módulo Python ausente, sin mostrar el traceback.
+- La causa final en el PC afectado requiere revalidación; no se anuncia resuelta por las pruebas de CI.
+
 # ARISE 0.4.15 · QA
 
 - Gentle: admite la junction local conocida de pnpm v11 y comprueba el destino y sus antecesores; rechaza otros enlaces y permisos de escritura no confiables.

@@ -16,9 +16,13 @@ class StorageAdapterTests(unittest.TestCase):
         import json
         with tempfile.TemporaryDirectory() as temporary:
             path=Path(temporary)/'installer.mjs'
-            path.write_text('before\nconst aclCheck = String.raw`old`;\nafter')
+            contract = '\nconst storageChecks = /^(?:policy|(?:target|parent|ancestor)-(?:reparse|owner|acl-mask))$/;\nconst args = ["-Command", aclCheck];'
+            contract += '\nif (result.error || result.status !== 0) throw new Error("Windows prerequisite process failed");'
+            path.write_text('before\nconst aclCheck = String.raw`old`;\nafter'+contract)
             adapt_windows_storage(path)
-            self.assertEqual(path.read_text(), 'before\nconst aclCheck = '+json.dumps(SCRIPT.read_text())+';\nafter')
+            self.assertIn('const aclCheck = '+json.dumps(SCRIPT.read_text())+';',path.read_text())
+            self.assertIn('Buffer.from(aclCheck, "utf16le").toString("base64")',path.read_text())
+            self.assertNotIn('"-Command", aclCheck',path.read_text())
             with self.assertRaises(RuntimeError):adapt_windows_storage(path)
 
 @unittest.skipUnless(os.name == 'nt', 'Requires native Windows junctions and ACLs')
@@ -39,10 +43,10 @@ class WindowsJunctionTests(unittest.TestCase):
         shutil.rmtree(self.root)
 
     def ps(self, script, check=True):
-        encoded=base64.b64encode(script.encode('utf-16-le')).decode('ascii')
-        return subprocess.run([str(Path(os.environ['SystemRoot'])/'System32/WindowsPowerShell/v1.0/powershell.exe'),
-            '-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',encoded],
-            env=self.env,capture_output=True,text=True,timeout=30,check=check)
+        self.env['ARISE_TEST_SCRIPT']=script
+        self.env['ARISE_TEST_POWERSHELL']=str(Path(os.environ['SystemRoot'])/'System32/WindowsPowerShell/v1.0/powershell.exe')
+        code = "const r=require('node:child_process').spawnSync(process.env.ARISE_TEST_POWERSHELL,['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(process.env.ARISE_TEST_SCRIPT,'utf16le').toString('base64')],{encoding:'utf8',env:process.env,timeout:15000,windowsHide:true});process.stdout.write(r.stdout||'');process.stderr.write(r.stderr||'');process.exit(r.status===null?99:r.status);"
+        return subprocess.run(['node','-e',code], env=self.env,capture_output=True,text=True,timeout=30,check=check)
 
     def evidence(self,path):
         self.env['GENTLE_WINDOWS_CHECK']=str(path)

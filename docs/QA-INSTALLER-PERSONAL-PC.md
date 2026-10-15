@@ -54,3 +54,19 @@ Windows antes de considerar validado el parche nativo.
 Audio: se separa el fallo de apertura de dispositivos del fallo de modelo; una
 carpeta vacía ya no se considera modelo Vosk válido para activación por voz.
 La causa del error del usuario no se ha confirmado. No se sustituye Gonzalo.
+
+## Seguimiento 0.4.16
+
+El registro posterior a 0.4.15 sigue indicando process-failed (entry-storage).
+La junction quedó cubierta por CI Windows, pero eso no resolvió el fallo real.
+Se cambia el transporte del predicado a EncodedCommand y las pruebas nativas
+invocan Node -> PowerShell, como producción. Se conservan todas las denegaciones;
+se clasifican errores de lectura, ausencia, acceso, longitud, inicio, salida y
+tiempo de espera. No se atribuye el error restante a una causa no comprobada.
+
+El aviso de Forge comprobaba el puente antiguo y podía aparecer con Edge
+instalado. Se comprueba el adaptador Edge real y se conserva el puente antiguo
+cuando existe, sin sustituir voces. Transcripción identifica el módulo Python
+que falta. Audio identifica entrada/salida y código numérico de PortAudio;
+no se publican excepciones crudas ni se cambian los dispositivos seleccionados.
+El error de apertura de dispositivos observado precede a la carga de modelos.

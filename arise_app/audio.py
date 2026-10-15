@@ -15,6 +15,14 @@ def resample(pcm, source, target):
     return np.interp(np.arange(count) * source / target, np.arange(len(data)), data).astype("<i2").tobytes()
 
 
+class AudioDeviceError(RuntimeError):
+    """Public device stage/code only; never raw backend diagnostics."""
+    def __init__(self, stage, error):
+        code = next((arg for arg in getattr(error, 'args', ()) if type(arg) is int), None)
+        suffix = f' Código PortAudio: {code}.' if code is not None else ''
+        super().__init__(f'No se pudo abrir {stage}.{suffix} Revisa el dispositivo seleccionado y sus permisos de audio en Windows.')
+
+
 class Audio:
     def __init__(self, input_device=None, output_device=None):
         self.input_device, self.output_device = input_device, output_device
@@ -39,16 +47,19 @@ class Audio:
         import sounddevice as sd
         if self.capture:
             return
-        self.capture = sd.RawInputStream(device=self.input_device, samplerate=16000, channels=1,
-            dtype="int16", blocksize=320, callback=self._capture)
+        stage = 'el micrófono (entrada a 16000 Hz)'
         try:
+            self.capture = sd.RawInputStream(device=self.input_device, samplerate=16000, channels=1,
+                dtype="int16", blocksize=320, callback=self._capture)
+            stage = 'la salida de audio (24000 Hz)'
             self.playback = sd.RawOutputStream(device=self.output_device, samplerate=self.output_rate,
                 channels=1, dtype="int16", blocksize=480, callback=self._playback)
             self.playback.start()
+            stage = 'el micrófono al iniciar la captura'
             self.capture.start()
-        except Exception:
+        except Exception as error:
             self.close()
-            raise
+            raise AudioDeviceError(stage, error) from None
 
     def _capture(self, data, frames, timing, status):
         if self.muted:

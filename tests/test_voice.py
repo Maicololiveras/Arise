@@ -114,3 +114,19 @@ class VoiceStartupTests(unittest.TestCase):
             service=VoiceService(runtime)
             with self.assertRaisesRegex(RuntimeError,'modelo Vosk válido'):
                 service._load_wake()
+
+    def test_native_device_stages_keep_only_numeric_backend_code(self):
+        import sys
+        from unittest.mock import Mock,patch
+        from arise_app.audio import Audio,AudioDeviceError
+        for stage in ('input','output'):
+            sd=Mock()
+            error=Exception('private backend diagnostic',-9997)
+            if stage=='input':sd.RawInputStream.side_effect=error
+            else:sd.RawOutputStream.side_effect=error
+            with patch.dict(sys.modules,{'sounddevice':sd}):
+                with self.assertRaises(AudioDeviceError) as raised:Audio().open()
+            message=str(raised.exception)
+            self.assertIn('micrófono' if stage=='input' else 'salida',message)
+            self.assertIn('-9997',message)
+            self.assertNotIn('private',message)

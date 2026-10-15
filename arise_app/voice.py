@@ -11,7 +11,7 @@ import urllib.parse
 import wave
 from collections import deque
 from pathlib import Path
-from .audio import Audio, resample
+from .audio import Audio, AudioDeviceError, resample
 from .processes import executable_argv
 
 INSTRUCTIONS = """Eres ARISE. Habla español de forma natural y breve. Para consultar datos personales o realizar tareas
@@ -289,6 +289,9 @@ class VoiceService:
             self.audio = self.audio_factory(c.get("input_device"), c.get("output_device"))
             try:
                 self.audio.open()
+            except AudioDeviceError:
+                self._close_audio()
+                raise
             except Exception:
                 self._close_audio()
                 raise RuntimeError('No se pudo abrir el micrófono o la salida de audio. Revisa los dispositivos elegidos y el acceso al micrófono en Windows. El fallo ocurrió antes de cargar el modelo o conectar el proveedor.') from None

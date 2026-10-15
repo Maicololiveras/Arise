@@ -39,4 +39,12 @@ try {
   };
   Test-Storage $env:GENTLE_WINDOWS_CHECK $true;
   'safe'
-} catch { if ($_.Exception.Message -cmatch '^(policy|(target|parent|ancestor)-(reparse|owner|acl-mask))$') { 'unsafe:' + $_.Exception.Message } else { throw } }
+} catch { if ($_.Exception.Message -cmatch '^(policy|(target|parent|ancestor)-(reparse|owner|acl-mask))$') { 'unsafe:' + $_.Exception.Message } else {
+  $exception = $_.Exception;
+  while ($exception.InnerException) { $exception = $exception.InnerException };
+  $reason = 'io';
+  if ($exception -is [UnauthorizedAccessException]) { $reason = 'access-denied' }
+  elseif ($exception -is [IO.PathTooLongException]) { $reason = 'path-too-long' }
+  elseif ($exception -is [IO.FileNotFoundException] -or $exception -is [IO.DirectoryNotFoundException] -or $_.CategoryInfo.Category -eq 'ObjectNotFound') { $reason = 'not-found' };
+  'unsafe:target-' + $reason
+} }

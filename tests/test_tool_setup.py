@@ -84,3 +84,18 @@ class ToolSetupTests(unittest.TestCase):
             auto_setup(runtime)
         self.assertEqual(installed,['screenview','inputcontrol','forge'])
         self.assertTrue(any('transcripcion: fixture import failure' in e for e in events))
+
+    def test_missing_module_diagnostic_does_not_include_traceback(self):
+        from arise_app.diagnostics import failure_hint
+        result=failure_hint("secret-token\nModuleNotFoundError: No module named 'fixture_dependency'\nprivate path")
+        self.assertEqual(result,'Falta el módulo Python: fixture_dependency.')
+
+    def test_edge_bridge_is_checked_without_legacy_forge_config(self):
+        from arise_app.forge_voice import edge_bridge_command
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for name in ('node/node.exe','forge-voice/bridge.mjs','node/package.json'):
+                path=root/'bundle'/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('fixture')
+            with patch('arise_app.bundle.application_root',return_value=root):
+                command=edge_bridge_command()
+            self.assertEqual(command,[str(root/'bundle/node/node.exe'),str(root/'bundle/forge-voice/bridge.mjs'),str((root/'bundle/node/package.json').resolve())])

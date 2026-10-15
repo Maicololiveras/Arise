@@ -83,6 +83,18 @@ def wait_for_installer(process, result_file, log_file, timeout):
                 reason = (' Falló la comprobación del archivo de entrada del pnpm existente '
                           '(entry-storage), antes del asistente. El registro no distingue '
                           'archivo ausente, permisos o política de PowerShell; no se modificó pnpm.')
+            for diagnostic_code, detail in {
+                'target-io': 'PowerShell no pudo leer los metadatos del almacenamiento.',
+                'target-access-denied': 'Windows denegó la lectura del almacenamiento.',
+                'target-path-too-long': 'La ruta excede el límite admitido por la comprobación de Windows.',
+                'target-not-found': 'La comprobación no encontró el archivo o una carpeta de su ruta.',
+                'target-process-timeout': 'La validación de PowerShell superó los 15 segundos.',
+                'target-process-start': 'No se pudo iniciar el proceso de validación de PowerShell.',
+                'target-process-exit': 'PowerShell terminó con error antes de devolver evidencia válida.',
+            }.items():
+                if 'Reason: ' + diagnostic_code + ' (' in tail:
+                    reason = ' ' + detail
+                    break
             raise RuntimeError(f'El instalador de Gentle terminó (código {code}) sin confirmar la instalación.{reason} Diagnóstico: {log_file}')
         if time.monotonic()>=deadline:
             raise RuntimeError(f'El instalador sigue abierto sin confirmar. Revisa su ventana antes de reintentar. Diagnóstico: {log_file}')

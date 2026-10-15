@@ -189,10 +189,14 @@ def _install_into(runtime, tools, selected=None):
             specs[name], records[name] = install_public_tool(name, tools, lambda text:runtime.emit('notice', {'text':text}))
         specs[name]['enabled'] = previous.get(name, {}).get('enabled', True)
     if 'forge' in specs:
-        from .forge_voice import voice_command
+        from .forge_voice import edge_bridge_command, voice_command
+        # Retain existing SAPI/Piper bridge without treating its absence as an
+        # Edge failure: public Forge's executable does not use that old bridge.
         try: specs['forge']['voice_command'] = voice_command(runtime)
+        except RuntimeError: pass
+        try: edge_bridge_command()
         except RuntimeError:
-            runtime.emit('notice', {'text':'Forge público instala herramientas MCP. Gonzalo usa el adaptador Edge incluido en ARISE QA; si falta, repara ARISE. No se sustituye la voz automáticamente.'})
+            runtime.emit('notice', {'text':'Falta el adaptador Edge de Gonzalo. Repara ARISE; el catálogo MCP de Forge se instala por separado y la voz no se sustituye automáticamente.'})
     try:
         for name in specs:
             old = runtime.mcp.pop(name, None)

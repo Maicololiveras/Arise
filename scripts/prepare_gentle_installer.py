@@ -49,6 +49,24 @@ def adapt_windows_storage(entry):
               'arise_app/resources/pnpm-storage-check.ps1').read_text(encoding='utf-8')
     match = matches[0]
     source = source[:match.start()] + 'const aclCheck = ' + json.dumps(script) + ';' + source[match.end():]
+    # Encode source rather than passing multiline comments/quotes through -Command.
+    transport = '"-Command", aclCheck'
+    if source.count(transport) != 1:
+        raise RuntimeError('Cambió el transporte PowerShell del instalador.')
+    source = source.replace(transport, '"-EncodedCommand", Buffer.from(aclCheck, "utf16le").toString("base64")')
+    checks = 'const storageChecks = /^(?:policy|(?:target|parent|ancestor)-(?:reparse|owner|acl-mask))$/;'
+    if source.count(checks) != 1:
+        raise RuntimeError('Cambió el contrato de errores de almacenamiento.')
+    source = source.replace(checks, checks.replace('reparse|owner|acl-mask', 'reparse|owner|acl-mask|io|access-denied|path-too-long|not-found|process-timeout|process-start|process-exit'))
+    failure = 'if (result.error || result.status !== 0) throw new Error("Windows prerequisite process failed");'
+    if source.count(failure) != 1:
+        raise RuntimeError('Cambió el contrato del proceso de validación Windows.')
+    replacement = '''if (result.error || result.status !== 0) {
+        const error = new Error("Windows prerequisite process failed");
+        if (args.includes("-EncodedCommand")) error.check = result.error?.code === "ETIMEDOUT" ? "target-process-timeout" : result.error ? "target-process-start" : "target-process-exit";
+        throw error;
+    }'''
+    source = source.replace(failure, replacement)
     entry.write_text(source, encoding='utf-8')
 
 

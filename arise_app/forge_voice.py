@@ -99,6 +99,17 @@ class ForgeConnection:
     async def __aexit__(self,*args):await self.close()
 
 
+def edge_bridge_command():
+    import shutil
+    from .bundle import application_root
+    root=application_root();node=root/'bundle/node/node.exe';bridge=root/'bundle/forge-voice/bridge.mjs';package=root/'bundle/node/package.json'
+    if not bridge.is_file():
+        bridge=Path(__file__).resolve().parents[1]/'vendor/forge-voice/bridge.mjs'
+        package=bridge.parent.parent/'package.json';node=Path(shutil.which('node') or '')
+    if not node.is_file() or not bridge.is_file():raise RuntimeError('Falta el puente neuronal de Forge. Instala el paquete QA completo.')
+    return [str(node), str(bridge), str(package.resolve())]
+
+
 def edge_audio(runtime, text, output, cancel, active, shutdown):
     """Use Forge's Edge synthesizer; never substitute a different voice engine."""
     import concurrent.futures
@@ -109,12 +120,7 @@ def edge_audio(runtime, text, output, cancel, active, shutdown):
     tool=next((t for t in client.tools if t['name']=='forge_speak'),None)
     if not tool or 'edge' not in tool.get('inputSchema',{}).get('properties',{}).get('engine',{}).get('enum',[]):
         raise RuntimeError('Forge conectado no ofrece el motor Edge. Repara Forge; Gonzalo no se sustituirá por otra voz.')
-    root=application_root();node=root/'bundle/node/node.exe';bridge=root/'bundle/forge-voice/bridge.mjs';package=root/'bundle/node/package.json'
-    if not bridge.is_file():
-        bridge=Path(__file__).resolve().parents[1]/'vendor/forge-voice/bridge.mjs'
-        package=bridge.parent.parent/'package.json';node=Path(shutil.which('node') or '')
-    if not node.is_file() or not bridge.is_file():raise RuntimeError('Falta el puente neuronal de Forge. Instala el paquete QA completo.')
-    process=JsonProcess([str(node),str(bridge),str(package.resolve())],cwd=runtime.storage.config['workspace'])
+    process=JsonProcess(edge_bridge_command(),cwd=runtime.storage.config['workspace'])
     pool=concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
         future=pool.submit(process.request,{'type':'synthesize_edge','text':text[:10000],
