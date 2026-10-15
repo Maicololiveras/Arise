@@ -15,7 +15,8 @@ class ManagedRecoveryTests(unittest.TestCase):
             (prefix/'.gentle-shell-bundle').write_text('gentle-shell bundled install\n')
             version=prefix/'versions/v4.2.0'; modules=version/'node_modules'
             shell=modules/'gentle-pi'; (shell/'runtime').mkdir(parents=True); (shell/'extensions').mkdir()
-            (version/'.gentle-shell-version').write_text('v4.2.0\n')
+            # Gentle writes exact LF bytes with Node, including on Windows.
+            (version/'.gentle-shell-version').write_bytes(b'v4.2.0\n')
             (shell/'package.json').write_text(json.dumps({'name':'gentle-pi','version':'4.2.0'}))
             home=base/'official-agent';home.mkdir();(home/'settings.json').write_text('{}')
             (shell/'runtime/gentle-shell-launcher.mjs').write_text('export const launcherConfigPath=()=>"missing-fixture";export const parseLauncherConfig=JSON.parse;export const resolveHome=({env})=>({dir:env.FIXTURE_HOME});')
@@ -34,9 +35,14 @@ class ManagedRecoveryTests(unittest.TestCase):
                 self.assertEqual(found['gentle_bundle_root'],str(prefix))
                 self.assertEqual(found['gentle_agent_home'],str(home))
                 self.assertEqual(found['pi_command'],[str(prefix/'node.exe'),str(pi/'dist/cli.js')])
+                # Reproduce the former Windows fixture defect on every platform.
+                (version/'.gentle-shell-version').write_bytes(b'v4.2.0\r\n')
+                with self.assertRaisesRegex(RuntimeError,'incompleto'):
+                    detect_gentle_installation(env)
+                (version/'.gentle-shell-version').write_bytes(b'v4.2.0\n')
                 with self.assertRaisesRegex(RuntimeError,'incompleto'):
                     detect_gentle_installation({**env,'FIXTURE_REJECT':'1'})
-                (version/'.gentle-shell-version').write_text('installing v4.2.0 123\n')
+                (version/'.gentle-shell-version').write_bytes(b'installing v4.2.0 123\n')
                 with self.assertRaisesRegex(RuntimeError,'incompleto'):
                     detect_gentle_installation(env)
 

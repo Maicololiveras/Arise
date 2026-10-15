@@ -85,3 +85,7 @@ Pruebas: detector ejecutado con Node real y paquetes de fixture, sin Node/pnpm g
 Limitaciones: no se ha identificado el archivo concreto ausente del error entry-storage del PC personal; una instalación que aún no terminó no puede recuperarse. No se omite ese control ni se modifican ACL. El micrófono -9996 falla al abrir el dispositivo y requiere elegir/probar una entrada real; instalar MCP no resuelve por sí solo ese fallo. No hay comprobación física de audio ni de la instalación completa en ese PC.
 
 Validación local final: 190 pruebas, 186 aprobadas y cuatro de junctions Windows omitidas en Linux. MCP 1.30.0 instalado en un venv limpio: importación real de mcp.server.fastmcp correcta; no sustituye la prueba del servidor de transcripción completo en Windows.
+
+### Corrección de la prueba Windows de QA 0.4.17
+
+El run 38720302265 compiló Windows correctamente, pero windows-tests falló en un único caso: el fixture Python escribía el marcador de versión con CRLF en Windows. Gentle lo genera con Node como bytes LF exactos. Se reprodujo el fallo localmente forzando CRLF; el fixture ahora escribe bytes LF y comprueba también el rechazo de CRLF. No se modifica la validación de producción ni se omite ninguna prueba. publish-update conserva su dependencia de todos los jobs: la publicación queda pendiente hasta que el nuevo run apruebe.
