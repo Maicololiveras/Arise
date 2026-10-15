@@ -16,13 +16,19 @@ class StorageAdapterTests(unittest.TestCase):
         import json
         with tempfile.TemporaryDirectory() as temporary:
             path=Path(temporary)/'installer.mjs'
-            contract = '\nconst storageChecks = /^(?:policy|(?:target|parent|ancestor)-(?:reparse|owner|acl-mask))$/;\nconst args = ["-Command", aclCheck];'
-            contract += '\nif (result.error || result.status !== 0) throw new Error("Windows prerequisite process failed");'
-            path.write_text('before\nconst aclCheck = String.raw`old`;\nafter'+contract)
+            contract = '\nconst storageChecks = /^(?:policy|(?:target|parent|ancestor)-(?:reparse|owner|acl-mask))$/;\nfunction windowsPowerShell(env, script, data, processAdapter) { return processAdapter("powershell.exe", ["-Command", script], {...env,...data}); }'
+            contract += '\nconst result = {status:0}; if (result.error || result.status !== 0) throw new Error("Windows prerequisite process failed");'
+            path.write_text('// before\nconst aclCheck = String.raw`old`;\n// after'+contract)
             adapt_windows_storage(path)
             self.assertIn('const aclCheck = '+json.dumps(SCRIPT.read_text())+';',path.read_text())
-            self.assertIn('Buffer.from(aclCheck, "utf16le").toString("base64")',path.read_text())
-            self.assertNotIn('"-Command", aclCheck',path.read_text())
+            self.assertIn('Buffer.from(script, "utf16le").toString("base64")',path.read_text())
+            self.assertNotIn('"-Command", script',path.read_text())
+            with path.open('a',encoding='utf-8') as out:
+                out.write('\nconsole.log(JSON.stringify(windowsPowerShell({}, aclCheck, {}, (_command,args) => args)));')
+            result=subprocess.run(['node',str(path)],capture_output=True,text=True,check=True)
+            args=json.loads(result.stdout)
+            self.assertEqual(args[0],'-EncodedCommand')
+            self.assertEqual(base64.b64decode(args[1]).decode('utf-16-le'),SCRIPT.read_text())
             with self.assertRaises(RuntimeError):adapt_windows_storage(path)
 
 @unittest.skipUnless(os.name == 'nt', 'Requires native Windows junctions and ACLs')

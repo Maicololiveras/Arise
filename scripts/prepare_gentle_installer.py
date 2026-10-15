@@ -50,10 +50,10 @@ def adapt_windows_storage(entry):
     match = matches[0]
     source = source[:match.start()] + 'const aclCheck = ' + json.dumps(script) + ';' + source[match.end():]
     # Encode source rather than passing multiline comments/quotes through -Command.
-    transport = '"-Command", aclCheck'
+    transport = '"-Command", script'
     if source.count(transport) != 1:
         raise RuntimeError('Cambió el transporte PowerShell del instalador.')
-    source = source.replace(transport, '"-EncodedCommand", Buffer.from(aclCheck, "utf16le").toString("base64")')
+    source = source.replace(transport, '"-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")')
     checks = 'const storageChecks = /^(?:policy|(?:target|parent|ancestor)-(?:reparse|owner|acl-mask))$/;'
     if source.count(checks) != 1:
         raise RuntimeError('Cambió el contrato de errores de almacenamiento.')
