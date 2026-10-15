@@ -70,3 +70,18 @@ cuando existe, sin sustituir voces. Transcripción identifica el módulo Python
 que falta. Audio identifica entrada/salida y código numérico de PortAudio;
 no se publican excepciones crudas ni se cambian los dispositivos seleccionados.
 El error de apertura de dispositivos observado precede a la carga de modelos.
+
+
+## QA 0.4.17: recuperación del entorno privado
+
+ARISE detecta `%LOCALAPPDATA%\gentle-shell` y `%USERPROFILE%\.gentle-shell-bundle`, o el prefijo adoptado explícitamente. Un launcher --link reconocido conserva prioridad cuando no hay prefijo explícito. Usa prefixLayout, activeVersion y setupEnvironment del helper oficial incluido en el instalador verificado, y la política de binario nativo del paquete instalado. No ejecuta pnpm global para esta recuperación. No copia autenticación ni crea otra carpeta de agente.
+
+La versión debe estar completa (marcador de versión), con Node y paquetes dentro del prefijo. Un entorno incompleto o dos prefijos posibles requieren reparación/selección; no cambian de motor silenciosamente. Configurar Gentle verifica RPC antes de guardar la adopción y restaura ajustes si falla. La detección no inicia Pi ni tareas.
+
+Transcripción declara en la resolución de pip `mcp>=1,<2` dentro del runtime privado, porque su servidor importa `mcp.server.fastmcp`. La comprobación de importación y catálogo posterior sigue siendo obligatoria.
+
+Pruebas: detector ejecutado con Node real y paquetes de fixture, sin Node/pnpm global; verifica rutas privadas, rechazo de integridad nativa e instalación incompleta, ambigüedad. No equivale a una instalación real en Windows. La comprobación de RPC existente conserva cobertura de rollback.
+
+Limitaciones: no se ha identificado el archivo concreto ausente del error entry-storage del PC personal; una instalación que aún no terminó no puede recuperarse. No se omite ese control ni se modifican ACL. El micrófono -9996 falla al abrir el dispositivo y requiere elegir/probar una entrada real; instalar MCP no resuelve por sí solo ese fallo. No hay comprobación física de audio ni de la instalación completa en ese PC.
+
+Validación local final: 190 pruebas, 186 aprobadas y cuatro de junctions Windows omitidas en Linux. MCP 1.30.0 instalado en un venv limpio: importación real de mcp.server.fastmcp correcta; no sustituye la prueba del servidor de transcripción completo en Windows.

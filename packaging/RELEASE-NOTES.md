@@ -1,3 +1,10 @@
+# ARISE 0.4.17 QA
+
+- Recupera el entorno privado existente de Gentle y usa su Node, Pi y carpeta de agente, sin consultar pnpm global.
+- Verifica la versión activa y rechaza instalaciones incompletas o ambiguas; conserva la comprobación nativa de Gentle y la verificación RPC antes de adoptar.
+- Transcripción instala MCP 1.x en su Python privado, compatible con mcp.server.fastmcp.
+- Pendientes: instalación inicial que falla en entry-storage y prueba física de micrófono -9996 en el PC afectado. Reutilizar requiere una instalación de Gentle completa.
+
 # ARISE 0.4.16 · QA
 
 - PowerShell: validación de pnpm transportada con EncodedCommand; los errores de E/S se clasifican sin exponer stderr. Las pruebas Windows invocan ahora Node y PowerShell como producción.

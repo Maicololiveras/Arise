@@ -148,7 +148,7 @@ def install_gentle(runtime, timeout=3600):
         from .windows_prerequisites import refresh_path
         from .discovery import detect_gentle_installation
         env=refresh_path(os.environ)
-        existing=detect_gentle_installation(env)
+        existing=detect_gentle_installation(env, prefix=runtime.storage.config.get("gentle_bundle_root"))
         if existing:
             os.environ['PATH']=env['PATH']
             runtime.emit('notice',{'text':'Gentle existente detectado: '+existing['gentle_path']+'. Verificando su motor y comandos.'})

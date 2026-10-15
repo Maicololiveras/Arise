@@ -55,6 +55,7 @@ class ToolSetupTests(unittest.TestCase):
                 tools=root/'tools';tools.mkdir();result=_install_private_into(runtime,tools)
             self.assertEqual(checked.call_count,3)
             self.assertIn('--no-build-isolation',checked.call_args_list[1].args[0])
+            self.assertIn('mcp>=1,<2',checked.call_args_list[1].args[0])
             self.assertEqual(result['catalogs'],{'screenview':1,'inputcontrol':1,'transcripcion':1,'forge':1})
             self.assertTrue((root/'tools/installed.json').is_file())
             for spec in [config['mcp'][name] for name in ('screenview','inputcontrol','transcripcion')]:self.assertTrue(Path(spec['command'][0]).is_file());self.assertTrue(Path(spec['command'][0]).is_relative_to(root/'tools'));self.assertTrue(spec['enabled'])

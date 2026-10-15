@@ -72,9 +72,47 @@ def linked_gentle_candidate(env):
     return Path(env.get('USERPROFILE') or Path.home())/'.pi/agent/npm/node_modules/gentle-pi'
 
 
-def detect_gentle_installation(env=None):
-    """Prefer the user's recognized linked launcher, then a global pnpm install."""
+def managed_gentle_candidates(env, prefix=None):
+    """Only official Windows locations (or the explicitly adopted prefix)."""
+    if prefix:
+        return [Path(prefix)]
+    paths = []
+    if env.get('LOCALAPPDATA'):
+        paths.append(Path(env['LOCALAPPDATA'])/'gentle-shell')
+    if env.get('USERPROFILE'):
+        paths.append(Path(env['USERPROFILE'])/'.gentle-shell-bundle')
+    return [p for p in paths if (p/'.gentle-shell-bundle').exists()]
+
+
+def probe_managed_gentle(prefix, env):
+    from .bundle import application_root
+    from .gentle_setup import validate_result
+    bundle = application_root()/'bundle'
+    helper = bundle/'gentle-installer/scripts/bundled-install.mjs'
+    # Use ARISE's host for discovery, then Gentle's own Node for RPC.
+    host = bundle/'node/node.exe'
+    node = str(host) if host.is_file() else shutil.which('node', path=env.get('PATH'))
+    if not node or not helper.is_file():
+        raise RuntimeError('Falta el detector del entorno privado. Repara ARISE con el ZIP completo de QA.')
+    probe = Path(__file__).parent/'resources/probe-gentle.mjs'
+    result = subprocess.run([node, str(probe), str(prefix), '--bundle', str(helper)],
+        capture_output=True, text=True, encoding='utf-8', timeout=30, env=env,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    if result.returncode:
+        raise RuntimeError('Gentle tiene un entorno privado incompleto o no verificable. Repáralo con su instalador oficial; ARISE no cambiará a otro motor.')
+    report = json.loads(result.stdout)
+    return validate_result(report, report['node'])
+
+
+def detect_gentle_installation(env=None, prefix=None):
+    """Recover the selected official runtime before considering global pnpm."""
     env=dict(os.environ if env is None else env)
+    managed = managed_gentle_candidates(env, prefix)
+    linked = linked_gentle_candidate(env)
+    if prefix or (managed and not linked):
+        if len(managed) != 1:
+            raise RuntimeError('Hay varios entornos privados de Gentle. Selecciona explícitamente cuál usar antes de continuar.')
+        return probe_managed_gentle(managed[0], env)
     node=shutil.which('node', path=env.get('PATH'))
     if not node: return None
     options=dict(capture_output=True,text=True,encoding='utf-8',timeout=30,env=env,
@@ -116,7 +154,10 @@ def detect_gentle_installation(env=None):
 
 def detect(config, agent_dir=None):
     if agent_dir is None and not config.get("gentle_agent_home"):
-        recovered = detect_gentle_installation()
+        try:
+            recovered = detect_gentle_installation()
+        except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired):
+            recovered = None
         if recovered:
             return {**recovered, "agent_dir": recovered["gentle_agent_home"],
                     "package_sources": [], "model_providers": [], "gentle_installed_package": True}

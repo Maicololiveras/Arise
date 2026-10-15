@@ -78,7 +78,7 @@ def _install_private_into(runtime,tools,transcription_only=False):
                 raise RuntimeError('Requisitos de compilación inválidos en el repositorio de herramientas.')
             build_requirements.update(requirements)
             packages.append(str(roots[0])+('[local]' if name=='transcripcion' else '[windows]')); records[name]={'repo':repo,'commit':commit,'entry':entry}
-        command=[str(python/'python.exe'),'-m','pip','install','--disable-pip-version-check','--no-warn-script-location','--no-build-isolation',*packages]
+        command=[str(python/'python.exe'),'-m','pip','install','--disable-pip-version-check','--no-warn-script-location','--no-build-isolation','mcp>=1,<2',*packages]
         env={key:value for key,value in os.environ.items() if key not in ('GITHUB_TOKEN','GH_TOKEN','OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY')}
         env['PYTHONPATH']=''
         # Embedded Python's _pth ignores pip's isolated-build PYTHONPATH. Install
