@@ -79,6 +79,10 @@ def wait_for_installer(process, result_file, log_file, timeout):
                     tail=stream.read().decode('utf-8',errors='replace')
             except OSError:pass
             reason=' Los permisos de la carpeta temporal fueron rechazados (acl-mask).' if 'acl-mask' in tail else ''
+            if 'process-failed (entry-storage)' in tail:
+                reason = (' Falló la comprobación del archivo de entrada del pnpm existente '
+                          '(entry-storage), antes del asistente. El registro no distingue '
+                          'archivo ausente, permisos o política de PowerShell; no se modificó pnpm.')
             raise RuntimeError(f'El instalador de Gentle terminó (código {code}) sin confirmar la instalación.{reason} Diagnóstico: {log_file}')
         if time.monotonic()>=deadline:
             raise RuntimeError(f'El instalador sigue abierto sin confirmar. Revisa su ventana antes de reintentar. Diagnóstico: {log_file}')

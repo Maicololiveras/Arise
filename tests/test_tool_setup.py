@@ -53,8 +53,8 @@ class ToolSetupTests(unittest.TestCase):
             def metadata(url,opener):return {'sha':'a'*40} if '/commits/' in url else {'default_branch':'master'}
             with patch('arise_app.tool_setup.install_forge',return_value=({'command':['fixture-forge'],'enabled':True},{'repo':'forge-mcp','commit':'b'*40})),patch('arise_app.tool_setup.checked_run') as checked,patch('arise_app.tool_setup.application_root',return_value=root/'app'),patch('arise_app.tool_setup.github_opener',return_value=opener),patch('arise_app.tool_setup.github_json',side_effect=metadata),patch('arise_app.tool_setup.subprocess.run',return_value=SimpleNamespace(returncode=0)) as run:
                 tools=root/'tools';tools.mkdir();result=_install_private_into(runtime,tools)
-            self.assertEqual(checked.call_count,2)
-            self.assertIn('--no-build-isolation',checked.call_args.args[0])
+            self.assertEqual(checked.call_count,3)
+            self.assertIn('--no-build-isolation',checked.call_args_list[1].args[0])
             self.assertEqual(result['catalogs'],{'screenview':1,'inputcontrol':1,'transcripcion':1,'forge':1})
             self.assertTrue((root/'tools/installed.json').is_file())
             for spec in [config['mcp'][name] for name in ('screenview','inputcontrol','transcripcion')]:self.assertTrue(Path(spec['command'][0]).is_file());self.assertTrue(Path(spec['command'][0]).is_relative_to(root/'tools'));self.assertTrue(spec['enabled'])
@@ -65,3 +65,22 @@ class ToolSetupTests(unittest.TestCase):
             credentials=Credentials(root);credentials.save('github-updates','fixture-private-token',False)
             self.assertEqual(credentials.get('github-updates'),'fixture-private-token')
             self.assertNotIn('fixture-private-token',credentials.environment().values())
+
+    def test_optional_failure_does_not_discard_public_tools(self):
+        import threading
+        from arise_app.tool_setup import auto_setup
+        events=[]; installed=[]
+        runtime=SimpleNamespace(storage=SimpleNamespace(config={'mcp':{}}),
+            credentials=None, transition_lock=threading.RLock(), busy=False,
+            emit=lambda kind,data:events.append(data['text']))
+        def install(runtime, selected):
+            name=selected[0]
+            if name=='transcripcion':raise RuntimeError('fixture import failure')
+            installed.append(name)
+        with patch('arise_app.tool_setup.os.name','nt'), \
+             patch('arise_app.tool_setup.github_token',return_value='fixture'), \
+             patch('arise_app.tool_setup.command_available',return_value=False), \
+             patch('arise_app.tool_setup.setup_desktop_tools',side_effect=install):
+            auto_setup(runtime)
+        self.assertEqual(installed,['screenview','inputcontrol','forge'])
+        self.assertTrue(any('transcripcion: fixture import failure' in e for e in events))

@@ -124,3 +124,13 @@ class GentleSetupTests(unittest.TestCase):
             with patch('arise_app.bundle.application_root',return_value=root),patch('arise_app.github_access.subprocess.run',side_effect=run):
                 self.assertEqual(gh_executable(),str(gh))
                 with github_opener('fixture-secret')('https://api.github.com/repos/owner/repo') as response:self.assertEqual(json.load(response),{'ok':True})
+
+    def test_entry_storage_does_not_misdiagnose_acl(self):
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp); log=root/'bootstrap.log'
+            log.write_text('Reason: process-failed (entry-storage)')
+            process=Mock(); process.poll.return_value=1
+            with self.assertRaisesRegex(RuntimeError,'archivo de entrada del pnpm') as error:
+                wait_for_installer(process,root/'result.json',log,3600)
+            self.assertNotIn('fueron rechazados (acl-mask)',str(error.exception))

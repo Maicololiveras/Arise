@@ -91,3 +91,26 @@ class VoiceTests(unittest.IsolatedAsyncioTestCase):
             await session.delegate("delegate_task",{"instruction":"No ejecutar"})
         await session.openai_event({"type":"response.output_audio.delta","delta":base64.b64encode(b"12").decode()})
         self.assertEqual(self.audio.played,[])
+
+
+class VoiceStartupTests(unittest.TestCase):
+    def test_device_failure_is_not_reported_as_missing_model_or_provider(self):
+        from arise_app.voice import VoiceService
+        from unittest.mock import Mock
+        runtime=Mock(); runtime.storage.config={'input_device':None,'output_device':None}
+        audio=Mock(); audio.open.side_effect=OSError('fixture private provider text')
+        service=VoiceService(runtime,audio_factory=lambda *args:audio)
+        with self.assertRaisesRegex(RuntimeError,'antes de cargar el modelo') as error:
+            service._ensure_audio()
+        self.assertNotIn('fixture private',str(error.exception))
+        audio.close.assert_called_once()
+        self.assertIsNone(service.audio)
+
+    def test_empty_model_directory_is_not_considered_ready(self):
+        from arise_app.voice import VoiceService
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as root:
+            runtime=Mock(); runtime.storage.config={'wake_model':root}
+            service=VoiceService(runtime)
+            with self.assertRaisesRegex(RuntimeError,'modelo Vosk válido'):
+                service._load_wake()

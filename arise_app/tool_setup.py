@@ -86,8 +86,11 @@ def _install_private_into(runtime,tools,transcription_only=False):
         if build_requirements:
             checked_run([str(python/'python.exe'),'-m','pip','install','--disable-pip-version-check',*sorted(build_requirements)], 'Preparación de compilación de herramientas', env=env, timeout=480, creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         checked_run(command, 'Instalación de manos y ojos', env=env, timeout=480, creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    probe=subprocess.run([str(python/'python.exe'),'-c','import transcripcion_mcp.server' if transcription_only else 'import screenview_mcp.server, inputcontrol_mcp.server, transcripcion_mcp.server'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    if probe.returncode: raise RuntimeError('Las herramientas descargadas no pudieron cargarse; no se cambió la configuración.')
+    checked_run([str(python/'python.exe'), '-c',
+                 'import transcripcion_mcp.server' if transcription_only else
+                 'import screenview_mcp.server, inputcontrol_mcp.server, transcripcion_mcp.server'],
+                'Carga de transcripción' if transcription_only else 'Carga de herramientas Python',
+                env=env, timeout=30, creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     if transcription_only:
         return {name:{'command':[str(python/'python.exe'),str(launcher),record['entry']],'enabled':True} for name,record in records.items()},records
     forge_spec,forge_record=install_forge(bundle,tools,opener)
@@ -162,7 +165,14 @@ def auto_setup(runtime):
         with runtime.transition_lock:
             if runtime.busy:return
             runtime.emit('notice',{'text':'Instalando herramientas y dependencias que faltan…'})
-            setup_desktop_tools(runtime, missing)
+            # Each component owns its installation transaction. An optional
+            # transcription failure must not roll back working public tools.
+            for name in missing:
+                try:
+                    setup_desktop_tools(runtime, [name])
+                    runtime.emit('notice', {'text': f'{name}: instalado y catálogo MCP verificado.'})
+                except Exception as error:
+                    runtime.emit('notice', {'text': f'{name}: {str(error)[:260]}'})
     except Exception as error:runtime.emit('notice',{'text':str(error)[:300]})
 
 

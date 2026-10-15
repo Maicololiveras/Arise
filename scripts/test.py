@@ -18,4 +18,9 @@ start=time.time();suite=unittest.defaultTestLoader.discover(str(root/'tests'))
 result=unittest.TextTestRunner(verbosity=2,resultclass=Result).run(suite)
 output=Path(os.environ.get('ARISE_TEST_REPORT',str(root/'artifacts/test-results.json')));output.parent.mkdir(parents=True,exist_ok=True)
 output.write_text(json.dumps({"platform":platform.platform(),"python":platform.python_version(),"duration_seconds":round(time.time()-start,3),"tests":result.testsRun,"failures":len(result.failures),"errors":len(result.errors),"skipped":len(result.skipped),"records":result.records,"cloud_accounts_used":False},indent=2),encoding='utf-8')
-raise SystemExit(0 if result.wasSuccessful() and not result.skipped else 1)
+# Native junction/ACL assertions run in windows-tests. Their explicit Linux
+# skips must not mask a missing Pi test or any other skipped coverage.
+unexpected_skips = [test for test, reason in result.skipped
+    if not (os.name != 'nt' and test.id().startswith('test_pnpm_junction.WindowsJunctionTests.')
+            and reason == 'Requires native Windows junctions and ACLs')]
+raise SystemExit(0 if result.wasSuccessful() and not unexpected_skips else 1)

@@ -287,7 +287,11 @@ class VoiceService:
         if not self.audio:
             c = self.runtime.storage.config
             self.audio = self.audio_factory(c.get("input_device"), c.get("output_device"))
-            self.audio.open()
+            try:
+                self.audio.open()
+            except Exception:
+                self._close_audio()
+                raise RuntimeError('No se pudo abrir el micrófono o la salida de audio. Revisa los dispositivos elegidos y el acceso al micrófono en Windows. El fallo ocurrió antes de cargar el modelo o conectar el proveedor.') from None
         self.runtime.orb.update(microphone=True)
 
     def _close_audio(self):
@@ -298,8 +302,9 @@ class VoiceService:
 
     def _load_wake(self):
         path = self.runtime.storage.config["wake_model"]
-        if not path or not Path(path).is_dir():
-            raise RuntimeError("Elige una carpeta de modelo Vosk para activar 'Oye Arise'. El atajo sigue disponible.")
+        from .models import is_vosk
+        if not path or not is_vosk(path):
+            raise RuntimeError("Falta un modelo Vosk válido para 'Oye Arise'. Instala el paquete de voz o selecciona su carpeta en Ajustes. El atajo sigue disponible.")
         if path != self.recognizer_path:
             from vosk import Model, KaldiRecognizer, SetLogLevel
             SetLogLevel(-1)

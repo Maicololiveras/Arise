@@ -1,6 +1,8 @@
 """Bundle the pinned official Windows wizard, with a result-only ARISE adapter."""
 import argparse
 import hashlib
+import json
+import re
 import shutil
 import tempfile
 import urllib.request
@@ -36,6 +38,20 @@ def adapt(entry):
     entry.write_text(source,encoding='utf-8')
 
 
+def adapt_windows_storage(entry):
+    """Extend only the known pnpm junction layout; keep fail-closed ACL checks."""
+    source = entry.read_text(encoding='utf-8')
+    pattern = r'const aclCheck = String.raw`.*?`;'
+    matches = list(re.finditer(pattern, source, re.S))
+    if len(matches) != 1:
+        raise RuntimeError('Cambió el contrato de validación Windows de Gentle.')
+    script = (Path(__file__).resolve().parents[1] /
+              'arise_app/resources/pnpm-storage-check.ps1').read_text(encoding='utf-8')
+    match = matches[0]
+    source = source[:match.start()] + 'const aclCheck = ' + json.dumps(script) + ';' + source[match.end():]
+    entry.write_text(source, encoding='utf-8')
+
+
 def prepare(destination):
     destination=Path(destination)
     with tempfile.TemporaryDirectory() as temporary:
@@ -50,6 +66,7 @@ def prepare(destination):
         source=extracted/'Gentle Shell Installer/installer'
         if not (source/'scripts/bootstrap.cmd').is_file():raise RuntimeError('ZIP oficial incompleto.')
         adapt(source/'bin/gentle-shell-install.mjs')
+        adapt_windows_storage(source/'scripts/installer-windows.mjs')
         # Keep upstream's ACL checks, SYSTEM-owner support and profile fallback intact.
         shutil.copy2(Path(__file__).resolve().parents[1]/'arise_app/resources/arise-result.mjs',source/'bin/arise-result.mjs')
         shutil.copytree(source,destination,dirs_exist_ok=True)
