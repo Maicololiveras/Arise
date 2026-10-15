@@ -18,9 +18,14 @@ start=time.time();suite=unittest.defaultTestLoader.discover(str(root/'tests'))
 result=unittest.TextTestRunner(verbosity=2,resultclass=Result).run(suite)
 output=Path(os.environ.get('ARISE_TEST_REPORT',str(root/'artifacts/test-results.json')));output.parent.mkdir(parents=True,exist_ok=True)
 output.write_text(json.dumps({"platform":platform.platform(),"python":platform.python_version(),"duration_seconds":round(time.time()-start,3),"tests":result.testsRun,"failures":len(result.failures),"errors":len(result.errors),"skipped":len(result.skipped),"records":result.records,"cloud_accounts_used":False},indent=2),encoding='utf-8')
-# Native junction/ACL assertions run in windows-tests. Their explicit Linux
+# Native junction/ACL and installer PowerShell assertions run in windows-tests. Their explicit Linux
 # skips must not mask a missing Pi test or any other skipped coverage.
 unexpected_skips = [test for test, reason in result.skipped
     if not (os.name != 'nt' and test.id().startswith('test_pnpm_junction.WindowsJunctionTests.')
-            and reason == 'Requires native Windows junctions and ACLs')]
+            and reason == 'Requires native Windows junctions and ACLs')
+    and not (os.name != 'nt'
+             and test.id() == 'test_installer_ancestors.InstallerAncestorTests.test_cycle_and_reused_parent_are_bounded'
+             and reason == 'Windows PowerShell required')]
+if unexpected_skips:
+    print('Unexpected skipped tests: '+', '.join(test.id() for test in unexpected_skips),file=sys.stderr)
 raise SystemExit(0 if result.wasSuccessful() and not unexpected_skips else 1)

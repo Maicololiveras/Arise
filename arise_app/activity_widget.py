@@ -43,6 +43,7 @@ class ActivityWidget(QWidget):
         d=self.data
         # Keep the state visible before the decorative label on narrow/high-DPI Windows.
         title=('▾' if self.toggle.isChecked() else '▸')+' '+d.get('label','Esperando')+' · Actividad de ARISE'
+        self.toggle.setAccessibleName(title+' · mostrar u ocultar detalle')
         self.toggle.setText(self.toggle.fontMetrics().elidedText(title,Qt.ElideRight,max(40,self.width()-10)));self.toggle.setToolTip(title)
         full=(d.get('tool') or 'Sin herramienta activa informada')+f" · {d.get('tools_completed',0)} terminadas"
         if d.get('subagents_active'):full+=f" · {d['subagents_active']} subagente(s)"
