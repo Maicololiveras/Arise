@@ -89,3 +89,5 @@ Validación local final: 190 pruebas, 186 aprobadas y cuatro de junctions Window
 ### Corrección de la prueba Windows de QA 0.4.17
 
 El run 38720302265 compiló Windows correctamente, pero windows-tests falló en un único caso: el fixture Python escribía el marcador de versión con CRLF en Windows. Gentle lo genera con Node como bytes LF exactos. Se reprodujo el fallo localmente forzando CRLF; el fixture ahora escribe bytes LF y comprueba también el rechazo de CRLF. No se modifica la validación de producción ni se omite ninguna prueba. publish-update conserva su dependencia de todos los jobs: la publicación queda pendiente hasta que el nuevo run apruebe.
+
+El siguiente run 38732037480 superó la detección y falló en la comparación textual de la ruta de Pi: Windows TEMP usaba RUNNER~1 y Path.resolve devolvía runneradmin. El test ahora comprueba identidad de archivo/carpeta con samefile para Node, Pi, Gentle y el home, manteniendo la comprobación del número de argumentos. No cambia rutas ni validaciones de producción.

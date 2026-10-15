@@ -32,9 +32,13 @@ class ManagedRecoveryTests(unittest.TestCase):
             env={**os.environ,'LOCALAPPDATA':str(base/'local'),'USERPROFILE':str(base),'FIXTURE_HOME':str(home)}
             with patch('arise_app.bundle.application_root',return_value=base/'app'),patch('arise_app.discovery.shutil.which',return_value=None):
                 found=detect_gentle_installation(env)
-                self.assertEqual(found['gentle_bundle_root'],str(prefix))
-                self.assertEqual(found['gentle_agent_home'],str(home))
-                self.assertEqual(found['pi_command'],[str(prefix/'node.exe'),str(pi/'dist/cli.js')])
+                self.assertTrue(Path(found['gentle_bundle_root']).samefile(prefix))
+                self.assertTrue(Path(found['gentle_agent_home']).samefile(home))
+                # Windows TEMP may use RUNNER~1 while resolve() returns runneradmin.
+                self.assertEqual(len(found['pi_command']),2)
+                self.assertTrue(Path(found['pi_command'][0]).samefile(prefix/'node.exe'))
+                self.assertTrue(Path(found['pi_command'][1]).samefile(pi/'dist/cli.js'))
+                self.assertTrue(Path(found['gentle_path']).samefile(shell))
                 # Reproduce the former Windows fixture defect on every platform.
                 (version/'.gentle-shell-version').write_bytes(b'v4.2.0\r\n')
                 with self.assertRaisesRegex(RuntimeError,'incompleto'):
