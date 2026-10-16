@@ -58,6 +58,8 @@ class RealPiTests(unittest.TestCase):
                 result = runtime.tasks[task]
                 self.assertEqual(result["status"], "done", result)
                 self.assertTrue(runtime.pi_state.get("gentleVerified"), "Gentle Shell no cargó sus comandos reales")
+                commands = runtime.pi.request({"type":"get_commands"}).get("data", {}).get("commands", [])
+                self.assertIn("gentle:scratch", [c["name"] for c in commands])
                 self.assertIn("Nota guardada", result["output"])
                 notes = json.loads(runtime.memory_path.read_text())
                 self.assertEqual(notes[0]["text"], "Nota desde Pi real")

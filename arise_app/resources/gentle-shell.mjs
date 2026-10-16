@@ -32,9 +32,18 @@ if (root && home) {
       catch { return undefined; }
     },
   });
+  // Preserve 4.3's isolated config home only when the configured agent home
+  // actually matches the official launcher selection. Linked/custom homes
+  // retain upstream's shared-config rules.
+  let launcherConfig;
+  try { launcherConfig = launcher.parseLauncherConfig(readFileSync(launcher.launcherConfigPath(homedir()),'utf8')); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const selectedHome = launcher.resolveHome({args:{link:false,isolated:false},env:process.env,homedir:homedir(),config:launcherConfig});
+  const homeSelection = resolve(selectedHome.dir) === resolve(home)
+    ? selectedHome : {mode:'path',dir:home,source:'config'};
   const invocation = launcher.buildPiInvocation({
     runtime:{command:process.execPath,args:[resolve(cli)]},
-    home:{mode:'path',dir:home,source:'config'}, packageRoot:root,
+    home:homeSelection, bundled:!!process.env.ARISE_GENTLE_PREFIX, packageRoot:root,
     declaration,takeOver:false,otherPackagePaths:[],looseExtensionEntries:[],
     passthrough:args,baseEnv:process.env,homedir:homedir(),cwd:process.cwd(),
   });

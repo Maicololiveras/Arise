@@ -11,8 +11,8 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from arise_app.downloads import safe_extract
 
-URL='https://github.com/Gentleman-Programming/gentle-shell/releases/download/v4.2.0/gentle-shell-installer-windows.zip'
-SHA256='352bf1971c00beb555a97279d59c2ea2946e6b261c446d9b3fe787bd6689a1bb'
+URL='https://github.com/Gentleman-Programming/gentle-shell/releases/download/v4.3.0/gentle-shell-installer-windows.zip'
+SHA256='b8d8087fe7ad74e7a2dab9121d09dd9fe5fef3ba6498b59d2fe07f701ae80f36'
 
 def adapt_bootstrap(entry):
     """Use ARISE's private staging parent; retain every upstream ACL check."""

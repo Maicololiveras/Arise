@@ -1,3 +1,11 @@
+# ARISE 0.4.20 QA
+
+- Gentle Shell 4.3.0 y su instalador oficial fijados; Pi se mantiene en 1.2.0, compatible con el mínimo declarado.
+- Conserva la configuración aislada de Gentle 4.3 al reutilizar su entorno; los entornos vinculados y personalizados mantienen sus reglas.
+- Mantiene el host RPC interactivo, las confirmaciones, el aislamiento por chat y la parada de ARISE.
+- Gentle 4.3 incorpora temporales por sesión, registro de artefactos y Gentle AI 4.2.0. ARISE no borra esos directorios por su cuenta.
+- Requiere validar en CI la compilación e instalación Windows; no certifica el fallo entry-storage de otros PCs.
+
 # ARISE 0.4.19 QA
 
 - Actividad compacta a la izquierda y Detener a la derecha; más espacio para el chat.
