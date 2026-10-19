@@ -24,7 +24,10 @@ unexpected_skips = [test for test, reason in result.skipped
     if not (os.name != 'nt' and test.id().startswith('test_pnpm_junction.WindowsJunctionTests.')
             and reason == 'Requires native Windows junctions and ACLs')
     and not (os.name != 'nt'
-             and test.id() == 'test_installer_ancestors.InstallerAncestorTests.test_cycle_and_reused_parent_are_bounded'
+             and test.id() in {
+                 'test_installer_ancestors.InstallerAncestorTests.test_cycle_and_reused_parent_are_bounded',
+                 'test_installer_ancestors.InstallerAncestorTests.test_shutdown_exit_race_and_live_failure',
+             }
              and reason == 'Windows PowerShell required')]
 if unexpected_skips:
     print('Unexpected skipped tests: '+', '.join(test.id() for test in unexpected_skips),file=sys.stderr)

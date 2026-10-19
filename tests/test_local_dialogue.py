@@ -41,16 +41,28 @@ class DialogueTests(unittest.TestCase):
         self.assertTrue(any(m.get('content')=='haz tarea' for m in self.requests[-1]['messages']))
     def test_interlocutor_talks_while_gentle_runs_and_reports_confirmed_result(self):
         active=threading.Event();active.set();shutdown=threading.Event();spoken=[];instructions=[]
+        # Real HTTP discovery, two model round trips and SQLite persistence are
+        # integration work, not a two-second latency assertion on a CI runner.
+        spoken_condition=threading.Condition()
+        def say(text,cancel):
+            with spoken_condition:
+                spoken.append(text)
+                spoken_condition.notify_all()
+        def expect_spoken(text):
+            with spoken_condition:
+                ready=spoken_condition.wait_for(lambda:text in spoken,timeout=15)
+            self.assertTrue(ready, f'Expected {text!r}; spoken={spoken!r}; '
+                            f'requests={len(self.requests)}; bridge_error={bridge.last_failure!r}')
         def steer(text):instructions.append(text);self.runtime.tasks['real-task']={'status':'running','output':'','error':''};return {'task_id':'real-task'}
         self.runtime.steer=steer
-        bridge=LocalVoiceBridge(self.runtime,SimpleNamespace(interrupt=lambda:None),lambda text,cancel:spoken.append(text),active,shutdown)
+        bridge=LocalVoiceBridge(self.runtime,SimpleNamespace(interrupt=lambda:None),say,active,shutdown)
         try:
-            bridge.submit('haz tarea');wait_for(lambda:'Estoy en ello.' in spoken)
+            bridge.submit('haz tarea');expect_spoken('Estoy en ello.')
             wait_for(lambda:bool(instructions));self.assertEqual(instructions,['trabaja en la carpeta elegida'])
-            bridge.submit('hablemos');wait_for(lambda:'Podemos conversar mientras Gentle trabaja.' in spoken)
+            bridge.submit('hablemos');expect_spoken('Podemos conversar mientras Gentle trabaja.')
             self.assertEqual(self.runtime.tasks['real-task']['status'],'running')
             self.runtime.tasks['real-task'].update(status='completed',output='resultado real')
-            wait_for(lambda:'Gentle terminó: resultado real.' in spoken)
+            expect_spoken('Gentle terminó: resultado real.')
             self.assertEqual(self.requests[-1]['tool_choice'],'none')
             self.assertEqual(len(instructions),1)
         finally:bridge.close()
