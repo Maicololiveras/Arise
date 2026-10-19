@@ -92,6 +92,95 @@ class VoiceTests(unittest.IsolatedAsyncioTestCase):
         await session.openai_event({"type":"response.output_audio.delta","delta":base64.b64encode(b"12").decode()})
         self.assertEqual(self.audio.played,[])
 
+    def make_session(self):
+        session=VoiceSession(self.r,self.audio,self.active)
+        class Socket:
+            def __init__(self): self.sent=[]
+            async def send(self,value): self.sent.append(json.loads(value))
+        session.ws=Socket()
+        return session
+
+    def install_task(self, identity="job", conversation=None, status="running"):
+        self.r.tasks[identity]={"id":identity,"conversation":conversation or self.r.conversation,
+            "status":status,"output":"Documento verificado","error":""}
+        self.r.current_task=identity if status=="running" else None
+        self.r.busy=status=="running"
+
+    async def test_acceptance_returns_before_completion_and_does_not_block_conversation(self):
+        from unittest.mock import patch
+        session=self.make_session()
+        def submit(text):
+            self.install_task()
+            return {"task_id":"job"}
+        with patch.object(self.r,"prompt",side_effect=submit) as prompt:
+            await asyncio.wait_for(session.call("submit","delegate_task",{"instruction":"Crear Word"}),1)
+            await session.call("submit","delegate_task",{"instruction":"Crear Word"})
+            prompt.assert_called_once()
+        result=json.loads(session.ws.sent[0]["item"]["output"])
+        self.assertEqual(result["status"],"accepted")
+        self.assertTrue(self.r.busy)
+        await session.openai_event({"type":"response.output_audio.delta","delta":base64.b64encode(b"12").decode()})
+        self.assertEqual(self.audio.played,[b"12"])
+        status=await session.delegate("task_status",{"task_id":"job"})
+        self.assertEqual(status["status"],"running")
+        self.assertEqual(status["result"],"")
+        self.r.busy=False
+
+    async def test_new_task_is_not_silently_steered_and_explicit_correction_is_scoped(self):
+        from unittest.mock import patch
+        self.install_task()
+        session=self.make_session()
+        with patch.object(self.r,"steer",return_value={"task_id":"job"}) as steer:
+            self.assertEqual((await session.delegate("delegate_task",{"instruction":"Otra tarea"}))["status"],"busy")
+            steer.assert_not_called()
+            await session.delegate("steer_task",{"task_id":"job","instruction":"Usa plantilla WEG"})
+            steer.assert_called_once_with("Usa plantilla WEG")
+        self.install_task("foreign",conversation="other")
+        for name in ("task_status","steer_task","cancel_task"):
+            with self.assertRaises(ValueError):
+                await session.delegate(name,{"task_id":"foreign","instruction":"No"})
+        self.r.busy=False
+
+    async def test_completion_is_announced_once_when_idle_and_never_after_chat_change(self):
+        for provider in ("openai","gemini"):
+            self.r.storage.config["voice_provider"]=provider
+            session=self.make_session();self.install_task(status="done")
+            session.watched_tasks.add("job");session.last_activity=0
+            session.response_active=True
+            await session.notify_finished();self.assertEqual(session.ws.sent,[])
+            session.response_active=False
+            await session.notify_finished();self.assertTrue(session.ws.sent)
+            count=len(session.ws.sent)
+            await session.notify_finished();self.assertEqual(len(session.ws.sent),count)
+            session.watched_tasks.add("job");session.last_activity=0;session.response_active=False
+            self.r.chat_generation+=1
+            await session.notify_finished();self.assertEqual(len(session.ws.sent),count)
+
+    async def test_cancel_does_not_touch_a_different_task_and_stop_revokes_pending_dispatch(self):
+        from unittest.mock import patch
+        session=self.make_session();self.install_task()
+        self.r.tasks["old"]={"id":"old","conversation":self.r.conversation,"status":"done","output":"","error":""}
+        with patch.object(self.r,"stop") as stop:
+            with self.assertRaises(ValueError):await session.delegate("cancel_task",{"task_id":"old"})
+            stop.assert_not_called()
+            await session.delegate("cancel_task",{"task_id":"job"})
+            stop.assert_called_once()
+        generation=self.r.stop_generation;self.r.stop_generation+=1
+        with self.assertRaisesRegex(RuntimeError,"parada"):
+            session._dispatch_to_chat("delegate_task",{"instruction":"No ejecutar"},generation)
+        self.r.busy=False
+
+    async def test_result_does_not_interrupt_microphone_and_error_is_not_raw_diagnostic(self):
+        session=self.make_session();self.install_task(status="error")
+        self.r.tasks["job"]["error"]="secret backend diagnostic"
+        session.watched_tasks.add("job");session.last_activity=0
+        session.input_quiet_after=float("inf")
+        await session.notify_finished();self.assertEqual(session.ws.sent,[])
+        session.input_quiet_after=0
+        await session.notify_finished()
+        self.assertNotIn("secret backend",json.dumps(session.ws.sent))
+        self.assertIn('has_error',json.dumps(session.ws.sent))
+
 
 class VoiceStartupTests(unittest.TestCase):
     def test_device_failure_is_not_reported_as_missing_model_or_provider(self):
