@@ -1,3 +1,10 @@
+# ARISE 0.4.23 QA
+
+- Comandos de la sesión en una ventana compacta con lista desplazable y búsqueda por nombre o descripción.
+- Búsqueda sin distinguir mayúsculas ni acentos; Enter ejecuta la selección, Esc cierra y las flechas permiten recorrer la lista enfocada.
+- La ventana se cierra al recargar/cambiar el chat; resultados de catálogos anteriores no se muestran en la nueva ventana.
+- Se conserva la ejecución y las confirmaciones del runtime.
+
 # ARISE 0.4.22 QA
 
 - Voz OpenAI/Gemini: aceptación inmediata de tareas, consulta de estado y corrección/cancelación por identificador del chat.

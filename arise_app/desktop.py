@@ -553,9 +553,8 @@ class Panel(QWidget):
         self.navigation_menu.addAction("Recuperar último mensaje · Alt+Q", self.restore_draft)
         self.navigation_menu.addAction("Configurar todo desde ZIP…", controller.install_model_pack)
         self.navigation_menu.addAction(control_icon("settings"), "Ajustes…", controller.show_settings)
-        menu = self.navigation_menu.addMenu("Comandos de la sesión"); self.commands_menu = menu; self.commands_loading = False
-        menu.aboutToShow.connect(self.refresh_commands)
-        menu.addAction("Abre este menú para consultar los comandos disponibles").setEnabled(False)
+        self.command_dialog = None
+        self.navigation_menu.addAction("Buscar comandos de la sesión…", self.refresh_commands)
         self.control = QCheckBox("Permitir control del PC"); self.control.toggled.connect(self.toggle_control)
         permission = QWidgetAction(self.navigation_menu); permission.setDefaultWidget(self.control); self.navigation_menu.addAction(permission)
         self.navigation.setMenu(self.navigation_menu)
@@ -627,6 +626,9 @@ class Panel(QWidget):
         self.history.append_message(role,text,images)
 
     def reload(self):
+        if getattr(self, 'command_dialog', None):
+            self.command_dialog.close()
+            self.command_dialog = None
         catalog = self.runtime.project_catalog(); self.current_chat = catalog["active"]["conversation"]
         self.history.clear()
         self.connection_notice.set_notice('')
@@ -646,22 +648,26 @@ class Panel(QWidget):
         self.navigation.setToolTip(active_project["name"] + " · " + self.conversations.currentText())
 
     def refresh_commands(self):
-        if self.commands_loading: return
-        self.commands_loading = True; chat = self.current_chat
-        self.commands_menu.clear()
-        self.commands_menu.addAction("Cargando comandos de la sesión…").setEnabled(False)
+        from .command_picker import CommandPicker
+        if self.command_dialog:
+            self.command_dialog.close()
+        chat = self.current_chat
+        def selected(command):
+            if self.current_chat == chat and self.command_dialog is dialog:
+                self.run_command(command)
+        dialog = CommandPicker(self, selected)
+        self.command_dialog = dialog
+        dialog.show()
         def operation():
             self.runtime.connect_pi()
             return self.runtime.pi.request({"type":"get_commands"}).get("data", {}).get("commands", [])
         def done(commands):
-            self.commands_loading = False
-            if chat != self.current_chat: return
-            self.commands_menu.clear()
-            for command in sorted((c for c in commands if c.get("source") == "extension"), key=lambda c:c["name"]):
-                name = "/" + command["name"]
-                action = self.commands_menu.addAction(name, lambda checked=False, value=name:self.run_command(value))
-                action.setToolTip(command.get("description", ""))
-        self.controller.background(operation, done, failed=lambda _:setattr(self, "commands_loading", False))
+            if chat == self.current_chat and self.command_dialog is dialog and dialog.isVisible():
+                dialog.set_commands(commands)
+        def failed(_):
+            if self.command_dialog is dialog and dialog.isVisible():
+                dialog.status.setText("No se pudieron cargar los comandos. Cierra y vuelve a abrir para reintentar.")
+        self.controller.background(operation, done, failed=failed)
 
     def run_command(self, text):
         if text == "/gentle:customize":
