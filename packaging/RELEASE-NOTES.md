@@ -1,3 +1,10 @@
+# ARISE 0.4.22 QA
+
+- Voz OpenAI/Gemini: aceptación inmediata de tareas, consulta de estado y corrección/cancelación por identificador del chat.
+- Una nueva petición no modifica silenciosamente la tarea activa; los resultados tardíos no se entregan en otro chat.
+- Se conserva la ruta de voz local y las aprobaciones existentes. Calidad de audio y proveedores reales pendientes de prueba en PC.
+- Corregida la versión del instalador y del icono a 0.4.22; prueba temprana de coherencia entre aplicación, instalador, bundle y notas.
+
 # ARISE 0.4.21 QA
 
 - Avisos de conexión Pi/Gentle y carga de herramientas en una barra discreta bajo el campo de escritura, fuera del historial.
