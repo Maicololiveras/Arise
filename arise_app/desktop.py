@@ -23,6 +23,33 @@ from .server import make_server
 from .hotkeys import Hotkeys
 from .bundle import configure_bundle
 
+class ConnectionNotice(QLabel):
+    """One quiet, fixed-height line for real runtime notices, outside the chat."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.full_text = ''
+        self.setTextFormat(Qt.PlainText)
+        self.setFixedHeight(20)
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.setStyleSheet('color:#9DB3C7;font-size:11px;padding:0 3px;')
+        self.set_notice('')
+
+    def set_notice(self, text):
+        self.full_text = ' '.join(str(text).split())
+        self.setToolTip(self.full_text)
+        self.setAccessibleName('Estado de conexión y herramientas')
+        self.setAccessibleDescription(self.full_text)
+        self.refresh_text()
+
+    def refresh_text(self):
+        self.setText(self.fontMetrics().elidedText(self.full_text, Qt.ElideRight, max(0,self.width()-6)))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.refresh_text()
+
+
 STYLE = """
 QWidget {background:#0A1828;color:#EDF8FF;font-family:'Segoe UI';font-size:13px;}
 QDialog {background:#0A1828;}
@@ -509,6 +536,7 @@ class Panel(QWidget):
         self.history.anchorClicked.connect(self.open_link)
         self.input = ChatInput(); self.input.setAcceptRichText(False); self.input.setPlaceholderText("Escribe o pega una imagen con Ctrl+V…"); self.input.setFixedHeight(58)
         self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea · Alt+Q recupera el último mensaje"); self.input.submitted.connect(self.send); self.input.image_pasted.connect(self.add_image); layout.addWidget(self.input)
+        self.connection_notice = ConnectionNotice(); layout.addWidget(self.connection_notice)
         row = QHBoxLayout(); row.setSpacing(3); layout.addLayout(row)
         self.navigation = self.icon_button(row, "menu", "Proyectos, chats y comandos")
         self.navigation_menu = QMenu(self.navigation)
@@ -598,8 +626,10 @@ class Panel(QWidget):
     def reload(self):
         catalog = self.runtime.project_catalog(); self.current_chat = catalog["active"]["conversation"]
         self.history.clear()
+        self.connection_notice.set_notice('')
         self.activity_view.set_activity(self.runtime.status().get("activity", {}))
         for message in self.runtime.storage.messages(self.current_chat):
+            if message["role"] == "system": continue  # Retain diagnostic records without replaying notices as answers.
             self.append({"user":"Tú","voice_user":"Voz · Tú","voice_assistant":"Voz · ARISE"}.get(message["role"],"ARISE"), message["text"], message.get("images"))
         self.conversations.blockSignals(True); self.conversations.clear()
         for c in catalog["chats"]: self.conversations.addItem(c["title"], c["id"])
@@ -958,7 +988,9 @@ class Controller(QObject):
                 received=data['received'];total=data['total']
                 self.update_progress.setValue(int(100*received/total))
                 self.update_progress.setLabelText(f"Descargando: {received/1048576:.1f} de {total/1048576:.1f} MB")
-            elif kind in ("user", "assistant_end", "notice", "error"):
+            elif kind == "notice":
+                self.panel.connection_notice.set_notice(data.get("text", ""))
+            elif kind in ("user", "assistant_end", "error"):
                 if kind=='error':
                     from .user_errors import friendly_error
                     data={**data,'text':friendly_error(data.get('text',''))}

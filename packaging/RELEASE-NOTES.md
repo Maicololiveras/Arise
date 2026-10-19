@@ -1,3 +1,9 @@
+# ARISE 0.4.21 QA
+
+- Avisos de conexión Pi/Gentle y carga de herramientas en una barra discreta bajo el campo de escritura, fuera del historial.
+- Una línea de altura fija, texto completo al pasar el cursor y disponible para accesibilidad; no mueve el chat ni roba foco.
+- La barra se limpia al cambiar de chat; errores y confirmaciones mantienen su presentación visible.
+
 # ARISE 0.4.20 QA
 
 - Gentle Shell 4.3.0 y su instalador oficial fijados; Pi se mantiene en 1.2.0, compatible con el mínimo declarado.
