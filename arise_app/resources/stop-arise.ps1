@@ -4,6 +4,11 @@ $ErrorActionPreference = 'Stop'
 function Trace([string]$message) {
     ((Get-Date -Format o) + ' ' + $message) | Add-Content -LiteralPath (Join-Path $DataDir 'installer-stop.log')
 }
+trap {
+    # Do not log command lines, descriptor contents or authentication tokens.
+    Trace ('Shutdown failed: category=' + $_.CategoryInfo.Category + '; id=' + $_.FullyQualifiedErrorId + '; line=' + $_.InvocationInfo.ScriptLineNumber)
+    exit 1
+}
 Trace 'Starting process ownership check'
 # CIM returns long executable paths even when Setup was launched through an 8.3 path.
 Add-Type -TypeDefinition @'
@@ -59,6 +64,7 @@ do {
         }
     }
 } while($changed)
+Trace ('Owned process count: ' + $owned.Count)
 # This also supports upgrading 0.3.0, which did not yet expose --shutdown.
 $descriptor = Join-Path $DataDir 'daemon.json'
 if(Test-Path -LiteralPath $descriptor) {
@@ -75,16 +81,39 @@ $engine = Join-Path $InstallDir 'ARISE.exe'
 if($owned.Count -and (Test-Path -LiteralPath $engine)) {
     try { $stop = Start-Process -FilePath $engine -ArgumentList @('--shutdown','--data-dir',('"'+$DataDir+'"')) -PassThru; if(-not $stop.WaitForExit(30000)){ $stop.Kill(); if(-not $stop.WaitForExit(5000)) { throw 'Shutdown helper did not exit' } } } catch { Write-Verbose 'Older UI requires the bounded fallback.' }
 }
+Trace 'Graceful shutdown requests completed'
 # Give session persistence/voice/MCP shutdown a grace period before forced cleanup.
 $deadline = [DateTime]::UtcNow.AddSeconds(15)
 do {
     $live = @(Snapshot | Where-Object { $owned.ContainsKey([int]$_.ProcessId) -and $_.CreationDate -eq $owned[[int]$_.ProcessId].CreationDate })
     if(-not $live.Count) { break }; Start-Sleep -Milliseconds 200
 } while([DateTime]::UtcNow -lt $deadline)
-foreach($record in $live) {
-    $now = Get-CimInstance Win32_Process -OperationTimeoutSec 10 -Filter ('ProcessId='+$record.ProcessId) -ErrorAction SilentlyContinue
-    if($now -and $now.CreationDate -eq $record.CreationDate -and -not $protected.ContainsKey([int]$record.ProcessId)) { Stop-Process -Id $record.ProcessId -Force -ErrorAction Stop }
+# A process may exit between the CIM snapshot and Stop-Process. Only ignore
+# that error when a fresh identity check proves the original process is gone.
+function Stop-OwnedProcess($record, $protected) {
+    if ($protected.ContainsKey([int]$record.ProcessId)) { return }
+    $now = Get-CimInstance Win32_Process -OperationTimeoutSec 10 -Filter ('ProcessId='+$record.ProcessId)
+    if (-not $now -or $now.CreationDate -ne $record.CreationDate) { return }
+    try {
+        Stop-Process -Id $record.ProcessId -Force -ErrorAction Stop
+    } catch {
+        $failure = $_
+        $after = Get-CimInstance Win32_Process -OperationTimeoutSec 10 -Filter ('ProcessId='+$record.ProcessId)
+        if ($after -and $after.CreationDate -eq $record.CreationDate) { throw $failure }
+        Trace ('Process exited during cleanup: ' + $record.ProcessId)
+    }
 }
-Start-Sleep -Milliseconds 300
-$remaining = @(Snapshot | Where-Object { (Is-Arise $_) -or ($owned.ContainsKey([int]$_.ProcessId) -and $_.CreationDate -eq $owned[[int]$_.ProcessId].CreationDate) })
-if($remaining.Count) { throw 'No se pudieron cerrar todos los procesos de ARISE. La instalación no continuará.' }
+Trace ('Forced cleanup candidates: ' + $live.Count)
+foreach($record in $live) { Stop-OwnedProcess $record $protected }
+# Termination is asynchronous: allow bounded time for handles to be released.
+$deadline = [DateTime]::UtcNow.AddSeconds(5)
+do {
+    $remaining = @(Snapshot | Where-Object { (Is-Arise $_) -or ($owned.ContainsKey([int]$_.ProcessId) -and $_.CreationDate -eq $owned[[int]$_.ProcessId].CreationDate) })
+    if (-not $remaining.Count) { break }
+    Start-Sleep -Milliseconds 200
+} while ([DateTime]::UtcNow -lt $deadline)
+if($remaining.Count) {
+    Trace ('Remaining process IDs: ' + (($remaining | ForEach-Object { $_.ProcessId }) -join ','))
+    throw 'No se pudieron cerrar todos los procesos de ARISE. La instalación no continuará.'
+}
+Trace 'Owned processes stopped; replacement permitted'
