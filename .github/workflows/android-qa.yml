@@ -1,0 +1,37 @@
+name: Android companion QA
+on:
+  push:
+    branches: [qa-connections-companion, qa]
+    paths: ['mobile/android/**', '.github/workflows/android-qa.yml', 'arise_app/resources/companion.*', 'tests/companion-client.test.cjs']
+  pull_request:
+    paths: ['mobile/android/**', '.github/workflows/android-qa.yml', 'arise_app/resources/companion.*', 'tests/companion-client.test.cjs']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Companion web client tests
+        run: node tests/companion-client.test.cjs
+      - name: Unit tests, lint and QA APK
+        working-directory: mobile/android
+        run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arise-android-qa
+          path: |
+            mobile/android/app/build/outputs/apk/debug/*.apk
+            mobile/android/app/build/reports/
+          if-no-files-found: error

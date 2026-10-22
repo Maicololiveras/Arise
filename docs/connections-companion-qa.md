@@ -138,3 +138,12 @@ Después se añadió y pasó una prueba de salida no cero del delegado (6/6 en e
 suite específica). Los 14 casos nuevos del sistema de conexiones pasaron.
 El workflow reconoce esta rama para comprobar Docker/Windows, pero su condición
 de publicación sigue limitada a las ramas exactas `qa` y `main`.
+
+## Android native companion
+
+The QA branch now includes `mobile/android`, a separate native Android companion
+with explicit overlay/microphone/notification permissions, a local wake-detector
+adapter and an expandable bottom panel. See [setup, boundaries and acceptance
+tests](android-companion-qa.md). A custom Spanish Android wake model and AccessKey
+are required; these are not bundled or verified. This does not add an iPadOS
+background listener or continuous mobile voice conversation.
