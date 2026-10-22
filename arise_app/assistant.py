@@ -20,6 +20,13 @@ class Assistant(Runtime):
         self.action_lock = threading.RLock()
         self.stop_generation = 0
         self.voice_service = None
+        from .connections import Connections
+        from .companion import Devices
+        from .reminders import Reminders
+        self.connections = Connections(self.storage.root)
+        self.devices = Devices(self.storage)
+        self.reminders = Reminders(self)
+        self.mobile_server = None
         with self.storage.lock, self.storage.db:
             for row in self.storage.db.execute("SELECT id,payload FROM tasks ORDER BY created DESC LIMIT 100"):
                 task = json.loads(row["payload"])
@@ -27,6 +34,29 @@ class Assistant(Runtime):
                     task.update(status="error", error="El proceso residente se interrumpió. Verifica el resultado externo antes de repetir la acción.")
                 self.tasks[row["id"]] = task
             for task in self.tasks.values(): self.persist_task(task)
+
+    def start_mobile(self, origin):
+        from .companion import make_mobile_server
+        with self.transition_lock:
+            if self.mobile_server:
+                raise ValueError('El acceso móvil ya está activo; deténlo antes de cambiarlo.')
+            self.mobile_server = make_mobile_server(self, origin)
+            threading.Thread(target=self.mobile_server.serve_forever, daemon=True).start()
+            return {'origin': origin, 'port': self.mobile_server.server_port,
+                    'command': f'tailscale serve --bg http://127.0.0.1:{self.mobile_server.server_port}'}
+
+    def stop_mobile(self):
+        with self.transition_lock:
+            if self.mobile_server:
+                self.mobile_server.shutdown()
+                self.mobile_server.server_close()
+                self.mobile_server = None
+        return {'stopped': True}
+
+    def close(self):
+        self.reminders.close()
+        self.stop_mobile()
+        super().close()
 
     def persist_task(self, task):
         with self.storage.lock, self.storage.db:
@@ -153,6 +183,8 @@ class Assistant(Runtime):
         catalog["tools"].extend(TOOLS)
         from .terminal_tasks import TOOLS as TERMINAL_TOOLS
         catalog["tools"].extend(TERMINAL_TOOLS)
+        from .reminders import TOOLS as REMINDER_TOOLS
+        catalog["tools"].extend(REMINDER_TOOLS)
         catalog["tools"].extend([
             {"name": "files.write", "description": "Escribe UTF-8 dentro del workspace.", "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}, "text": {"type": "string"}}, "required": ["path", "text"]}},
             {"name": "gmail.send_draft", "description": "Solicita confirmación visible para enviar un borrador existente. Nunca repetir un envío ambiguo.", "inputSchema": {"type": "object", "properties": {"draft_id": {"type": "string"}}, "required": ["draft_id"]}},
@@ -165,6 +197,12 @@ class Assistant(Runtime):
     def call_tool(self, name, arguments):
         if not isinstance(arguments, dict):
             raise ValueError("arguments debe ser un objeto.")
+        if name.startswith('reminders.'):
+            chat = self.conversation
+            if name == 'reminders.create': return self.wrap(self.reminders.create(chat, arguments))
+            if name == 'reminders.list': return self.wrap({'reminders': self.reminders.list(chat)})
+            if name == 'reminders.cancel': return self.wrap(self.reminders.cancel(chat, arguments.get('id')))
+            raise ValueError('Herramienta de recordatorio desconocida.')
         if name.startswith('terminal.'):
             if name=='terminal.delegate':return self.wrap(self.terminals.delegate(arguments.get('task')))
             with self.transition_lock:

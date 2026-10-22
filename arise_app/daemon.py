@@ -130,6 +130,7 @@ def main():
             except Exception as error:
                 runtime.emit('notice', {'text': str(error)[:300]})
         threading.Thread(target=warm_local_model, daemon=True).start()
+    runtime.reminders.start()
     try: server.serve_forever(poll_interval=.1)
     except KeyboardInterrupt: pass
     finally:

@@ -78,6 +78,8 @@ class TerminalTasks:
                 report=json.loads(path.read_text(encoding='utf-8'))
                 if report.get('status') not in ('completed','failed'):raise ValueError()
                 job.update(status=report['status'],result=str(report.get('text',''))[:60000],error='' if report['status']=='completed' else 'Gentle informó un fallo.')
+                if code != 0:
+                    job.update(status='failed',error=f'Gentle dejó un resultado parcial pero cerró con código {code}. Verifica antes de repetir.')
             except (OSError,ValueError):
                 job.update(status='failed',error=f'Terminal cerrada sin resultado confirmado (salida {code}). Revisa los archivos antes de repetir.')
             self.save(job)

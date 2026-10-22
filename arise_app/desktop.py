@@ -148,6 +148,8 @@ class Settings(QDialog):
         quick_setup.clicked.connect(controller.install_model_pack);layout.addWidget(quick_setup)
         gentle_setup=QPushButton("Configurar Gentle · estable o último main")
         gentle_setup.clicked.connect(controller.install_gentle);layout.addWidget(gentle_setup)
+        connections=QPushButton('Conexiones, celular y recordatorios · QA')
+        connections.clicked.connect(self.show_connections);layout.addWidget(connections)
         tabs = QTabWidget(); layout.addWidget(tabs)
         self.fields, self.keys, self.mcp = {}, {}, {}
         config = self.runtime.storage.config
@@ -282,6 +284,11 @@ class Settings(QDialog):
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Close)
         buttons.button(QDialogButtonBox.Save).setText("Guardar"); buttons.button(QDialogButtonBox.Close).setText("Cerrar")
         buttons.accepted.connect(self.save); buttons.rejected.connect(self.close); layout.addWidget(buttons)
+
+    def show_connections(self):
+        from .connections_widget import ConnectionsDialog
+        dialog=ConnectionsDialog(self.runtime,self)
+        dialog.exec()
 
     def closeEvent(self,event):
         # Closing discards the unsaved form; storage changes only in Save.

@@ -42,6 +42,9 @@ def make_server(runtime, port=0):
             parsed = urllib.parse.urlparse(self.path)
             try:
                 if parsed.path == "/api/status": value = runtime.status()
+                elif parsed.path == '/api/connections': value = {'connections': runtime.connections.status()}
+                elif parsed.path == '/api/reminders': value = {'reminders': runtime.reminders.list(runtime.conversation)}
+                elif parsed.path == '/api/mobile/devices': value = {'devices': runtime.devices.list(runtime.conversation)}
                 elif parsed.path == "/api/tools": value = runtime.tool_catalog()
                 elif parsed.path == "/api/config": value = runtime.storage.config
                 elif parsed.path == "/api/conversations": value = {"conversations": runtime.storage.conversations()}
@@ -68,7 +71,19 @@ def make_server(runtime, port=0):
                 data = json.loads(self.rfile.read(length))
                 if not isinstance(data, dict): raise ValueError("Se requiere un objeto")
                 route = urllib.parse.urlparse(self.path).path
-                if route == "/api/tools/call":
+                if route == '/api/connections/token':
+                    runtime.connections.save_token(data['provider'], data['token'], **data.get('options', {})); value = {'saved': True}
+                elif route == '/api/connections/disconnect':
+                    runtime.connections.disconnect(data['provider']); value = {'disconnected': True}
+                elif route == '/api/connections/oauth/start': value = runtime.connections.oauth_start(data['provider'], data['client_id'])
+                elif route == '/api/connections/oauth/poll': value = runtime.connections.oauth_poll(data['provider'])
+                elif route == '/api/mobile/start': value = runtime.start_mobile(data['origin'])
+                elif route == '/api/mobile/stop': value = runtime.stop_mobile()
+                elif route == '/api/mobile/invite': value = runtime.devices.invite(runtime.conversation)
+                elif route == '/api/mobile/revoke':
+                    runtime.devices.revoke(runtime.conversation, data['id']); value = {'revoked': True}
+                elif route == '/api/reminders/cancel': value = runtime.reminders.cancel(runtime.conversation, data['id'])
+                elif route == "/api/tools/call":
                     # Recheck after reading the body. Scoped file/document calls
                     # finish in their originating workspace before a chat switch.
                     name=data.get("name", "")

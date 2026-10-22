@@ -62,6 +62,16 @@ class TerminalTests(unittest.TestCase):
         self.assertNotIn('Documento creado',str(r.storage.messages(r.conversation)))
         job['status']='running';r.terminals.save(job);r.terminals.jobs.clear()
         self.assertEqual(r.terminals.list(chat)[0]['status'],'interrupted')
+    def test_nonzero_exit_does_not_report_success(self):
+        r=self.r;chat=r.conversation;identity='failed-exit'
+        directory=r.terminals.folder(chat)/identity;directory.mkdir(parents=True)
+        (directory/'result.json').write_text(json.dumps({'status':'completed','text':'Resultado parcial'}))
+        job=dict(id=identity,chat=chat,status='running',task='fixture',result='',error='',process=Mock(wait=Mock(return_value=1),poll=Mock(return_value=1)))
+        r.terminals.watch(job)
+        self.assertEqual(job['status'],'failed')
+        self.assertIn('Resultado parcial',job['result'])
+        self.assertIn('código 1',job['error'])
+
     def test_extension_submits_once_excludes_thinking_and_closes(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);(root/'task.json').write_text(json.dumps({'task':'Tarea explícita'}))
