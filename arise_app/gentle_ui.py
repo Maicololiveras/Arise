@@ -107,26 +107,69 @@ MODELS = '''
     }
 '''
 
+ROUTING45 = '''
+    if (process.env.ARISE_URL) {
+        const action = await ctx.ui.select(`Perfiles y modelos de Gentle · ${request.name}`, ["Cerrar", "Elegir perfil", "Editar modelos", "Usar en esta sesión", "Hacer predeterminado", "Crear perfil", "Duplicar perfil", "Renombrar perfil", "Eliminar perfil"]);
+        if (!action || action === "Cerrar") return {type:"close"};
+        if (action === "Elegir perfil") {
+            const name = await ctx.ui.select("Elegir perfil", Object.keys(request.file.profiles));
+            return name ? {type:"load",name} : {type:"close"};
+        }
+        if (action === "Crear perfil") return {type:"create"};
+        if (action === "Usar en esta sesión") return {type:"use-session",name:request.name,config:cloneModelConfig(request.config)};
+        if (action === "Hacer predeterminado") return {type:"apply-global",name:request.name,config:cloneModelConfig(request.config)};
+        const types = {"Duplicar perfil":"duplicate", "Renombrar perfil":"rename", "Eliminar perfil":"delete"};
+        if (action in types) return {type:types[action],name:request.name} as RoutingTableResult;
+        const draft = cloneModelConfig(request.config);
+        const names = [PROFILE_ORCHESTRATOR_KEY,...modelAssignmentNames(ctx.cwd)];
+        const models = await getPiModelOptions(ctx);
+        const support = await getPiThinkingSupport(ctx);
+        while (true) {
+            const agent = await ctx.ui.select("Modelos de Gentle · perfil actual", ["Guardar", "Cancelar", "Todos los agentes", ...names]);
+            if (!agent || agent === "Cancelar") return {type:"close"};
+            if (agent === "Guardar") return {type:"save",name:request.name,config:draft};
+            const selection = await ctx.ui.select("Elegir modelo", ["Heredar", "Modelo personalizado", ...models]);
+            if (!selection) continue;
+            const model = selection === "Modelo personalizado" ? await ctx.ui.input("Modelo (proveedor/modelo)") : selection;
+            if (!model) continue;
+            if (model !== "Heredar" && !normalizeModelId(model)) {ctx.ui.notify("Modelo inválido", "warning");continue;}
+            const known = model === "Heredar" ? undefined : support[model];
+            if (!known) ctx.ui.notify("El catálogo no informa esfuerzos para este modelo; Pi resolverá el nivel admitido al iniciarlo.", "info");
+            const effort = await ctx.ui.select("Esfuerzo", ["Heredar", ...(known ?? THINKING_LEVELS)]);
+            if (!effort) continue;
+            // The 'all agents' choice does not silently change the parent model.
+            for (const name of agent === "Todos los agentes" ? modelAssignmentNames(ctx.cwd) : [agent]) {
+                const entry = {...(draft[name] ?? {})};
+                if (model === "Heredar") delete entry.model; else entry.model = model;
+                if (effort === "Heredar") delete entry.thinking; else entry.thinking = effort as ThinkingLevel;
+                draft[name] = entry;
+            }
+        }
+    }
+'''
+
 def extension_for_rpc(gentle, cache, source=None):
     gentle=Path(gentle).resolve();source=Path(source or gentle/'extensions/gentle-ai.ts')
     package=json.loads((gentle/'package.json').read_text(encoding='utf-8'))
-    if package.get('name')!='gentle-pi' or package.get('version') not in ('3.3.0', '4.0.0', '4.2.0', '4.3.0'):return source
+    if package.get('name')!='gentle-pi' or package.get('version') not in ('3.3.0', '4.0.0', '4.2.0', '4.3.0', '4.5.0'):return source
     original=source.read_text(encoding='utf-8');text=original;patterns=[]
-    if source.name == 'gentle-ai.ts':
-        profiles = PROFILES.replace('ARISE_PIN_ACTIONS', '["Fijar perfil en este clon", "Fijar perfil en el repositorio"]' if package['version'] in ('4.0.0','4.2.0','4.3.0') else '[]')
+    if package['version'] == '4.5.0' and source.name == 'gentle-ai.ts':
+        patterns=[(r'(async function showRoutingTablePanel\([\s\S]*?\): Promise<RoutingTableResult> \{)',ROUTING45)]
+    elif source.name == 'gentle-ai.ts':
+        profiles = PROFILES.replace('ARISE_PIN_ACTIONS', '["Fijar perfil en este clon", "Fijar perfil en el repositorio"]' if package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0') else '[]')
         patterns=[(r'(async function showProfilesPanel\([\s\S]*?\): Promise<ProfilesPanelResult> \{)',profiles),
                   (r'(async function showSddModelPanel\([\s\S]*?\): Promise<ModelPanelResult> \{)',MODELS)]
-    elif package['version'] in ('4.0.0','4.2.0','4.3.0') and source.name == 'gentle-shell.ts':
+    elif package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0') and source.name == 'gentle-shell.ts':
         patterns=[(r'(async function showCommandPalette\([^\n]+\): Promise<void> \{)',PALETTE),
                   (r'(async function showChangesOverlay\([^\n]+\): Promise<void> \{)',CHANGES)]
         text,count=re.subn(r'const openUsage = \(ctx: ExtensionContext\) =>', 'const openUsage = '+USAGE, text, count=1)
         if count != 1: raise RuntimeError('El panel de uso de Gentle cambió; revisa el adaptador.')
         text,count=re.subn(r'(\n\tpi.registerCommand\(USAGE_COMMAND_NAME,)', '\n\t};\\1', text, count=1)
         if count != 1: raise RuntimeError('No se pudo adaptar el panel de uso de Gentle.')
-    elif package['version'] in ('4.0.0','4.2.0','4.3.0') and source.name in ('gentle-agents.ts','gentle-stats.ts'):
+    elif package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0') and source.name in ('gentle-agents.ts','gentle-stats.ts'):
         patterns=[(r'(const openOverlay = async \(ctx: ExtensionContext\) => \{)', AGENTS if source.name=='gentle-agents.ts' else STATS)]
         if source.name=='gentle-stats.ts': text=text.replace('createStatsLoader, currentSessionStats,', 'aggregateStats, createStatsLoader, currentSessionStats,')
-    elif package['version'] in ('4.0.0','4.2.0','4.3.0') and source.name == 'index.ts' and source.parent.name == 'history':
+    elif package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0') and source.name == 'index.ts' and source.parent.name == 'history':
         patterns=[(r'(async function runPromptHistorySelection\([\s\S]*?\): Promise<PromptRecord \| null> \{)', HISTORY)]
     else: return source
     for pattern,body in patterns:

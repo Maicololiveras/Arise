@@ -131,6 +131,9 @@ def make_server(runtime, port=0):
                 elif route == '/api/tools/setup-desktop':
                     from .tool_setup import setup_desktop_tools
                     value=setup_desktop_tools(runtime,data.get("components"))
+                elif route == '/api/gentle/install-native':
+                    from .gentle_native_setup import install_native_tui
+                    value=install_native_tui(runtime, data.get('binary'))
                 elif route == '/api/gentle/install':
                     from .gentle_setup import install_gentle
                     value=install_gentle(runtime)

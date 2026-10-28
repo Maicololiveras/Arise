@@ -148,6 +148,8 @@ class Settings(QDialog):
         quick_setup.clicked.connect(controller.install_model_pack);layout.addWidget(quick_setup)
         gentle_setup=QPushButton("Configurar Gentle · estable o último main")
         gentle_setup.clicked.connect(controller.install_gentle);layout.addWidget(gentle_setup)
+        native_setup=QPushButton("Alternativa: instalar desde la TUI de Gentle AI · QA")
+        native_setup.clicked.connect(controller.install_gentle_native);layout.addWidget(native_setup)
         connections=QPushButton('Conexiones, celular y recordatorios · QA')
         connections.clicked.connect(self.show_connections);layout.addWidget(connections)
         tabs = QTabWidget(); layout.addWidget(tabs)
@@ -761,6 +763,26 @@ class Controller(QObject):
         self.reconfigure()
         self.update_busy = False
         if start_voice and getattr(sys, "frozen", False) and not os.getenv("ARISE_SKIP_NETWORK_SETUP"): QTimer.singleShot(1500, self.check_updates)
+
+    def install_gentle_native(self):
+        if getattr(self, 'gentle_busy', False): return
+        answer=QMessageBox.question(None, "Instalación nativa de Gentle", "Esta alternativa abre la TUI oficial en otra consola. Conserva el motor actual de ARISE: la conexión del entorno nativo con ARISE todavía no está habilitada.\n\n¿Probar la instalación independiente?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer != QMessageBox.Yes: return
+        choice, accepted=QInputDialog.getItem(None, "Gentle AI", "Binario para abrir la TUI", ["Binario integrado (verificado)", "Elegir gentle-ai.exe"], 0, False)
+        if not accepted: return
+        binary=None
+        if choice == "Elegir gentle-ai.exe":
+            binary, _=QFileDialog.getOpenFileName(None, "Selecciona gentle-ai.exe estable 4.3.1+", "", "Gentle AI (*.exe)")
+            if not binary: return
+        self.gentle_busy=True
+        def operation():
+            if getattr(self.runtime, 'is_remote', False):
+                return self.runtime.request('gentle/install-native', {'binary':binary or None}, timeout=4600)
+            from .gentle_native_setup import install_native_tui
+            return install_native_tui(self.runtime, binary or None)
+        def done(result): self.gentle_busy=False; self.show_panel()
+        def failed(message): self.gentle_busy=False
+        self.background(operation, done, failed)
 
     def install_gentle(self):
         if getattr(self,'gentle_busy',False): return

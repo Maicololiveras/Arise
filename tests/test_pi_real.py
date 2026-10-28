@@ -83,7 +83,7 @@ class RealPiTests(unittest.TestCase):
                 self.assertEqual(runtime.tasks[result["task_id"]]["status"], "done")
                 self.assertEqual(len(requests), 2, "El comando se envió al modelo en lugar de Gentle")
 
-                for command, choice, title in (("/gentle:profiles", "Cerrar", "Perfiles de Gentle"), ("/gentle:models", "Cancelar", "Modelos de Gentle")):
+                for command, choice, title in (("/gentle:profiles", "Cerrar", "Perfiles y modelos de Gentle"),):
                     task = runtime.session_command(command)
                     deadline = time.monotonic() + 10
                     while not runtime.dialogs and time.monotonic() < deadline: time.sleep(.01)
@@ -113,15 +113,15 @@ class RealPiTests(unittest.TestCase):
                 profile_files = list((Path(root)/"gentle-config").rglob("*profiles*.json"))
                 self.assertTrue(any("arise-fixture" in p.read_text() for p in profile_files), "El perfil no se guardó")
                 task = runtime.session_command("/gentle:profiles")
-                answer_next("Aplicar perfil"); answer_next("arise-fixture"); answer_next("Cerrar")
+                answer_next("Elegir perfil"); answer_next("arise-fixture"); answer_next("Usar en esta sesión"); answer_next("Cerrar")
                 self.assertTrue(runtime.settled.wait(10))
 
-                task = runtime.session_command("/gentle:models")
-                answer_next("Todos los agentes"); answer_next("Modelo personalizado"); answer_next("arise-test/arise-test")
-                answer_next("low"); answer_next("Guardar")
+                task = runtime.session_command("/gentle:profiles")
+                answer_next("Editar modelos"); answer_next("Todos los agentes"); answer_next("Modelo personalizado"); answer_next("arise-test/arise-test")
+                answer_next("off"); answer_next("Guardar"); answer_next("Cerrar")
                 self.assertTrue(runtime.settled.wait(10), "El modelo por agente no se guardó")
-                model_files = list((Path(root)/"gentle-config").rglob("*models*.json"))
-                self.assertTrue(any('arise-test/arise-test' in p.read_text() and 'low' in p.read_text() for p in model_files))
+                model_files = list((Path(root)/"gentle-config").rglob("*profiles*.json"))
+                self.assertTrue(any('arise-test/arise-test' in p.read_text() and '"off"' in p.read_text() for p in model_files))
 
                 for command, choices in (("/gentle:commands", ["Cerrar"]), ("/gentle:agents", ["Cerrar"]),
                                          ("/gentle:stats", ["7d", "project"]), ("/gentle:vim", ["status"]),

@@ -11,8 +11,8 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from arise_app.downloads import safe_extract
 
-URL='https://github.com/Gentleman-Programming/gentle-shell/releases/download/v4.3.0/gentle-shell-installer-windows.zip'
-SHA256='b8d8087fe7ad74e7a2dab9121d09dd9fe5fef3ba6498b59d2fe07f701ae80f36'
+URL='https://github.com/Gentleman-Programming/gentle-shell/releases/download/v4.5.0/gentle-shell-installer-windows.zip'
+SHA256='46b3008e3cac37d317b6c17ec663bfa002023ac12a4d147c53e189098b1dfa5e'
 
 def adapt_bootstrap(entry):
     """Use ARISE's private staging parent; retain every upstream ACL check."""
@@ -59,6 +59,9 @@ def adapt_windows_storage(entry):
         raise RuntimeError('Cambió el contrato de errores de almacenamiento.')
     source = source.replace(checks, checks.replace('reparse|owner|acl-mask', 'reparse|owner|acl-mask|io|access-denied|path-too-long|not-found|process-timeout|process-start|process-exit'))
     failure = 'if (result.error || result.status !== 0) throw new Error("Windows prerequisite process failed");'
+    cause = ', { cause: prerequisiteProcessCause(result) }'
+    if failure not in source:
+        failure = failure.replace('failed");', 'failed"'+cause+');')
     if source.count(failure) != 1:
         raise RuntimeError('Cambió el contrato del proceso de validación Windows.')
     replacement = '''if (result.error || result.status !== 0) {
@@ -66,6 +69,8 @@ def adapt_windows_storage(entry):
         if (args.includes("-EncodedCommand")) error.check = result.error?.code === "ETIMEDOUT" ? "target-process-timeout" : result.error ? "target-process-start" : "target-process-exit";
         throw error;
     }'''
+    if 'prerequisiteProcessCause(result)' in failure:
+        replacement = replacement.replace('new Error("Windows prerequisite process failed")', 'new Error("Windows prerequisite process failed"'+cause+')')
     source = source.replace(failure, replacement)
     entry.write_text(source, encoding='utf-8')
 
