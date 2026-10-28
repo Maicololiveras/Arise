@@ -32,8 +32,13 @@ def resolve_pi(command=None):
     roots = [Path(os.getenv("APPDATA", Path.home())) / "npm", Path.home() / ".npm-global", Path.home() / ".local"]
     for root in roots:
         for prefix in (root / "node_modules", root / "lib/node_modules"):
-            cli = prefix / "@earendil-works/pi-coding-agent/dist/cli.js"
-            if node and cli.is_file(): return [node, str(cli)]
+            package = prefix / "@earendil-works/pi-coding-agent"
+            try:
+                meta = json.loads((package/'package.json').read_text(encoding='utf-8-sig'))
+                cli = (package/meta['bin']['pi']).resolve()
+                if node and meta.get('name') == '@earendil-works/pi-coding-agent' and cli.is_relative_to(package.resolve()) and cli.is_file():
+                    return [node, str(cli)]
+            except (OSError, ValueError, KeyError, TypeError): pass
     return None
 
 
@@ -104,7 +109,7 @@ def probe_managed_gentle(prefix, env):
     return validate_result(report, report['node'])
 
 
-def detect_gentle_installation(env=None, prefix=None):
+def detect_gentle_installation(env=None, prefix=None, package=None):
     """Recover the selected official runtime before considering global pnpm."""
     env=dict(os.environ if env is None else env)
     managed = managed_gentle_candidates(env, prefix)
@@ -133,9 +138,19 @@ def detect_gentle_installation(env=None, prefix=None):
         from .gentle_setup import validate_result
         return validate_result(json.loads(result.stdout),node)
     try:
+        if package:
+            result = inspect(str(package), False)
+            if result is None:
+                raise ValueError('La instalación seleccionada de Gentle no pudo verificarse. Ejecuta su lanzador oficial para preparar el entorno y vuelve a detectar.')
+            return result
         if candidates:
             # A broken explicitly selected launcher must not silently switch engines.
             return inspect(*candidates[0])
+        # npm on Windows: inspect the installed package without executing a .cmd shim.
+        npm_root = Path(env.get('APPDATA', str(Path.home()))) / 'npm/node_modules/gentle-pi'
+        if gentle_valid(npm_root):
+            result = inspect(str(npm_root), False)
+            if result: return result
         pnpm=shutil.which('pnpm',path=env.get('PATH'))
         if not pnpm: return None
         pnpm_home=env.get('PNPM_HOME')
@@ -155,7 +170,7 @@ def detect_gentle_installation(env=None, prefix=None):
 def detect(config, agent_dir=None):
     if agent_dir is None and not config.get("gentle_agent_home"):
         try:
-            recovered = detect_gentle_installation()
+            recovered = detect_gentle_installation(package=config.get("gentle_path") or None)
         except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired):
             recovered = None
         if recovered:

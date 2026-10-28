@@ -224,6 +224,9 @@ class Settings(QDialog):
         self.button(f, "Conectar y listar modelos", self.models)
         self.button(f, "Abrir Pi para /login", controller.open_pi)
         self.button(f, "Detectar Pi y Gentle Shell", self.detect_agent)
+        self.text_field(f, 'engram_bin', 'Ejecutable Engram (vacío: detectar instalación oficial)', config.get('engram_bin',''))
+        self.button(f, 'Actualizar / reinstalar Engram estable · QA', lambda: controller.update_dependencies(False))
+        self.button(f, 'Actualizar Gentle, Pi y Engram y usar este entorno · QA', lambda: controller.update_dependencies(True))
         f.addRow(QLabel("Dejar proveedor/modelo vacíos conserva la selección existente de Pi."))
         keys = QWidget(); f = QFormLayout(keys); tabs.addTab(keys, "Credenciales")
         for provider in ("openai", "gemini", "anthropic", "github-updates", "local-dialogue", "forge-local"):
@@ -453,7 +456,7 @@ class Settings(QDialog):
         from .discovery import detect
         found = detect(self.runtime.storage.config)
         if found.get("gentle_agent_home"):
-            self.runtime.settings({key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel")})
+            self.runtime.settings({key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel", "gentle_bundle_root")})
         if found["pi_command"]: self.fields["pi_command"].setText(json.dumps(found["pi_command"]))
         if found["gentle_path"]: self.fields["gentle_path"].setText(found["gentle_path"])
         self.message.setText("Pi: " + ("detectado" if found["pi_command"] else "no encontrado") + " · Gentle Shell: " + ("detectado" if found["gentle_path"] or found["gentle_installed_package"] else "no encontrado"))
@@ -783,6 +786,37 @@ class Controller(QObject):
         def done(result): self.gentle_busy=False; self.show_panel()
         def failed(message): self.gentle_busy=False
         self.background(operation, done, failed)
+
+    def update_dependencies(self, include_gentle=False):
+        if getattr(self,'gentle_busy',False): return
+        message=('Se descargará de nuevo Engram estable y se verificará su checksum. ARISE usará su ruta explícita sin borrar memorias. '
+                 'La comprobación del proveedor activo se hace después con mem_doctor.')
+        if include_gentle:
+            message+=' Primero se abrirá el instalador oficial de Gentle: elige estable y revisa el plan de actualización de Shell, Pi y sus componentes.'
+        if QMessageBox.question(None,'Actualizar dependencias de ARISE',message,QMessageBox.Yes|QMessageBox.No,QMessageBox.No)!=QMessageBox.Yes: return
+        self.gentle_busy=True
+        def operation():
+            remote=getattr(self.runtime,'is_remote',False)
+            if include_gentle:
+                if remote: self.runtime.request('gentle/update',{},timeout=3700)
+                else:
+                    from .gentle_setup import install_gentle
+                    install_gentle(self.runtime,force_update=True)
+            if remote: return self.runtime.request('engram/update',{},timeout=300)
+            from .engram_setup import update_engram
+            return update_engram(self.runtime)
+        def done(result):
+            self.gentle_busy=False
+            if getattr(self.runtime,'is_remote',False): self.runtime.storage.config=self.runtime.request('config')
+            if self.settings_window:
+                for key in ('engram_bin','pi_command','gentle_path'):
+                    value=self.runtime.storage.config.get(key,'')
+                    self.settings_window.fields[key].setText(json.dumps(value) if key=='pi_command' else value)
+            self.show_panel()
+        def failed(message):
+            self.gentle_busy=False
+            self.show_panel()
+        self.background(operation,done,failed)
 
     def install_gentle(self):
         if getattr(self,'gentle_busy',False): return

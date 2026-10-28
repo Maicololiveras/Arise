@@ -101,6 +101,7 @@ def wait_for_installer(process, result_file, log_file, timeout):
         time.sleep(.5)
 
 def validate_result(result, node):
+    if not isinstance(result,dict): raise ValueError('Resultado del detector de Gentle inválido.')
     if result.get('status')!='ready':
         if result.get('reason')=='install-shell-main':
             raise RuntimeError('Gentle superó la preparación, pero falló al instalar Shell desde main. Revisa el instalador web; puedes reintentar main o elegir estable explícitamente. ARISE no adoptó una instalación incompleta.')
@@ -138,7 +139,7 @@ def adopt_gentle(runtime, changes):
             raise
 
 
-def install_gentle(runtime, timeout=3600):
+def install_gentle(runtime, timeout=3600, force_update=False):
     if os.name!='nt':raise RuntimeError('Este instalador de Gentle requiere Windows.')
     if not LOCK.acquire(blocking=False):raise RuntimeError('El instalador de Gentle ya está abierto.')
     try:
@@ -148,7 +149,7 @@ def install_gentle(runtime, timeout=3600):
         from .windows_prerequisites import refresh_path
         from .discovery import detect_gentle_installation
         env=refresh_path(os.environ)
-        existing=detect_gentle_installation(env, prefix=runtime.storage.config.get("gentle_bundle_root"))
+        existing=None if force_update else detect_gentle_installation(env, prefix=runtime.storage.config.get("gentle_bundle_root"))
         if existing:
             os.environ['PATH']=env['PATH']
             runtime.emit('notice',{'text':'Gentle existente detectado: '+existing['gentle_path']+'. Verificando su motor y comandos.'})

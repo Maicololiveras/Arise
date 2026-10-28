@@ -22,7 +22,7 @@ DEFAULTS = {
     "local_server_command": [], "local_tts": "forge", "local_profile": "auto",
     "forge_voice_url": "ws://127.0.0.1:1236/v1/realtime",
     "voice_task_engine": "gentle", "local_dialogue_enabled": True, "local_dialogue_url": "http://127.0.0.1:1235/v1", "local_dialogue_model": "",
-    "active_chat": "", "gentle_agent_home": "", "gentle_channel": "release",
+    "active_chat": "", "gentle_agent_home": "", "gentle_channel": "release", "gentle_bundle_root": "", "engram_bin": "",
     "gmail_client_file": "",
     "mcp": {
         "screenview": {"command": ["screenview-mcp"], "enabled": True},

@@ -154,7 +154,7 @@ class Runtime:
             self.disconnect()
         elif any(config.get(key) != self.storage.config.get(key) for key in (
                 "pi_command", "pi_extra_args", "gentle_path", "gentle_agent_home", "gentle_bundle_root",
-                "agent_provider", "agent_model", "thinking", "code_enabled")):
+                "agent_provider", "agent_model", "thinking", "code_enabled", "engram_bin")):
             self.disconnect_pi()
         if any(config.get(key) != self.storage.config.get(key) for key in
                ("local_server_command", "local_dialogue_url", "local_dialogue_model")):
@@ -221,6 +221,8 @@ class Runtime:
             env["ARISE_SESSION_EPOCH"] = str(epoch)
             if hasattr(self, "credentials"):
                 env.update(self.credentials.environment())
+            from .engram_setup import engine_environment
+            env = engine_environment(env, config)
             if config.get("agent_provider") and config.get("agent_model"):
                 command += ["--provider", config["agent_provider"], "--model", config["agent_model"]]
             if config.get("thinking"):

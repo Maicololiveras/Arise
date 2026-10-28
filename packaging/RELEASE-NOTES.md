@@ -1,3 +1,11 @@
+# ARISE 0.4.28 QA
+
+- Actualizar/reinstalar Engram estable desde Ajustes > Agente: consulta releases oficiales, verifica SHA-256 y la versión del ejecutable antes de seleccionar una ruta explícita.
+- Reutiliza la instalación oficial de Engram bajo LocalAppData cuando el PATH heredado de ARISE no la contiene; sin modificar PATH de Windows ni borrar memorias.
+- Detecta Gentle instalado con npm y su carpeta de agente usando el verificador oficial; resuelve la entrada Pi desde package.json, incluido dist/bundle/cli.js.
+- Actualización explícita de Gentle/Pi mediante el asistente oficial, sin limitarse a reutilizar la instalación encontrada. No evita las comprobaciones de ACL/TLS ni cierra servidores externos de Engram.
+- Las descargas verificadas no certifican el proveedor de memoria: comprobar mem_doctor después. La actualización real en el PC afectado sigue pendiente.
+
 # ARISE 0.4.27 QA
 
 - Android Companion 0.1.1 QA usa el primer fotograma del orbe original, igual que la identidad de escritorio, en launcher, pantalla inicial y burbuja.
