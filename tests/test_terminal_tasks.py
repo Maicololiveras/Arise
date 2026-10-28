@@ -72,6 +72,54 @@ class TerminalTests(unittest.TestCase):
         self.assertIn('Resultado parcial',job['result'])
         self.assertIn('código 1',job['error'])
 
+    def completion_job(self):
+        r=self.r; identity='notify-result'
+        directory=r.terminals.folder(r.conversation)/identity;directory.mkdir(parents=True)
+        (directory/'result.json').write_text(json.dumps({'status':'completed','text':'Documento creado'}))
+        return dict(id=identity,chat=r.conversation,status='running',task='fixture',result='',error='',
+                    epoch=r.pi_epoch,generation=r.stop_generation,
+                    process=Mock(wait=Mock(return_value=0),poll=Mock(return_value=0)))
+
+    def test_idle_completion_wakes_parent_once_and_records_result(self):
+        r=self.r;r.storage.config['code_enabled']=True
+        job=self.completion_job();parent=Mock();parent.request.return_value={'data':{'disposition':'started'}}
+        r.pi=parent
+        try:
+            r.terminals.watch(job);r.terminals.watch(job)
+            parent.request.assert_called_once()
+            payload=parent.request.call_args.args[0]
+            self.assertEqual(payload['type'],'prompt');self.assertEqual(payload['streamingBehavior'],'followUp')
+            self.assertTrue(r.busy);self.assertFalse(r.settled.is_set())
+            self.assertEqual(len([m for m in r.storage.messages(r.conversation) if 'Documento creado' in str(m)]),1)
+            r.pi_event({'type':'message_end','message':{'role':'assistant','content':[{'type':'text','text':'Resultado verificado'}]}})
+            r.pi_event({'type':'agent_settled'})
+            self.assertFalse(r.busy)
+        finally:r.pi=None
+
+    def test_completion_does_not_replace_active_task_or_restore_permissions(self):
+        r=self.r;job=self.completion_job();parent=Mock();r.pi=parent
+        try:
+            for field,value in [('generation',-1),('epoch',-1),('chat','another-chat')]:
+                r.storage.config['code_enabled']=True
+                self.assertFalse(r.deliver_terminal_completion({**job,field:value}))
+            r.storage.config['code_enabled']=False
+            self.assertFalse(r.deliver_terminal_completion(job));parent.request.assert_not_called()
+            r.storage.config['code_enabled']=True;r.busy=True;r.current_task='existing'
+            self.assertTrue(r.deliver_terminal_completion(job))
+            self.assertEqual(r.current_task,'existing');self.assertFalse(r.desktop)
+        finally:r.pi=None;r.current_task=None;r.busy=False
+
+    def test_completion_rpc_failure_visible_and_not_retried(self):
+        r=self.r;r.storage.config['code_enabled']=True;job=self.completion_job()
+        parent=Mock();parent.request.side_effect=TimeoutError();r.pi=parent
+        try:
+            with patch.object(r,'emit') as emit:
+                r.terminals.watch(job);r.terminals.watch(job)
+                self.assertTrue(any(c.args[0]=='error' for c in emit.call_args_list))
+            parent.request.assert_called_once();self.assertFalse(r.busy)
+            self.assertIn('Documento creado',str(r.storage.messages(r.conversation)))
+        finally:r.pi=None
+
     def test_extension_submits_once_excludes_thinking_and_closes(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);(root/'task.json').write_text(json.dumps({'task':'Tarea explícita'}))

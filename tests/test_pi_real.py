@@ -138,6 +138,28 @@ class RealPiTests(unittest.TestCase):
                 with self.assertRaises(ValueError): runtime.session_command("/gentle:inexistente")
                 self.assertEqual(len(requests), 2)
 
+
+                # Reproduce the old failure: follow_up acknowledges but leaves an idle Pi idle.
+                runtime.pi.request({'type':'follow_up','message':'Aviso de prueba en cola'})
+                state=runtime.pi.request({'type':'get_state'}).get('data',{})
+                self.assertFalse(state.get('isStreaming'));self.assertEqual(len(requests),2)
+                runtime.pi.request({'type':'clear_queue'})
+                # A real terminal completion now wakes the same RPC session without user input.
+                from unittest.mock import Mock
+                runtime.storage.config['code_enabled']=True
+                identity='real-completion'
+                directory=runtime.terminals.folder(runtime.conversation)/identity;directory.mkdir(parents=True)
+                (directory/'result.json').write_text(json.dumps({'status':'completed','text':'Documento de prueba disponible'}))
+                job=dict(id=identity,chat=runtime.conversation,status='running',task='fixture',result='',error='',
+                         epoch=runtime.pi_epoch,generation=runtime.stop_generation,
+                         process=Mock(wait=Mock(return_value=0),poll=Mock(return_value=0)))
+                runtime.terminals.watch(job)
+                self.assertTrue(runtime.settled.wait(20),'Completion did not wake idle Pi')
+                self.assertGreater(len(requests),2)
+                count=len(requests);runtime.terminals.watch(job)
+                self.assertEqual(len(requests),count)
+                self.assertIn('Nota guardada',str(runtime.storage.messages(runtime.conversation)[-1]))
+
             finally:
                 runtime.close(); runtime.storage.db.close(); bridge.shutdown(); bridge.server_close()
         model.shutdown(); model.server_close()

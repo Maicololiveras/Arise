@@ -1,3 +1,10 @@
+# ARISE 0.4.26 QA
+
+- La finalización de una terminal delegada reactiva al agente inactivo para consultar y verificar el resultado, sin esperar otra pregunta del usuario.
+- Si el agente sigue trabajando, el aviso se encola mediante el protocolo prompt/followUp de Pi. Se comprueba la recepción; los errores se muestran y no provocan reenvíos automáticos.
+- Evita avisos duplicados y conserva el resultado en el chat de origen. No reconecta sesiones ni reactiva tareas tras cambiar de chat, detener o revocar ejecución local.
+- Reproducido el fallo anterior y comprobada la reactivación con Pi/Gentle real y proveedor simulado. Pendiente prueba en el PC con documento real y proveedor del usuario.
+
 # ARISE 0.4.25 QA
 
 - QR en Ajustes > Conexiones, celular y recordatorios > Celular para descargar el APK Android QA, con opciones de abrir y copiar el enlace.
