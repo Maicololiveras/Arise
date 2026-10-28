@@ -1,3 +1,12 @@
+# ARISE 0.4.24 QA
+
+- Gentle Shell 4.5.0, Pi 1.4.0 y Gentle AI 4.3.1; instalador oficial actualizado y verificado por SHA-256.
+- Adaptación del panel unificado de perfiles y modelos, conservando las confirmaciones de Gentle.
+- Alternativa en Ajustes para abrir la TUI del binario Gentle AI e instalar Shell. Conserva el motor actual de ARISE.
+- Limitación: el Shell instalado mediante la TUI se verifica como CLI independiente; no se adopta automáticamente como motor RPC de ARISE porque el supervisor nativo no transmite su contexto de permisos y herramientas.
+- Incluye funciones experimentales de conexiones, recordatorios y puente móvil de QA. Requieren configuración y autorización explícitas; no se han verificado cuentas externas ni dispositivos móviles reales.
+- Pruebas automatizadas y compilación Windows obligatorias antes de publicar. Pendiente probar la instalación nativa por TUI en los PCs afectados; no se da por resuelto su fallo previo.
+
 # ARISE 0.4.23 QA
 
 - Comandos de la sesión en una ventana compacta con lista desplazable y búsqueda por nombre o descripción.
