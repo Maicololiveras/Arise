@@ -138,7 +138,7 @@ public class WakeService extends Service {
     private Notification notification(String text) {
         PendingIntent open=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent stop=PendingIntent.getService(this,1,new Intent(this,WakeService.class).setAction(STOP),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-        return new Notification.Builder(this,"wake").setSmallIcon(com.praxis.arise.R.drawable.orb).setContentTitle("ARISE · Micrófono activo")
+        return new Notification.Builder(this,"wake").setSmallIcon(com.praxis.arise.R.drawable.ic_notification).setContentTitle("ARISE · Micrófono activo")
                 .setContentText(text).setContentIntent(open).setOngoing(true).setVisibility(Notification.VISIBILITY_PRIVATE)
                 .addAction(new Notification.Action.Builder(null,"Apagar micrófono",stop).build()).build();
     }

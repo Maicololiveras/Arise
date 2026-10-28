@@ -14,7 +14,9 @@ import java.io.*;
 import java.nio.file.*;
 
 public class MainActivity extends Activity {
-    private TextView status;
+    private TextView status, updateStatus;
+    private boolean updateBusy;
+    private AppUpdate availableUpdate;
     private EditText origin, accessKey;
     private WebView chat;
     private boolean foreground;
@@ -35,7 +37,23 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(24,24,24,24);
         scroll.addView(box); setContentView(scroll);
+        scroll.setOnApplyWindowInsetsListener((v,insets)->{
+            if (Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                v.setPadding(bars.left,bars.top,bars.right,bars.bottom);
+            } else v.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());
+            return insets;
+        });
+        ImageView identity=new ImageView(this); identity.setImageResource(R.drawable.orb);
+        identity.setContentDescription("Orbe ARISE");
+        int iconSize=(int)(80*getResources().getDisplayMetrics().density);
+        box.addView(identity,new LinearLayout.LayoutParams(-1,iconSize));
         label(box, "ARISE Companion · QA", 24);
+        updateStatus=label(box,"Versión "+BuildConfig.VERSION_NAME+" · Buscando actualizaciones…",14);
+        button(box,"Buscar actualización / ver descarga",v->{
+            if(availableUpdate!=null) showUpdate(); else checkUpdate(true);
+        });
+        checkUpdate(false);
         label(box, "La detección de ‘oye ARISE’ abre el panel. El trabajo sigue en tu PC con los permisos del chat. Ocultar no apaga la escucha; Apagar micrófono sí.", 16);
         status = label(box, "Escucha apagada", 16);
         origin = field(box, "https://tu-pc.tu-red.ts.net", false);
@@ -79,6 +97,42 @@ public class MainActivity extends Activity {
                     new File(getFilesDir(),"keyword.ppn").delete(); new File(getFilesDir(),"spanish.pv").delete(); tell("Detector eliminado.");
                 }).show());
         label(box,"La escucha no se reinicia al encender el teléfono ni al volver a dar un permiso. Con pantalla bloqueada no mostramos conversaciones. Pruebas de batería y bloqueo pendientes en Redmi 13C.",14);
+    }
+    private void checkUpdate(boolean manual) {
+        if(updateBusy) return;
+        updateBusy=true;
+        TextView target=updateStatus;
+        target.setText("Versión "+BuildConfig.VERSION_NAME+" · Consultando GitHub…");
+        new Thread(()->{
+            try {
+                AppUpdate update=AppUpdate.fetch();
+                runOnUiThread(()->{
+                    updateBusy=false;
+                    if(isFinishing() || isDestroyed() || target!=updateStatus) return;
+                    availableUpdate=update.code>BuildConfig.VERSION_CODE?update:null;
+                    target.setText(availableUpdate==null?"Versión "+BuildConfig.VERSION_NAME+" · Sin actualizaciones publicadas":"Disponible "+update.version+" · Pulsa Ver descarga para actualizar");
+                    if(manual && availableUpdate!=null) showUpdate();
+                });
+            } catch(Exception e) {
+                runOnUiThread(()->{
+                    updateBusy=false;
+                    if(!isFinishing() && !isDestroyed() && target==updateStatus)
+                        target.setText("Versión "+BuildConfig.VERSION_NAME+" · No se pudo comprobar la actualización. Puedes volver a intentarlo; el chat sigue disponible.");
+                });
+            }
+        },"arise-update-check").start();
+    }
+    private void showUpdate() {
+        AppUpdate update=availableUpdate;
+        if(update==null) return;
+        new AlertDialog.Builder(this).setTitle("ARISE Android "+update.version)
+            .setMessage("Se abrirá GitHub para descargar ARISE-Android-QA.apk. Android te pedirá confirmar la instalación. "
+                +"Esta versión QA usa firma de depuración; si Android rechaza la actualización por firma, conserva tu configuración antes de reinstalar. "
+                +"No se instalará ni se cambiarán permisos automáticamente.")
+            .setNegativeButton("Ahora no",null).setPositiveButton("Abrir descarga",(d,w)->{
+                try { startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(update.url))); }
+                catch(ActivityNotFoundException e) { tell("No hay navegador disponible para abrir GitHub."); }
+            }).show();
     }
     private void startWake() {
         if (!foreground) return;

@@ -2,9 +2,9 @@ name: Android companion QA
 on:
   push:
     branches: [qa-connections-companion, qa]
-    paths: ['mobile/android/**', '.github/workflows/android-qa.yml', 'arise_app/resources/companion.*', 'tests/companion-client.test.cjs']
+    paths: ['mobile/android/**', '.github/workflows/android-qa.yml', 'arise_app/resources/companion.*', 'tests/companion-client.test.cjs', 'assets/orb-atlas.png']
   pull_request:
-    paths: ['mobile/android/**', '.github/workflows/android-qa.yml', 'arise_app/resources/companion.*', 'tests/companion-client.test.cjs']
+    paths: ['mobile/android/**', '.github/workflows/android-qa.yml', 'arise_app/resources/companion.*', 'tests/companion-client.test.cjs', 'assets/orb-atlas.png']
   workflow_dispatch:
 permissions:
   contents: read
@@ -49,6 +49,7 @@ jobs:
       group: arise-android-qa-release
       cancel-in-progress: false
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: arise-android-qa
@@ -73,9 +74,21 @@ jobs:
           Las tareas y autorizaciones se mantienen en el PC. Prueba en dispositivos físicos pendiente.
           NOTES
           echo "Commit: $GITHUB_SHA · Actions: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> android-notes.md
+          python3 - <<'PYMETA'
+          import json,re,pathlib
+          source=pathlib.Path('mobile/android/app/build.gradle').read_text()
+          version=re.search(r"versionName '([^']+)'",source)[1]
+          code=int(re.search(r'versionCode (\d+)',source)[1])
+          url='https://github.com/Maicololiveras/Arise/releases/download/android-qa-v'+version+'/ARISE-Android-QA.apk'
+          pathlib.Path('ARISE-Android-update.json').write_text(json.dumps(dict(schema=1,applicationId='com.praxis.arise.qa',channel='qa',versionCode=code,versionName=version,apkUrl=url))+'\n')
+          pathlib.Path('android-version.txt').write_text(version)
+          PYMETA
+          version=$(cat android-version.txt)
+          # Publish the versioned APK before advertising it through the update feed.
+          gh release create "android-qa-v$version" ARISE-Android-QA.apk ARISE-Android-QA.apk.sha256 --target "$GITHUB_SHA" --title "ARISE Android $version" --notes-file android-notes.md --prerelease --latest=false
           if gh release view android-qa >/dev/null 2>&1; then
-            gh release upload android-qa ARISE-Android-QA.apk ARISE-Android-QA.apk.sha256 --clobber
+            gh release upload android-qa ARISE-Android-QA.apk ARISE-Android-QA.apk.sha256 ARISE-Android-update.json --clobber
             gh release edit android-qa --notes-file android-notes.md --prerelease --latest=false
           else
-            gh release create android-qa ARISE-Android-QA.apk ARISE-Android-QA.apk.sha256 --target "$GITHUB_SHA" --title 'ARISE Android · QA' --notes-file android-notes.md --prerelease --latest=false
+            gh release create android-qa ARISE-Android-QA.apk ARISE-Android-QA.apk.sha256 ARISE-Android-update.json --target "$GITHUB_SHA" --title 'ARISE Android · QA' --notes-file android-notes.md --prerelease --latest=false
           fi

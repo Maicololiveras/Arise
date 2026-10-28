@@ -1,3 +1,10 @@
+# ARISE 0.4.27 QA
+
+- Android Companion 0.1.1 QA usa el primer fotograma del orbe original, igual que la identidad de escritorio, en launcher, pantalla inicial y burbuja.
+- Consulta de nuevas versiones Android al abrir la pantalla de configuración y mediante botón; la descarga exige confirmación y Android controla la instalación.
+- Metadatos públicos acotados, URL de APK limitada a releases del repositorio y publicación versionada antes de anunciar actualizaciones.
+- Respeta las barras del sistema en la configuración Android. Firma de depuración y migración desde APK anteriores siguen siendo limitaciones de QA; no se promete actualización en sitio ni ausencia de avisos de Play Protect.
+
 # ARISE 0.4.26 QA
 
 - La finalización de una terminal delegada reactiva al agente inactivo para consultar y verificar el resultado, sin esperar otra pregunta del usuario.
