@@ -1,8 +1,10 @@
 """Desktop-only connection controls; secrets never enter the mobile API."""
 import json
-from PySide6.QtCore import QThread, Signal, Qt
+from pathlib import Path
+from PySide6.QtCore import QThread, Signal, Qt, QUrl
+from PySide6.QtGui import QImage, QPixmap, QDesktopServices
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QLabel, QLineEdit,
-    QPushButton, QTabWidget, QWidget, QScrollArea, QTextEdit, QListWidget, QListWidgetItem)
+    QApplication, QPushButton, QTabWidget, QWidget, QScrollArea, QTextEdit, QListWidget, QListWidgetItem)
 
 
 class RequestWorker(QThread):
@@ -48,6 +50,7 @@ class ConnectionsDialog(QDialog):
                 self.button(form,'Guardar credencial en Windows',lambda p=provider,t=token,o=options:self.save_token(p,t,o))
             self.button(form,'Desconectar cuenta',lambda p=provider:self.run('connections/disconnect',{'provider':p}))
         mobile = self.page('Celular')
+        self.android_download(mobile)
         origin = self.field(mobile,'URL HTTPS de tu PC en Tailscale')
         origin.setPlaceholderText('https://mi-pc.mi-red.ts.net')
         self.button(mobile,'Preparar servidor privado',lambda:self.run('mobile/start',{'origin':origin.text().strip()}))
@@ -63,6 +66,35 @@ class ConnectionsDialog(QDialog):
         self.button(jobs,'Actualizar recordatorios',self.refresh_jobs)
         self.button(jobs,'Cancelar seleccionado',self.cancel_job)
         close=QPushButton('Cerrar');close.clicked.connect(self.close);layout.addWidget(close)
+
+    def android_download(self, form):
+        data = json.loads((Path(__file__).parent/'resources/android-download-qr.json').read_text())
+        url = data['url']
+        title = QLabel('1 · Descargar ARISE para Android · QA')
+        title.setWordWrap(True); form.addRow(title)
+        matrix = data['matrix']; size = len(matrix)
+        image = QImage(size, size, QImage.Format_RGB32)
+        image.fill(Qt.white)
+        for y, row in enumerate(matrix):
+            for x, dark in enumerate(row):
+                if dark: image.setPixelColor(x, y, Qt.black)
+        qr = QLabel(); qr.setObjectName('androidDownloadQr')
+        qr.setAccessibleName('QR para descargar ARISE Android QA desde GitHub')
+        qr.setToolTip(url)
+        qr.setPixmap(QPixmap.fromImage(image).scaled(size*4, size*4, Qt.KeepAspectRatio, Qt.FastTransformation))
+        qr.setAlignment(Qt.AlignCenter); form.addRow(qr)
+        hint = QLabel('Escanea con tu Android y descarga ARISE-Android-QA.apk en Assets. '
+                      'Es una versión de prueba; Android solicitará autorizar la instalación. '
+                      'Este QR no vincula el celular ni concede permisos al PC. '
+                      'En iPad utiliza el acceso web privado; el APK es solo para Android.')
+        hint.setWordWrap(True); form.addRow(hint)
+        self.button(form, 'Abrir descarga Android', lambda: QDesktopServices.openUrl(QUrl(url)))
+        def copy():
+            QApplication.clipboard().setText(url)
+            self.status.setText('Enlace de descarga Android copiado. No contiene un código de vinculación.')
+        self.button(form, 'Copiar enlace de descarga', copy)
+        label = QLabel('2 · Vincular el celular con este PC')
+        label.setWordWrap(True); form.addRow(label)
 
     def page(self,title):
         scroll=QScrollArea();scroll.setWidgetResizable(True);scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)

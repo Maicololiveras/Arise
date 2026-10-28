@@ -38,3 +38,44 @@ jobs:
             mobile/android/app/build/outputs/apk/debug/*.apk
             mobile/android/app/build/reports/
           if-no-files-found: error
+
+  publish-android-qa:
+    needs: android
+    if: github.event_name == 'push' && github.ref == 'refs/heads/qa'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: arise-android-qa-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: arise-android-qa
+          path: android-artifact
+      - name: Publish tested Android QA download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find android-artifact -type f -name '*-debug.apk')
+          test "${#apks[@]}" -eq 1
+          cp "${apks[0]}" ARISE-Android-QA.apk
+          sha256sum ARISE-Android-QA.apk > ARISE-Android-QA.apk.sha256
+          cat > android-notes.md <<'NOTES'
+          Android QA: descarga ARISE-Android-QA.apk desde Assets.
+          Requiere Android 8 o posterior. No es una aplicación para iPad.
+          Vincula el celular desde Ajustes > Conexiones > Celular en el PC, mediante tu red privada Tailscale y un código temporal.
+          El APK de QA usa firma de depuración; una compilación posterior puede requerir desinstalar y volver a vincular. No desinstales sin conservar tu configuración.
+          Micrófono y superposición requieren permisos explícitos. La activación por voz requiere configurar el detector; instalar el APK no la habilita por sí sola.
+          Las tareas y autorizaciones se mantienen en el PC. Prueba en dispositivos físicos pendiente.
+          NOTES
+          echo "Commit: $GITHUB_SHA · Actions: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> android-notes.md
+          if gh release view android-qa >/dev/null 2>&1; then
+            gh release upload android-qa ARISE-Android-QA.apk ARISE-Android-QA.apk.sha256 --clobber
+            gh release edit android-qa --notes-file android-notes.md --prerelease --latest=false
+          else
+            gh release create android-qa ARISE-Android-QA.apk ARISE-Android-QA.apk.sha256 --target "$GITHUB_SHA" --title 'ARISE Android · QA' --notes-file android-notes.md --prerelease --latest=false
+          fi

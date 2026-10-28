@@ -1,3 +1,10 @@
+# ARISE 0.4.25 QA
+
+- QR en Ajustes > Conexiones, celular y recordatorios > Celular para descargar el APK Android QA, con opciones de abrir y copiar el enlace.
+- Publicación del APK en una release Android QA tras pasar pruebas, lint y compilación. El QR es de descarga y no contiene credenciales ni códigos de vinculación.
+- Se conserva el vínculo privado mediante Tailscale y código temporal. El APK no es compatible con iPad; se mantiene el acceso web.
+- APK firmado para depuración: las siguientes compilaciones pueden requerir reinstalación. Prueba física en Android pendiente.
+
 # ARISE 0.4.24 QA
 
 - Gentle Shell 4.5.0, Pi 1.4.0 y Gentle AI 4.3.1; instalador oficial actualizado y verificado por SHA-256.
