@@ -209,6 +209,8 @@ class Settings(QDialog):
         self.button(f, "Elegir modelo Piper", lambda: self.pick("piper_model"))
         self.button(f, "Probar conversación", self.test_voice)
         agent = QWidget(); f = QFormLayout(agent); tabs.addTab(agent, "Agente")
+        self.text_field(f, "preferred_name", "Cómo llamarte (vacío: usuario del PC)", config.get("preferred_name", ""))
+        self.fields["preferred_name"].setMaxLength(80)
         for key, label in (("workspace", "Carpeta de trabajo"), ("pi_command", "Comando Pi (lista JSON)"), ("gentle_path", "Carpeta Gentle Shell"), ("agent_provider", "Proveedor del agente"), ("agent_model", "Modelo del agente")):
             value = json.dumps(config[key]) if key == "pi_command" else config[key]
             self.text_field(f, key, label, value)

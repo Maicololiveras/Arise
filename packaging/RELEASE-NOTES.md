@@ -1,3 +1,8 @@
+# ARISE 0.4.29 QA
+
+- El saludo usa el usuario del PC por defecto; elimina el nombre Maix fijo.
+- Ajustes > Agente > Cómo llamarte permite elegir otro nombre; dejarlo vacío restaura la detección automática. Guardar reconecta Pi para aplicar la preferencia.
+
 # ARISE 0.4.28 QA
 
 - Actualizar/reinstalar Engram estable desde Ajustes > Agente: consulta releases oficiales, verifica SHA-256 y la versión del ejecutable antes de seleccionar una ruta explícita.
