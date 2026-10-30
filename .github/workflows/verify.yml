@@ -149,6 +149,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Gentle atomic installation retry tests
         run: node --test scripts/install-gentle-native.test.mjs
+      - name: Parakeet worker and session tests
+        run: node --test tests/parakeet-voice-worker.test.mjs tests/parakeet-voice-session.test.mjs
       - name: Native Windows and protocol tests
         env:
           QT_QPA_PLATFORM: offscreen

@@ -1,3 +1,16 @@
+# ARISE 0.4.31 QA
+
+- Micrófono del panel: clic para grabar, micrófono ↑ para detener y transcribir
+  al borrador. Revisión y envío manual, sin ejecutar la transcripción.
+- Parakeet local de Gentle Shell 4.5.1: descarga guiada de componentes fijados,
+  verificación de integridad y ejecución en un proceso independiente.
+- Cancelación, cambio de chat, deshacer y borrador preservado durante el dictado.
+- Usa el micrófono predeterminado de Windows; preparación inicial de unos 670 MB
+  más runtime. Requiere Node 22+ y Visual C++ Runtime en Windows x64.
+- QA: interacción Qt y protocolo comprobados con audio simulado. Pendiente
+  captura física, descarga completa y precisión de español en Windows.
+- Android y VPS/Coolify no cambian en esta entrega.
+
 # ARISE 0.4.30 QA
 
 - Windows + Android: configuración privada de Tailscale Serve desde el PC, QR de vinculación y puerto persistente entre reinicios. Rechaza sustituir servicios Serve ajenos o Funnel.

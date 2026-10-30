@@ -117,6 +117,7 @@ def control_icon(name):
         "settings": '<path d="m9 3-.5 3-2 1-2.8-1-2 3 2.3 2v2L1.7 15l2 3 2.8-1 2 1 .5 3h4l.5-3 2-1 2.8 1 2-3-2.3-2v-2l2.3-2-2-3-2.8 1-2-1-.5-3Z"/><circle cx="11" cy="12" r="3"/>',
         "send": '<path d="m3 3 18 9-18 9 3-9ZM6 12h15"/>',
         "mic": '<rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>',
+        "mic-up": '<rect x="5" y="7" width="6" height="10" rx="3"/><path d="M2 12v2a6 6 0 0 0 12 0M8 20v2M5 22h6M19 12V2m-3 3 3-3 3 3"/>',
         "stop": '<rect x="5" y="5" width="14" height="14" rx="2"/>',
         "plus": '<path d="M12 4v16M4 12h16"/>',
     }
@@ -553,6 +554,7 @@ class Panel(QWidget):
         self.history.anchorClicked.connect(self.open_link)
         self.input = ChatInput(); self.input.setAcceptRichText(False); self.input.setPlaceholderText("Escribe o pega una imagen con Ctrl+V…"); self.input.setFixedHeight(58)
         self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea · Alt+Q recupera el último mensaje"); self.input.submitted.connect(self.send); self.input.image_pasted.connect(self.add_image); layout.addWidget(self.input)
+        self.dictation_label = QLabel(); self.dictation_label.setWordWrap(True); self.dictation_label.hide(); layout.addWidget(self.dictation_label)
         self.connection_notice = ConnectionNotice(); layout.addWidget(self.connection_notice)
         row = QHBoxLayout(); row.setSpacing(3); layout.addLayout(row)
         self.navigation = self.icon_button(row, "menu", "Proyectos, chats y comandos")
@@ -566,6 +568,7 @@ class Panel(QWidget):
         self.navigation_menu.addAction("Cerrar sesión del chat (conservar historial)", lambda: controller.background(lambda:(controller.voice.end_session(), self.runtime.suspend_chat())))
         self.navigation_menu.addAction("Recuperar último mensaje · Alt+Q", self.restore_draft)
         self.navigation_menu.addAction("Configurar todo desde ZIP…", controller.install_model_pack)
+        self.navigation_menu.addAction("Reparar dictado local Parakeet…", lambda: controller.start_dictation(repair=True) if not controller.dictation.active else None)
         self.navigation_menu.addAction(control_icon("settings"), "Ajustes…", controller.show_settings)
         self.command_dialog = None
         self.navigation_menu.addAction("Buscar comandos de la sesión…", self.refresh_commands)
@@ -578,8 +581,10 @@ class Panel(QWidget):
         row.addStretch(1)
         self.icon_button(row, "stop", "Detener voz y tarea", controller.stop)
         self.send_button = self.icon_button(row, "send", "Enviar · Enter", self.send)
-        self.mic_button = self.icon_button(row, "mic", "Hablar con ARISE", self.toggle_voice)
+        self.mic_button = self.icon_button(row, "mic", "Dictar texto · clic para grabar", self.toggle_voice)
         self.mic_button.setCheckable(True)
+        self.cancel_dictation = QShortcut(QKeySequence('Escape'), self)
+        self.cancel_dictation.activated.connect(controller.cancel_dictation)
         self.reload()
 
     @staticmethod
@@ -590,10 +595,40 @@ class Panel(QWidget):
         row.addWidget(button); return button
 
     def toggle_voice(self):
-        def operation():
-            if self.controller.voice.active.is_set(): self.controller.voice.end_session()
-            else: self.controller.voice.wake()
-        self.controller.background(operation)
+        if self.controller.dictation.state == 'recording':
+            self.controller.dictation.stop()
+        elif self.controller.dictation.active:
+            self.controller.cancel_dictation()
+        elif not self.input.isReadOnly():
+            self.controller.start_dictation()
+        else:
+            self.mic_button.setChecked(False)
+
+    def dictation_state(self, state):
+        labels = {'idle': 'Dictar texto · clic para grabar',
+                  'starting': 'Preparando micrófono… · clic para cancelar',
+                  'installing': 'Preparando Parakeet local (unos 670 MB)… · clic para cancelar',
+                  'recording': 'Escuchando… · pulsa el micrófono ↑ para transcribir',
+                  'transcribing': 'Transcribiendo en el PC… · clic para cancelar',
+                  'cancelling': 'Cancelando dictado…', 'restoring': 'Cerrando micrófono…'}
+        label = labels[state]
+        self.mic_button.setIcon(control_icon('mic-up' if state == 'recording' else 'mic'))
+        self.mic_button.setChecked(state == 'recording')
+        self.mic_button.setToolTip(label); self.mic_button.setAccessibleName(label)
+        self.dictation_label.setText(label); self.dictation_label.setVisible(state != 'idle')
+        self.controller.last_interaction = time.monotonic()
+
+    def insert_dictation(self, chat, text):
+        if chat != self.current_chat or self.input.isReadOnly() or not text:
+            return
+        cursor = self.input.textCursor()
+        # Preserve text typed during recognition; never replace the whole draft.
+        before = self.input.toPlainText()[:cursor.position()]
+        cursor.clearSelection()
+        cursor.beginEditBlock()
+        cursor.insertText((' ' if before and not before[-1].isspace() else '') + text)
+        cursor.endEditBlock(); self.input.setTextCursor(cursor); self.input.setFocus()
+        self.connection_notice.set_notice('Dictado listo. Revisa el texto y pulsa Enviar.')
 
     def open_link(self, url):
         if url.scheme() in ('https','http'):
@@ -640,6 +675,7 @@ class Panel(QWidget):
         self.history.append_message(role,text,images)
 
     def reload(self):
+        self.controller.cancel_dictation()
         if getattr(self, 'command_dialog', None):
             self.command_dialog.close()
             self.command_dialog = None
@@ -709,6 +745,7 @@ class Panel(QWidget):
         self.status.setText('Borrador recuperado; no se ha reenviado.')
 
     def send(self):
+        if self.controller.dictation.active: return
         text=self.input.toPlainText().strip();images=list(self.attachments)
         if self.input.isReadOnly() or (not text and not images):return
         if text.startswith('/'):
@@ -744,7 +781,14 @@ class Controller(QObject):
         super().__init__(); self.app, self.runtime, self.orb = app, runtime, orb
         self.voice = runtime.voice_service if getattr(runtime, "is_remote", False) else VoiceService(runtime); self.workers = []; self.cursor = 0; self.closed = False
         self.settings_window = None; self.pending_dialogs = {}
+        from .dictation import Dictation
+        self.dictation = Dictation(runtime.storage.root, self)
+        self.dictation_attempt = 0; self.dictation_restore_mute = None; self.dictation_preparing = False
         self.panel = Panel(self)
+        self.dictation.state_changed.connect(self.panel.dictation_state)
+        self.dictation.message.connect(self.panel.connection_notice.set_notice)
+        self.dictation.transcript.connect(self.panel.insert_dictation)
+        self.dictation.finished.connect(self.restore_dictation_voice)
         self.wake_requested.connect(self._wake); self.stop_requested.connect(self._stop)
         self.orb.setToolTip("ARISE · clic para abrir el chat · clic derecho para detener")
         self.orb.setAccessibleName("ARISE: abrir conversación")
@@ -873,16 +917,58 @@ class Controller(QObject):
             worker.deleteLater()
         worker.finished.connect(cleanup); worker.failed.connect(cleanup); worker.start(operation)
 
+    def start_dictation(self, repair=False):
+        if self.dictation.active: return
+        self.dictation_preparing = True
+        self.dictation_attempt += 1
+        attempt = self.dictation_attempt
+        chat = self.panel.current_chat
+        self.dictation.set_state('starting')
+        def prepare():
+            muted = self.voice.muted
+            self.voice.end_session(); self.voice.mute(True)
+            if self.closed: self.voice.mute(muted)
+            return muted
+        def ready(muted):
+            self.dictation_preparing = False
+            if self.closed or attempt != self.dictation_attempt or chat != self.panel.current_chat:
+                if not self.closed:
+                    self.dictation_restore_mute = muted
+                    self.restore_dictation_voice()
+                return
+            self.dictation_restore_mute = muted
+            self.dictation.start(self.runtime.storage.config, chat, repair=repair)
+        def failed(_):
+            self.dictation_preparing = False
+            self.dictation.set_state('idle')
+        self.background(prepare, ready, failed)
+
+    def restore_dictation_voice(self):
+        muted = self.dictation_restore_mute
+        self.dictation_restore_mute = None
+        if muted is not None and not self.closed:
+            self.dictation.set_state('restoring')
+            self.background(lambda: self.voice.mute(muted), lambda _: self.dictation.set_state('idle'), lambda _: self.dictation.set_state('idle'))
+
+    def cancel_dictation(self):
+        self.dictation_attempt += 1
+        if self.dictation_preparing:
+            self.dictation.set_state('cancelling')
+        elif self.dictation.state != 'restoring':
+            self.dictation.cancel()
+
     def wake(self, initial=""):
         self.wake_requested.emit(initial if isinstance(initial, str) else "")
 
     def _wake(self, initial):
+        if self.dictation.active: return
         self.last_interaction = time.monotonic()
         self.orb.show(); self.orb.raise_(); self.background(lambda:self.voice.wake(initial))
 
     def stop(self): self.stop_requested.emit()
 
     def _stop(self):
+        self.cancel_dictation()
         self.close_dialogs()
         self.panel.status.setText('Deteniendo manos y ojos…')
         self.background(lambda:(self.voice.end_session(),self.runtime.stop()))
@@ -901,7 +987,7 @@ class Controller(QObject):
     def hide_panel(self): self.panel.hide()
 
     def hide_if_idle(self):
-        if self.panel.isVisible() and time.monotonic() - self.last_interaction >= 60:
+        if not self.dictation.active and self.panel.isVisible() and time.monotonic() - self.last_interaction >= 60:
             self.hide_panel()
 
     def anchor_panel(self):
@@ -1046,15 +1132,13 @@ class Controller(QObject):
                 self.panel.status.setText(data["activity"])
                 self.orb.setToolTip("ARISE · "+data["activity"]+" · clic para abrir chat")
                 self.panel.send_button.setToolTip(data["activity"])
-                self.panel.mic_button.setToolTip("Micrófono " + ("activo" if data["microphone"] else "apagado"))
-                self.panel.mic_button.setAccessibleName(self.panel.mic_button.toolTip())
                 if data['control']:self.panel.emergency.setText('■ Detener')
                 self.panel.control.setText("Control del PC " + ("activo" if data["control"] else "apagado"))
                 self.panel.privacy.setText("Micrófono " + ("activo" if data["microphone"] else "apagado") + " · Pantalla " + ("activa" if data["screen"] else "apagada") + " · Control " + ("activo" if data["control"] else "apagado"))
                 self.panel.activity_view.setToolTip(data["activity"]+"\n"+self.panel.privacy.text())
                 self.panel.control.blockSignals(True); self.panel.control.setChecked(data["control"]); self.panel.control.blockSignals(False)
-                self.panel.mic_button.setChecked(data["microphone"] and data["state"] not in ("idle", "wake_detected"))
             elif kind == 'desktop_stopped':
+                if self.dictation.active: self.cancel_dictation()
                 self.panel.status.setText('Manos y ojos detenidos. Reactivación manual.' if data['confirmed'] else 'No se pudo confirmar la parada: '+', '.join(data['errors']))
                 self.panel.emergency.setText('✓ Detenido' if data['confirmed'] else '⚠ Revisar')
                 self.panel.emergency.setToolTip(self.panel.status.text()+' · Ctrl+Alt+Esc')
@@ -1168,7 +1252,12 @@ class Controller(QObject):
 
     def close(self):
         if self.closed: return
-        self.closed = True; self.app.removeEventFilter(self); self.timer.stop(); self.idle_timer.stop(); self.position_timer.stop(); self.hotkeys.close(); self.voice.close(); self.runtime.close(); self.tray.hide()
+        muted = self.dictation_restore_mute
+        self.closed = True; self.dictation.close()
+        if muted is not None:
+            try: self.voice.mute(muted)
+            except RuntimeError: pass
+        self.app.removeEventFilter(self); self.timer.stop(); self.idle_timer.stop(); self.position_timer.stop(); self.hotkeys.close(); self.voice.close(); self.runtime.close(); self.tray.hide()
 
 
 def main():
