@@ -1,0 +1,42 @@
+name: Parakeet verified GitHub mirror
+on:
+  push:
+    branches: [distribution/parakeet-v3]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: parakeet-distribution
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/distribution/parakeet-v3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: voice-parakeet-v3-2bda32ec70b0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download and verify original upstream artifacts
+        run: python distribution/parakeet/prepare.py dist
+      - name: Publish only verified assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --json isDraft > release-state.json; then
+            if [ "$(python -c 'import json; print(json.load(open("release-state.json"))["isDraft"])')" = "False" ]; then
+              gh release download "$RELEASE_TAG" --dir verify
+              python distribution/parakeet/prepare.py verify --verify-only
+              exit 0
+            fi
+          else
+            gh release create "$RELEASE_TAG" --draft --prerelease --target "$GITHUB_SHA" --title 'ARISE · Parakeet v3 y motor local' --notes-file distribution/parakeet/README.md
+          fi
+          gh release upload "$RELEASE_TAG" dist/* --clobber
+          gh release download "$RELEASE_TAG" --dir verify
+          python distribution/parakeet/prepare.py verify --verify-only
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease

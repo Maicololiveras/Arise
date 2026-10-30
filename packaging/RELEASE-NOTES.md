@@ -1,3 +1,14 @@
+# ARISE 0.4.32 QA
+
+- Descarga de Parakeet y sus runtimes desde la release fijada de ARISE en
+  GitHub, para equipos donde el proxy bloquea Hugging Face o npm.
+- Rama independiente `distribution/parakeet-v3` con publicación reproducible,
+  verificación antes y después de subir, fuentes y hashes originales.
+- Se conserva la validación TLS y de integridad. El proxy debe permitir GitHub
+  y su CDN `release-assets.githubusercontent.com`.
+- Reintenta desde el micrófono; si una instalación anterior quedó inválida,
+  usa «Reparar dictado local Parakeet» en el menú del panel.
+
 # ARISE 0.4.31 QA
 
 - Micrófono del panel: clic para grabar, micrófono ↑ para detener y transcribir

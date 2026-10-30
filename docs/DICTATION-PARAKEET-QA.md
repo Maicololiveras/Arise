@@ -1,4 +1,4 @@
-# Dictado local de ARISE 0.4.31 QA
+# Dictado local de ARISE 0.4.32 QA
 
 El micrófono del panel ahora dicta al borrador. Un clic prepara y abre el
 micrófono; cuando aparece «Escuchando», el icono cambia a micrófono con flecha
@@ -49,3 +49,13 @@ Antes de considerar estable: ejecutar instalación real y dictado en Windows,
 comparar español y términos técnicos contra las mismas grabaciones de Dictto,
 medir tiempos y comprobar cierre desde la bandeja. El flujo Android permanece
 en su versión anterior: este cambio corresponde al botón del panel de Windows.
+
+## Descargas en redes con proxy
+
+Modelo y runtimes se obtienen de la release fijada
+`https://github.com/Maicololiveras/Arise/releases/tag/voice-parakeet-v3-2bda32ec70b0`.
+La rama `distribution/parakeet-v3` mantiene el manifest y su publicación.
+No se consulta Hugging Face ni npm desde el cliente. La red debe permitir
+`github.com` y `release-assets.githubusercontent.com`. Se mantienen TLS y los
+hashes originales. La actualización puede volver a preparar componentes de
+0.4.31 porque su marcador incluía el origen anterior.

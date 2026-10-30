@@ -10,6 +10,27 @@ concurrency:
   group: arise-verification-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  parakeet-mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require published verified voice artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          for attempt in $(seq 1 30); do
+            if gh release view voice-parakeet-v3-2bda32ec70b0 --repo Maicololiveras/Arise --json isDraft,assets > /tmp/parakeet-release.json && python distribution/parakeet/check_release.py < /tmp/parakeet-release.json; then
+              exit 0
+            fi
+            sleep 30
+          done
+          echo 'Parakeet mirror is not published; app release blocked.'
+          exit 1
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -150,7 +171,7 @@ jobs:
       - name: Gentle atomic installation retry tests
         run: node --test scripts/install-gentle-native.test.mjs
       - name: Parakeet worker and session tests
-        run: node --test tests/parakeet-voice-worker.test.mjs tests/parakeet-voice-session.test.mjs
+        run: node --test tests/parakeet-voice-worker.test.mjs tests/parakeet-voice-session.test.mjs tests/parakeet-mirror.test.mjs
       - name: Native Windows and protocol tests
         env:
           QT_QPA_PLATFORM: offscreen
@@ -219,7 +240,7 @@ jobs:
       group: arise-release-metadata
       cancel-in-progress: false
     if: github.event_name == 'push' && (github.ref == 'refs/heads/qa' || github.ref == 'refs/heads/main')
-    needs: [docker, prerequisites, windows, windows-tests, offline-models, windows-offline]
+    needs: [parakeet-mirror, docker, prerequisites, windows, windows-tests, offline-models, windows-offline]
     runs-on: ubuntu-latest
     permissions:
       contents: write

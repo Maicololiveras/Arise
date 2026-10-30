@@ -55,7 +55,10 @@ export const VOICE_TARGETS                         = ["darwin-x64", "darwin-arm6
 
 const SHERPA_VERSION = "1.13.8";
 
-const npmTarball = (name        , version        ) => `https://registry.npmjs.org/${name}/-/${name}-${version}.tgz`;
+// ARISE mirror: fixed release assets, identical upstream bytes and hashes.
+export const VOICE_MIRROR_BASE = 'https://github.com/Maicololiveras/Arise/releases/download/voice-parakeet-v3-2bda32ec70b0';
+export const VOICE_MIRROR_REDIRECTS = [{origin:'https://release-assets.githubusercontent.com', pathPrefix:'/github-production-release-asset/'}];
+const npmTarball = (name, version) => `${VOICE_MIRROR_BASE}/${name}-${version}.tgz`;
 
 // sherpa-onnx-node holds only JavaScript. Its addon-static-import.js loads
 // `../sherpa-onnx-<platform>-<arch>/sherpa-onnx.node` (Windows spelled `win`), so the
@@ -129,31 +132,26 @@ export function voiceRuntimeManifest(target             )                       
 	];
 	// The id names both native versions, so a runtime installed with other pins
 	// lives in another directory and is never reported as this one.
-	// npm serves these tarballs directly; no redirect is expected or followed.
-	return { id: `sherpa-onnx-${SHERPA_VERSION}-node-cpal-${NODE_CPAL_VERSION}-${target}`, target, packages, redirects: [] };
+	// GitHub serves the original npm tarballs through its release asset CDN.
+	return { id: `sherpa-onnx-${SHERPA_VERSION}-node-cpal-${NODE_CPAL_VERSION}-${target}`, target, packages, redirects: VOICE_MIRROR_REDIRECTS };
 }
 
 const PARAKEET_REPO = "csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8";
 const PARAKEET_REVISION = "2bda32ec70b097a55adaa07d9a7173915b43cc78";
 
 // The int8 sherpa-onnx export of NVIDIA Parakeet TDT 0.6B v3 at a fixed commit.
-// Observed redirects: tokens.txt answers 307 with a same-origin resolve-cache path,
-// the LFS/Xet files answer 302 to us.aws.cdn.hf.co/xet-bridge-us/. Other CDN
-// regions were not observed, so they are refused rather than guessed.
+// ARISE downloads the verified mirror from GitHub, not Hugging Face.
 export const PARAKEET_MODEL_MANIFEST                     = {
 	id: `parakeet-tdt-0.6b-v3-int8-${PARAKEET_REVISION.slice(0, 12)}`,
 	revision: PARAKEET_REVISION,
-	baseUrl: `https://huggingface.co/${PARAKEET_REPO}/resolve/${PARAKEET_REVISION}`,
+	baseUrl: VOICE_MIRROR_BASE,
 	files: [
 		{ name: "encoder.int8.onnx", size: 652184281, sha256: "acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247" },
 		{ name: "decoder.int8.onnx", size: 11845275, sha256: "179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e" },
 		{ name: "joiner.int8.onnx", size: 6355277, sha256: "3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3" },
 		{ name: "tokens.txt", size: 93939, sha256: "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d" },
 	],
-	redirects: [
-		{ origin: "https://huggingface.co", pathPrefix: `/api/resolve-cache/models/${PARAKEET_REPO}/${PARAKEET_REVISION}/` },
-		{ origin: "https://us.aws.cdn.hf.co", pathPrefix: "/xet-bridge-us/" },
-	],
+	redirects: VOICE_MIRROR_REDIRECTS,
 };
 
 

@@ -16,3 +16,7 @@ Full pins and upstream attribution/notice gaps: lib/voice-artifacts.mjs.
 These native components and model are downloaded on first user activation,
 not included in this application's executable. Their upstream notice gaps
 remain documented; this notice does not claim they were resolved.
+
+ARISE 0.4.32 changes download origins to its pinned GitHub release mirror.
+The model and npm archive hashes, sizes and versions remain unchanged.
+Mirror sources and licensing: distribution/parakeet/NOTICE.txt and SOURCE.json.
