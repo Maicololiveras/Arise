@@ -68,7 +68,7 @@ class DurableTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.s=Storage(self.temp.name)
         self.chat=self.s.create_conversation();self.other=self.s.create_conversation()
         self.r=SimpleNamespace(storage=self.s,conversation=self.chat,stop_generation=0,
-            transition_lock=threading.RLock(),connections=SimpleNamespace(providers=Connections.providers,send=Mock()),
+            transition_lock=threading.RLock(),lock=threading.RLock(),approvals={},connections=SimpleNamespace(providers=Connections.providers,send=Mock()),
             ask_approval=Mock(),emit=Mock(),steer=Mock(return_value={'task_id':'task'}),stop=Mock())
         self.r.devices=Devices(self.s);self.jobs=Reminders(self.r)
     def tearDown(self):self.jobs.close();self.s.db.close();self.temp.cleanup()

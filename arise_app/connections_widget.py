@@ -51,11 +51,18 @@ class ConnectionsDialog(QDialog):
             self.button(form,'Desconectar cuenta',lambda p=provider:self.run('connections/disconnect',{'provider':p}))
         mobile = self.page('Celular')
         self.android_download(mobile)
-        origin = self.field(mobile,'URL HTTPS de tu PC en Tailscale')
-        origin.setPlaceholderText('https://mi-pc.mi-red.ts.net')
-        self.button(mobile,'Preparar servidor privado',lambda:self.run('mobile/start',{'origin':origin.text().strip()}))
-        label=QLabel('Ejecuta en tu PC el comando tailscale serve que aparecerá abajo. Ambos dispositivos deben estar en tu red. El acceso móvil se activa manualmente tras reiniciar ARISE.');label.setWordWrap(True);mobile.addRow(label)
-        self.button(mobile,'Generar código para este chat · 5 minutos',lambda:self.run('mobile/invite',{}))
+        hint=QLabel('Instala Tailscale en el PC y el teléfono e inicia sesión. Después configura tu autenticador y vincula el chat. El PC debe permanecer encendido.')
+        hint.setWordWrap(True);mobile.addRow(hint)
+        self.pair_qr=QLabel();self.pair_qr.setAlignment(Qt.AlignCenter);mobile.addRow(self.pair_qr)
+        self.button(mobile,'1 · Configurar verificación en dos pasos',lambda:self.run('mobile/security/begin',{},self.show_mobile_qr))
+        otp=self.field(mobile,'Código de seis dígitos del autenticador',secret=True)
+        otp.setMaxLength(6)
+        def confirmed(value):
+            otp.clear();self.pair_qr.clear();self.output.clear()
+            self.status.setText('Autenticador confirmado. Espera su siguiente código para vincular el teléfono.')
+        self.button(mobile,'Confirmar autenticador',lambda:self.run('mobile/security/confirm',{'code':otp.text().strip()},confirmed))
+        self.button(mobile,'2 · Preparar conexión privada automáticamente',lambda:self.run('mobile/prepare',{}))
+        self.button(mobile,'3 · Vincular este chat con mi teléfono',lambda:self.run('mobile/link',{},self.show_mobile_qr))
         self.devices=QListWidget();self.devices.setMinimumHeight(90);mobile.addRow(self.devices)
         self.button(mobile,'Actualizar dispositivos',self.refresh_devices)
         self.button(mobile,'Revocar dispositivo seleccionado',self.revoke)
@@ -66,6 +73,19 @@ class ConnectionsDialog(QDialog):
         self.button(jobs,'Actualizar recordatorios',self.refresh_jobs)
         self.button(jobs,'Cancelar seleccionado',self.cancel_job)
         close=QPushButton('Cerrar');close.clicked.connect(self.close);layout.addWidget(close)
+
+    def show_mobile_qr(self, value):
+        import qrcode
+        url=value.get('uri') or value.get('url')
+        matrix=qrcode.QRCode(border=4);matrix.add_data(url);matrix.make(fit=True)
+        cells=matrix.get_matrix();size=len(cells)
+        image=QImage(size,size,QImage.Format_RGB32);image.fill(Qt.white)
+        for y,row in enumerate(cells):
+            for x,dark in enumerate(row):
+                if dark:image.setPixelColor(x,y,Qt.black)
+        self.pair_qr.setPixmap(QPixmap.fromImage(image).scaled(280,280,Qt.KeepAspectRatio,Qt.FastTransformation))
+        self.status.setText('Escanea con tu autenticador y confirma el código.' if 'uri' in value else 'Escanea con la cámara del teléfono. También puedes pegar el enlace en ARISE Android. Vence en cinco minutos.')
+        self.output.setPlainText(value.get('secret') or url)
 
     def android_download(self, form):
         data = json.loads((Path(__file__).parent/'resources/android-download-qr.json').read_text())
@@ -116,6 +136,14 @@ class ConnectionsDialog(QDialog):
                  'connections/disconnect':r.connections.disconnect,'mobile/start':r.start_mobile,'mobile/stop':r.stop_mobile}
         if path in methods:return methods[path](**(data or {}))
         if path=='connections/token':return r.connections.save_token(data['provider'],data['token'],**data['options'])
+        if path=='mobile/prepare':
+            from .mobile_setup import prepare
+            return prepare(r)
+        if path=='mobile/link':
+            from .mobile_setup import invite
+            return invite(r)
+        if path=='mobile/security/begin':return r.mobile_security.begin()
+        if path=='mobile/security/confirm':return r.mobile_security.confirm(data.get('code'))
         if path=='mobile/invite':return r.devices.invite(r.conversation)
         if path=='mobile/devices':return {'devices':r.devices.list(r.conversation)}
         if path=='mobile/revoke':return r.devices.revoke(r.conversation,data['id'])

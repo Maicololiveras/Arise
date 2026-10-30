@@ -68,10 +68,10 @@ jobs:
           cat > android-notes.md <<'NOTES'
           Android QA: descarga ARISE-Android-QA.apk desde Assets.
           Requiere Android 8 o posterior. No es una aplicación para iPad.
-          Vincula el celular desde Ajustes > Conexiones > Celular en el PC, mediante tu red privada Tailscale y un código temporal.
+          Windows 0.4.30+: Ajustes > Conexiones > Celular. Configura autenticador, prepara la conexión privada y escanea el QR desde Android.
           El APK de QA usa firma de depuración; una compilación posterior puede requerir desinstalar y volver a vincular. No desinstales sin conservar tu configuración.
           Micrófono y superposición requieren permisos explícitos. La activación por voz requiere configurar el detector; instalar el APK no la habilita por sí sola.
-          Las tareas y autorizaciones se mantienen en el PC. Prueba en dispositivos físicos pendiente.
+          El PC transcribe la voz y ejecuta tareas. Las aprobaciones de ARISE pueden confirmarse en el móvil con autenticador sin ampliar los permisos del PC. Prueba en dispositivos físicos pendiente.
           NOTES
           echo "Commit: $GITHUB_SHA · Actions: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> android-notes.md
           python3 - <<'PYMETA'

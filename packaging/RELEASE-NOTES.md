@@ -1,3 +1,12 @@
+# ARISE 0.4.30 QA
+
+- Windows + Android: configuración privada de Tailscale Serve desde el PC, QR de vinculación y puerto persistente entre reinicios. Rechaza sustituir servicios Serve ajenos o Funnel.
+- Verificación con autenticador TOTP protegido por DPAPI: caducidad, rechazo de reutilización, límite persistente de intentos, revocación y sesión móvil de hasta 30 días. El MFA del proveedor de Tailscale debe configurarse por separado.
+- Android 0.2.0-qa: lector QR, acceso a Tailscale y opciones de escucha avanzada plegadas.
+- Hablar graba hasta 29 segundos y transcribe en el PC para revisar antes de enviar; Escuchar sintetiza con una voz instalada en Windows. Adjunta hasta cuatro imágenes PNG/JPEG.
+- Permite reactivar explícitamente un chat vinculado si el PC está libre y responder aprobaciones de ese chat con autenticador; no amplía permisos del agente.
+- VPS/Coolify aplazado. Passkeys, avisos push, adjuntos de documentos y firma estable de distribución pendientes; no se presenta como versión de producción.
+
 # ARISE 0.4.29 QA
 
 - El saludo usa el usuario del PC por defecto; elimina el nombre Maix fijo.

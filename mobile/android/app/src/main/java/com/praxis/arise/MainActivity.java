@@ -19,6 +19,7 @@ public class MainActivity extends Activity {
     private AppUpdate availableUpdate;
     private EditText origin, accessKey;
     private WebView chat;
+    private android.webkit.ValueCallback<Uri[]> imageChoice;
     private boolean foreground;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final Runnable refresh = new Runnable() {
@@ -54,49 +55,67 @@ public class MainActivity extends Activity {
             if(availableUpdate!=null) showUpdate(); else checkUpdate(true);
         });
         checkUpdate(false);
-        label(box, "La detección de ‘oye ARISE’ abre el panel. El trabajo sigue en tu PC con los permisos del chat. Ocultar no apaga la escucha; Apagar micrófono sí.", 16);
+        label(box, "Tu asistente en el teléfono. Tu PC realiza el trabajo. Conecta Tailscale y pega el enlace que muestra ARISE en el PC.", 16);
+        button(box,"Abrir Tailscale",v->{
+            Intent launch=getPackageManager().getLaunchIntentForPackage("com.tailscale.ipn");
+            if(launch!=null)startActivity(launch);
+            else startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://tailscale.com/download/android")));
+        });
         status = label(box, "Escucha apagada", 16);
-        origin = field(box, "https://tu-pc.tu-red.ts.net", false);
+        origin = field(box, "Pega tu enlace de vinculación", false);
         origin.setText(getSharedPreferences("wake",0).getString("origin", ""));
-        button(box, "Guardar conexión y vincular chat", v -> {
+        button(box,"Escanear QR del PC",v->com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(this).startScan()
+            .addOnSuccessListener(barcode->{
+                String value=barcode.getRawValue();
+                if(value!=null && value.length()<2048){origin.setText(value);tell("Revisa el enlace y pulsa Conectar.");}
+                else tell("El QR no contiene un enlace válido.");
+            }).addOnFailureListener(error->tell("No se pudo abrir el lector. Puedes pegar el enlace del PC; revisa Google Play Services.")));
+        button(box, "Conectar con mi PC", v -> {
             try {
-                String host = Origin.validate(origin.getText().toString());
+                Uri link=Uri.parse(origin.getText().toString().trim());
+                String host = Origin.validate(link.buildUpon().fragment(null).build().toString());
+                String fragment=link.getEncodedFragment();
+                if(fragment!=null && !fragment.matches("code=[A-Za-z0-9_%=-]{1,200}"))throw new IllegalArgumentException();
                 stopService(new Intent(this, WakeService.class));
                 getSharedPreferences("wake",0).edit().putString("origin",host).apply();
                 openChat(host);
+                if(fragment!=null)chat.loadUrl(host+"/#"+fragment);
             } catch (RuntimeException e) { tell("Introduce el origen HTTPS de Tailscale, sin rutas ni puertos."); }
         });
-        button(box, "1 · Permitir mostrar sobre otras apps", v -> new AlertDialog.Builder(this)
+        LinearLayout advanced=new LinearLayout(this);advanced.setOrientation(LinearLayout.VERTICAL);advanced.setVisibility(View.GONE);
+        button(box,"Opciones avanzadas de escucha",v->advanced.setVisibility(advanced.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));
+        box.addView(advanced);
+        button(advanced, "1 · Permitir mostrar sobre otras apps", v -> new AlertDialog.Builder(this)
                 .setTitle("Burbuja sobre otras aplicaciones")
                 .setMessage("Android abrirá sus ajustes. Activa el permiso de ARISE Companion QA. Puedes revocarlo allí en cualquier momento. Esto no concede control del PC ni acceso al contenido de otras apps.")
                 .setNegativeButton("Ahora no",null).setPositiveButton("Abrir ajustes",(d,w)-> {
                     try { startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName()))); }
                     catch (ActivityNotFoundException e) { tell("Abre Ajustes > Aplicaciones > Acceso especial > Mostrar sobre otras apps."); }
                 }).show());
-        button(box, "2 · Permitir micrófono y notificaciones", v -> {
+        button(advanced, "2 · Permitir micrófono y notificaciones", v -> {
             if (Build.VERSION.SDK_INT >= 33) requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS},10);
             else requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},10);
         });
-        label(box,"3 · Detector local Porcupine (opcional)\nRequiere tu AccessKey y modelos compatibles de ‘oye ARISE’ para Android y español. El SDK puede validar la licencia con Picovoice. No se incluyen clave ni modelo personalizado; consulta sus condiciones. Sin configurarlo, el chat manual sigue disponible.",16);
-        accessKey = field(box,"AccessKey de Picovoice (no se muestra al volver)",true);
-        button(box,"Guardar clave del detector",v->{
+        label(advanced,"3 · Detector local Porcupine (opcional)\nRequiere tu AccessKey y modelos compatibles de ‘oye ARISE’ para Android y español. El SDK puede validar la licencia con Picovoice. No se incluyen clave ni modelo personalizado; consulta sus condiciones. Sin configurarlo, el chat manual sigue disponible.",16);
+        accessKey = field(advanced,"AccessKey de Picovoice (no se muestra al volver)",true);
+        button(advanced,"Guardar clave del detector",v->{
             try {
                 String key=accessKey.getText().toString().trim();
                 if(key.isEmpty()) { tell("Introduce una clave."); return; }
                 stopService(new Intent(this,WakeService.class)); KeyStoreSecret.save(this,key); accessKey.setText(""); tell("Clave guardada con Android Keystore.");
             } catch(Exception e) { tell("No se pudo guardar la clave. No se activó la escucha."); }
         });
-        button(box,"Importar ‘oye ARISE’ Android (.ppn)",v->pick(20));
-        button(box,"Importar modelo de español (.pv)",v->pick(21));
-        button(box,"Activar escucha de ‘oye ARISE’",v->startWake());
-        button(box,"Apagar micrófono y quitar burbuja",v->{ stopService(new Intent(this,WakeService.class)); tell("Escucha apagada. Las tareas del PC se detienen desde el chat."); });
-        button(box,"Borrar clave y modelos locales",v->new AlertDialog.Builder(this).setMessage("Se apagará la escucha y se borrará la configuración del detector. La vinculación del PC se revoca por separado en ARISE.")
+        button(advanced,"Importar ‘oye ARISE’ Android (.ppn)",v->pick(20));
+        button(advanced,"Importar modelo de español (.pv)",v->pick(21));
+        button(advanced,"Activar escucha de ‘oye ARISE’",v->startWake());
+        button(advanced,"Apagar micrófono y quitar burbuja",v->{ stopService(new Intent(this,WakeService.class)); tell("Escucha apagada. Las tareas del PC se detienen desde el chat."); });
+        button(advanced,"Borrar clave y modelos locales",v->new AlertDialog.Builder(this).setMessage("Se apagará la escucha y se borrará la configuración del detector. La vinculación del PC se revoca por separado en ARISE.")
                 .setNegativeButton("Cancelar",null).setPositiveButton("Borrar",(d,w)->{
                     stopService(new Intent(this,WakeService.class));
                     getSharedPreferences("wake",0).edit().remove("key").apply();
                     new File(getFilesDir(),"keyword.ppn").delete(); new File(getFilesDir(),"spanish.pv").delete(); tell("Detector eliminado.");
                 }).show());
-        label(box,"La escucha no se reinicia al encender el teléfono ni al volver a dar un permiso. Con pantalla bloqueada no mostramos conversaciones. Pruebas de batería y bloqueo pendientes en Redmi 13C.",14);
+        label(advanced,"La escucha no se reinicia al encender el teléfono ni al volver a dar un permiso. Con pantalla bloqueada no mostramos conversaciones. Pruebas de batería y bloqueo pendientes en Redmi 13C.",14);
     }
     private void checkUpdate(boolean manual) {
         if(updateBusy) return;
@@ -151,8 +170,25 @@ public class MainActivity extends Activity {
         stopService(new Intent(this,WakeService.class));
         startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE),code);
     }
+    void chooseImages(android.webkit.ValueCallback<Uri[]> callback) {
+        if(imageChoice!=null)imageChoice.onReceiveValue(null);
+        imageChoice=callback;
+        try {startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("image/*").putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"image/png","image/jpeg"}).putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true).addCategory(Intent.CATEGORY_OPENABLE),31);}
+        catch(ActivityNotFoundException error){imageChoice.onReceiveValue(null);imageChoice=null;tell("No hay selector de archivos disponible.");}
+    }
     @Override protected void onActivityResult(int code,int result,Intent data) {
         super.onActivityResult(code,result,data);
+        if(code==31){
+            if(imageChoice!=null){
+                Uri[] selected=null;
+                if(result==RESULT_OK && data!=null){
+                    if(data.getClipData()!=null){int count=data.getClipData().getItemCount();if(count<=4){selected=new Uri[count];for(int i=0;i<count;i++)selected[i]=data.getClipData().getItemAt(i).getUri();}else tell("Selecciona hasta cuatro imágenes.");}
+                    else if(data.getData()!=null)selected=new Uri[]{data.getData()};
+                }
+                imageChoice.onReceiveValue(selected);imageChoice=null;
+            }
+            return;
+        }
         if ((code!=20 && code!=21) || result!=RESULT_OK || data==null || data.getData()==null) return;
         Uri uri=data.getData();
         new Thread(()->{
@@ -169,13 +205,13 @@ public class MainActivity extends Activity {
     }
     private void openChat(String host) {
         LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
-        button(box,"Volver a permisos y escucha",v->{ closeChat(); setup(); });
+        button(box,"Conexión y ajustes",v->{ closeChat(); setup(); });
         chat=CompanionView.create(this,host); box.addView(chat,new LinearLayout.LayoutParams(-1,0,1)); setContentView(box);
     }
-    private void closeChat() { if(chat!=null) { chat.destroy(); chat=null; } }
+    private void closeChat() { if(imageChoice!=null){imageChoice.onReceiveValue(null);imageChoice=null;} if(chat!=null) { chat.destroy(); chat=null; } }
     @Override public void onBackPressed() { if(chat!=null) { closeChat(); setup(); } else super.onBackPressed(); }
-    @Override protected void onResume() { super.onResume(); foreground=true; ui.post(refresh); }
-    @Override protected void onPause() { foreground=false; ui.removeCallbacks(refresh); super.onPause(); }
+    @Override protected void onResume() { super.onResume(); foreground=true; if(chat!=null)chat.onResume(); ui.post(refresh); }
+    @Override protected void onPause() { foreground=false; ui.removeCallbacks(refresh); if(chat!=null){chat.evaluateJavascript("if(typeof recorder!=='undefined' && recorder)recorder.stop();if(typeof playing!=='undefined' && playing)playing.pause();",null);chat.onPause();} super.onPause(); }
     @Override protected void onDestroy() { closeChat(); super.onDestroy(); }
     private void tell(String value) { Toast.makeText(this,value,Toast.LENGTH_LONG).show(); }
     private TextView label(LinearLayout box,String value,int size) { TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setPadding(0,12,0,12);box.addView(t);return t; }

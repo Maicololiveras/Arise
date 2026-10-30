@@ -20,6 +20,7 @@ const vm = require('node:vm');
   assert.equal(elements.pair.hidden,false,'expired cookie must show pairing');
   elements.draft.value='Documento pendiente';
   const send=elements.compose.onsubmit({preventDefault(){}});
+  await new Promise(resolve=>setImmediate(resolve));
   response({ok:false,status:503,json:async()=>({error:'No confirmado'})});
   await send;
   assert.equal(elements.draft.value,'Documento pendiente');

@@ -77,6 +77,14 @@ def make_server(runtime, port=0):
                     runtime.connections.disconnect(data['provider']); value = {'disconnected': True}
                 elif route == '/api/connections/oauth/start': value = runtime.connections.oauth_start(data['provider'], data['client_id'])
                 elif route == '/api/connections/oauth/poll': value = runtime.connections.oauth_poll(data['provider'])
+                elif route == '/api/mobile/prepare':
+                    from .mobile_setup import prepare
+                    value = prepare(runtime)
+                elif route == '/api/mobile/link':
+                    from .mobile_setup import invite
+                    value = invite(runtime)
+                elif route == '/api/mobile/security/begin': value = runtime.mobile_security.begin()
+                elif route == '/api/mobile/security/confirm': value = runtime.mobile_security.confirm(data.get('code'))
                 elif route == '/api/mobile/start': value = runtime.start_mobile(data['origin'])
                 elif route == '/api/mobile/stop': value = runtime.stop_mobile()
                 elif route == '/api/mobile/invite': value = runtime.devices.invite(runtime.conversation)

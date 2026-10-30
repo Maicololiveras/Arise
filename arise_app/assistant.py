@@ -25,6 +25,8 @@ class Assistant(Runtime):
         from .reminders import Reminders
         self.connections = Connections(self.storage.root)
         self.devices = Devices(self.storage)
+        from .mobile_security import MobileSecurity
+        self.mobile_security = MobileSecurity(self.storage)
         self.reminders = Reminders(self)
         self.mobile_server = None
         with self.storage.lock, self.storage.db:
@@ -34,28 +36,37 @@ class Assistant(Runtime):
                     task.update(status="error", error="El proceso residente se interrumpió. Verifica el resultado externo antes de repetir la acción.")
                 self.tasks[row["id"]] = task
             for task in self.tasks.values(): self.persist_task(task)
+        try:
+            from .mobile_setup import resume
+            resume(self)
+        except Exception as error:
+            self.emit('notice', {'text':'Acceso móvil no restaurado: '+str(error)})
 
-    def start_mobile(self, origin):
+    def start_mobile(self, origin, port=0):
         from .companion import make_mobile_server
         with self.transition_lock:
             if self.mobile_server:
                 raise ValueError('El acceso móvil ya está activo; deténlo antes de cambiarlo.')
-            self.mobile_server = make_mobile_server(self, origin)
+            self.mobile_server = make_mobile_server(self, origin, port=port)
+            self.mobile_origin = origin
             threading.Thread(target=self.mobile_server.serve_forever, daemon=True).start()
             return {'origin': origin, 'port': self.mobile_server.server_port,
                     'command': f'tailscale serve --bg http://127.0.0.1:{self.mobile_server.server_port}'}
 
-    def stop_mobile(self):
+    def stop_mobile(self, persist=True):
         with self.transition_lock:
             if self.mobile_server:
                 self.mobile_server.shutdown()
                 self.mobile_server.server_close()
                 self.mobile_server = None
+        if persist:
+            from .mobile_setup import save_settings
+            save_settings(self, {'enabled':False})
         return {'stopped': True}
 
     def close(self):
         self.reminders.close()
-        self.stop_mobile()
+        self.stop_mobile(persist=False)
         super().close()
 
     def persist_task(self, task):
@@ -141,7 +152,7 @@ class Assistant(Runtime):
 
     def ask_approval(self, action, preview, timeout=120):
         identity = uuid.uuid4().hex
-        pending = {"event": threading.Event(), "approved": False, "generation": self.stop_generation}
+        pending = {"event": threading.Event(), "approved": False, "generation": self.stop_generation, "chat": self.conversation, "action": action, "preview": preview}
         with self.lock:
             self.approvals[identity] = pending
         self.publish_activity({"type":"waiting"})

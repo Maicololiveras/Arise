@@ -1,3 +1,7 @@
+# Flujo guiado desde Windows 0.4.30 / Android 0.2.0
+
+Para las versiones nuevas sigue [MOBILE-GUIDED-QA.md](MOBILE-GUIDED-QA.md): autenticador, preparación automática y QR. Las instrucciones de abajo describen el flujo manual anterior.
+
 # Android Companion QA: conexión y actualizaciones
 
 ## Estado y límites
