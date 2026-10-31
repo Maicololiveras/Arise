@@ -217,6 +217,7 @@ class Assistant(Runtime):
         if name.startswith('terminal.'):
             if name=='terminal.delegate':return self.wrap(self.terminals.delegate(arguments.get('task')))
             with self.transition_lock:
+                if name=='terminal.send':return self.wrap(self.terminals.send(arguments.get('id'),arguments.get('text'),self.conversation))
                 if name=='terminal.list':return self.wrap({'terminals':self.terminals.list(self.conversation)})
                 if name=='terminal.cancel':return self.wrap(self.terminals.cancel(arguments.get('id'),self.conversation))
             raise ValueError('Herramienta de terminal desconocida.')

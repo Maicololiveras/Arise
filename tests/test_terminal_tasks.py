@@ -126,12 +126,15 @@ class TerminalTests(unittest.TestCase):
             extension=(Path(__file__).resolve().parents[1]/'arise_app/resources/terminal-task.mjs').as_uri()
             script='''import extension from EXTENSION;
 import {readFileSync} from 'node:fs';import {join} from 'node:path';
-const hooks={},sent=[];let closed=0;
-extension({on:(name,fn)=>hooks[name]=fn,sendUserMessage:t=>sent.push(t)});
+const hooks={},sent=[],tools={};let closed=0;
+extension({on:(name,fn)=>hooks[name]=fn,sendUserMessage:t=>sent.push(t),registerTool:t=>tools[t.name]=t});
 const ctx={ui:{notify(){}},shutdown(){closed++}};
 hooks.session_start({},ctx);hooks.session_start({},ctx);
 if(sent.length!==1)throw Error('duplicated task');
 if(!hooks.tool_call({toolName:'orchestrator_send_message'}).block)throw Error('peer leak');
+hooks.agent_end({messages:[]},ctx);
+if(closed!==0)throw Error('idle turn closed task');
+await tools.arise_finish.execute('finish',{status:'completed',summary:'public result'});
 hooks.agent_end({messages:[{role:'assistant',content:[{type:'thinking',thinking:'PRIVATE'},{type:'text',text:'public result'}]}]},ctx);
 const result=JSON.parse(readFileSync(join(process.env.ARISE_TERMINAL_TASK,'result.json'),'utf8'));
 if(result.text!=='public result'||closed!==1)throw Error('bad result');
@@ -139,3 +142,72 @@ console.log(result.status);
 '''.replace('EXTENSION',json.dumps(extension))
             p=subprocess.run(['node','--input-type=module','-e',script],env={**os.environ,'ARISE_TERMINAL_TASK':temp},capture_output=True,text=True)
             self.assertEqual(p.returncode,0,p.stderr);self.assertEqual(p.stdout.strip(),'completed')
+
+    def test_extension_question_roundtrip_and_ordered_instructions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'task.json').write_text(json.dumps({'task':'Task'}))
+            extension=(Path(__file__).resolve().parents[1]/'arise_app/resources/terminal-task.mjs').as_uri()
+            script="""import extension from EXTENSION;
+import {readFileSync,writeFileSync} from 'node:fs';import {join} from 'node:path';
+const hooks={},tools={},sent=[];const root=process.env.ARISE_TERMINAL_TASK;
+extension({on:(n,f)=>hooks[n]=f,registerTool:t=>tools[t.name]=t,sendUserMessage:(t,o)=>sent.push([t,o])});
+const ctx={ui:{notify(){}},isIdle:()=>false,shutdown(){throw Error('premature close')}};
+hooks.session_start({},ctx);
+const pending=tools.arise_ask_user.execute('q',{question:'Choose folder'});
+const state=JSON.parse(readFileSync(join(root,'state.json'),'utf8'));
+if(state.status!=='waiting_user')throw Error('missing question');
+writeFileSync(join(root,'reply-'+state.question.id+'.json'),JSON.stringify({value:'Project folder'}));
+if((await pending).content[0].text!=='Project folder')throw Error('missing reply');
+for(const [seq,text] of [[2,'second'],[1,'first']])writeFileSync(join(root,'inbox',String(seq).padStart(20,'0')+'-'+ 'a'.repeat(32)+'.json'),JSON.stringify({text}));
+await new Promise(r=>setTimeout(r,500));
+if(sent.slice(1).map(x=>x[0]).join(',')!=='first,second')throw Error('wrong order');
+if(sent[1][1].deliverAs!=='steer')throw Error('not steering');
+hooks.agent_end({messages:[{role:'assistant',content:[{type:'thinking',thinking:'PRIVATE'},{type:'text',text:'Need more input'}]}]},ctx);
+if(readFileSync(join(root,'state.json'),'utf8').includes('PRIVATE'))throw Error('thinking leaked');
+hooks.session_shutdown();
+""".replace('EXTENSION',json.dumps(extension))
+            result=subprocess.run(['node','--input-type=module','-e',script],env={**os.environ,'ARISE_TERMINAL_TASK':temp},capture_output=True,text=True,timeout=10)
+            self.assertEqual(result.returncode,0,result.stderr)
+
+class MailboxTests(unittest.TestCase):
+    setUp = TerminalTests.setUp
+    def tearDown(self):
+        for job in self.r.terminals.jobs.values(): job['process'].poll.return_value=0
+        TerminalTests.tearDown(self)
+
+    def active_job(self):
+        r=self.r;r.storage.config['code_enabled']=True
+        identity='mailbox';directory=r.terminals.folder(r.conversation)/identity;directory.mkdir(parents=True)
+        job=dict(id=identity,chat=r.conversation,status='running',task='fixture',result='',error='',
+                 epoch=r.pi_epoch,generation=r.stop_generation,process=Mock(poll=Mock(return_value=None)))
+        r.terminals.jobs[identity]=job
+        self.addCleanup(lambda: setattr(job['process'].poll,'return_value',0))
+        return job,directory
+
+    def test_question_reply_and_new_instruction_are_chat_scoped(self):
+        import uuid
+        job,directory=self.active_job();r=self.r;request=str(uuid.uuid4())
+        (directory/'state.json').write_text(json.dumps({'status':'waiting_user','question':{'id':request,'prompt':'Which folder?'},'text':''}))
+        with patch.object(r,'emit') as emit:
+            r.terminals.receive(job);r.terminals.receive(job)
+            self.assertEqual(sum(c.args[0]=='dialog' for c in emit.call_args_list),1)
+        dialog_id='terminal:mailbox:'+request
+        self.assertIn(dialog_id,r.dialogs)
+        with self.assertRaises(ValueError):r.terminals.send('mailbox','wrong','other-chat')
+        r.answer_dialog({'id':dialog_id,'value':'Use the project folder'})
+        self.assertEqual(json.loads((directory/('reply-'+request+'.json')).read_text())['value'],'Use the project folder')
+        self.assertNotIn(dialog_id,r.dialogs)
+        result=r.terminals.send('mailbox','Also add a summary',r.conversation)
+        self.assertEqual(result['status'],'queued')
+        self.assertEqual(json.loads(next((directory/'inbox').glob('*.json')).read_text())['text'],'Also add a summary')
+        r.stop_generation+=1
+        with self.assertRaises(ValueError):r.terminals.send('mailbox','stale',r.conversation)
+
+    def test_question_path_and_queue_limits(self):
+        job,directory=self.active_job();r=self.r
+        (directory/'state.json').write_text(json.dumps({'status':'waiting_user','question':{'id':'../escape','prompt':'Q'}}))
+        r.terminals.receive(job);self.assertFalse(r.dialogs)
+        for _ in range(32):r.terminals.send('mailbox','instruction',r.conversation)
+        with self.assertRaises(RuntimeError):r.terminals.send('mailbox','overflow',r.conversation)
+        r.storage.config['code_enabled']=False
+        with self.assertRaises(ValueError):r.terminals.send('mailbox','not authorized',r.conversation)

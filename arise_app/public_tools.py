@@ -10,7 +10,7 @@ TOOLS = {'forge': 'forge-mcp', 'screenview': 'screenview-mcp', 'inputcontrol': '
 BASE = 'https://raw.githubusercontent.com/Maicololiveras/Arise/herramientas/manifests/'
 
 
-def install_public_tool(name, root, notify=lambda message: None, opener=None):
+def fetch_manifest(name, opener=None):
     # Never use github_opener here: public downloads must not carry credentials.
     opener = opener or urllib.request.urlopen
     package = TOOLS[name]
@@ -33,6 +33,14 @@ def install_public_tool(name, root, notify=lambda message: None, opener=None):
     url = f'https://github.com/Maicololiveras/Arise/releases/download/{tag}/{package}-windows-x64.zip'
     if manifest.get('url') != url:
         raise RuntimeError('Origen de descarga no autorizado: ' + name)
+    return manifest
+
+
+def install_public_tool(name, root, notify=lambda message: None, opener=None):
+    opener = opener or urllib.request.urlopen
+    manifest = fetch_manifest(name, opener)
+    package = TOOLS[name]
+    url = manifest['url']
     root = Path(root); root.mkdir(parents=True, exist_ok=True)
     archive = root / (name + '.zip')
     digest = hashlib.sha256(); size = 0
