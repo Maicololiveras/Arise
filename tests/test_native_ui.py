@@ -138,7 +138,7 @@ class NativeTests(unittest.TestCase):
         answers=[]
         with patch.object(self.r,'answer_dialog',side_effect=lambda record:answers.append(record)):
             self.c.dialog({'id':'edit-fixture','method':'editor','title':'Perfil JSON','prefill':'uno\ndos'})
-            dialog=self.c.pending_dialogs['edit-fixture']; dialog.findChild(QTextEdit).setPlainText('modelo\nesfuerzo')
+            dialog=self.c.pending_dialogs['edit-fixture']; dialog.input.setPlainText('modelo\nesfuerzo')
             dialog.accept(); QTest.qWait(80)
             self.assertEqual(answers[0]['value'],'modelo\nesfuerzo')
             self.assertFalse(answers[0]['cancelled'])

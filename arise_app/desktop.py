@@ -1163,18 +1163,19 @@ class Controller(QObject):
             elif kind == "input_text": self.panel.input.setPlainText(data["text"]); self.panel.input.setFocus()
             elif kind == "approval": self.approval(data)
             elif kind == "dialog":
-                if not (self.runtime.storage.config['voice_provider']=='local' and self.voice.active.is_set()): self.dialog(data)
+                if data.get('terminal_id') or not (self.runtime.storage.config['voice_provider']=='local' and self.voice.active.is_set()): self.dialog(data)
             elif kind == "dialog_resolved":
                 dialog=self.pending_dialogs.pop(data['id'],None)
                 if dialog: dialog.setProperty('arise_cancelled',True); dialog.reject()
 
     def approval(self, data):
         # Nonmodal: stop hotkey, cancellation and microphone state keep updating.
-        box = QMessageBox(self.panel); box.setWindowTitle("ARISE · Revisar envío")
-        box.setText("¿Enviar este borrador de Gmail?"); box.setInformativeText(json.dumps(data["preview"], ensure_ascii=False, indent=2))
-        box.setStandardButtons(QMessageBox.Yes | QMessageBox.No); box.setDefaultButton(QMessageBox.No)
-        box.button(QMessageBox.Yes).setText("Permitir"); box.button(QMessageBox.No).setText("Cancelar")
-        box.finished.connect(lambda result: self.answer_approval(data["id"], result == QMessageBox.Yes)); box.finished.connect(box.deleteLater)
+        from .task_dialog import TaskDialog
+        preview = data.get('preview', '')
+        if not isinstance(preview, str): preview = json.dumps(preview, ensure_ascii=False, indent=2)
+        box = TaskDialog({'method':'confirm', 'title':data.get('action','ARISE · Revisar'), 'message':preview}, self.panel)
+        box.finished.connect(lambda result: self.answer_approval(data['id'], result == QDialog.Accepted))
+        box.finished.connect(box.deleteLater)
         self.show_panel(); box.open()
 
     def answer_approval(self, identity, approved):
@@ -1194,22 +1195,11 @@ class Controller(QObject):
             if data.get("timeoutMs"):
                 timer=QTimer(dialog); timer.setSingleShot(True); timer.timeout.connect(dialog.reject); timer.start(max(1,int(data["timeoutMs"])))
             dialog.open()
-        if data["method"] == "editor":
-            dialog = QDialog(self.panel); dialog.setWindowTitle(data.get("title", "ARISE")); dialog.resize(560, 400)
-            layout = QVBoxLayout(dialog); editor = QTextEdit(); editor.setPlainText(str(data.get("prefill", ""))); layout.addWidget(editor)
-            buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel); layout.addWidget(buttons)
-            buttons.accepted.connect(dialog.accept); buttons.rejected.connect(dialog.reject)
-            dialog.finished.connect(lambda result:submit(dialog,result,editor.toPlainText()))
-            track(dialog); return
-        dialog = QInputDialog(self.panel); dialog.setWindowTitle(data.get("title", "ARISE")); dialog.setLabelText(data.get("message", data.get("title", "Tu respuesta")))
-        method = data["method"]
-        if method in ("select", "confirm"):
-            dialog.setComboBoxItems(data.get("options", []) if method == "select" else ["No", "Sí"]); dialog.setComboBoxEditable(False)
-        else: dialog.setTextValue(str(data.get("prefill", "")))
-        def answer(result):
-            value = dialog.textValue()
-            submit(dialog,result,value,value == "Sí")
-        dialog.finished.connect(answer); track(dialog)
+        from .task_dialog import TaskDialog
+        dialog = TaskDialog(data, self.panel)
+        dialog.finished.connect(lambda result: submit(
+            dialog, result, dialog.value(), data['method'] == 'confirm' and result == QDialog.Accepted))
+        track(dialog)
 
     def open_pi(self):
         if os.name != "nt":
