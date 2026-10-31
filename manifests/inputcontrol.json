@@ -2,10 +2,10 @@
   "schema": 1,
   "tool": "inputcontrol",
   "version": "0.2.1",
-  "tag": "herramientas-inputcontrol-v0.2.1-bac26c6061b2",
+  "tag": "herramientas-inputcontrol-v0.2.1-0cc432d59ba5",
   "platform": "windows-x64",
   "entry": "inputcontrol-mcp.exe",
-  "sha256": "a471ea995e0dac75a11882466c57d99c06c642bb64135b49c4c30ac943cfa4a3",
-  "size": 23297250,
-  "url": "https://github.com/Maicololiveras/Arise/releases/download/herramientas-inputcontrol-v0.2.1-bac26c6061b2/inputcontrol-mcp-windows-x64.zip"
+  "sha256": "4e011966adeea05d82e0961ad47d71861f23259336c4b043dab422014a72fcc2",
+  "size": 23462595,
+  "url": "https://github.com/Maicololiveras/Arise/releases/download/herramientas-inputcontrol-v0.2.1-0cc432d59ba5/inputcontrol-mcp-windows-x64.zip"
 }
