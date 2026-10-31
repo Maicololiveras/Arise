@@ -5,12 +5,14 @@ from pathlib import Path
 import subprocess
 import sys
 import threading
+import time
 import uuid
 import psutil
 
 TOOLS = [
     {'name':'terminal.delegate','description':'Abre Gentle en una terminal Windows propia para una tarea del chat. Requiere ejecución local y confirmación visible; devuelve un ID, no un resultado terminado. No concede manos/ojos.','inputSchema':{'type':'object','properties':{'task':{'type':'string'}},'required':['task'],'additionalProperties':False}},
     {'name':'terminal.list','description':'Estado y resultados públicos de las terminales delegadas de este chat. No enumera otros chats ni terminales ajenas.','inputSchema':{'type':'object','properties':{}}},
+    {'name':'terminal.send','description':'Envía una respuesta o nueva indicación a una terminal activa de este chat. No amplía permisos. La recepción no significa tarea terminada.','inputSchema':{'type':'object','properties':{'id':{'type':'string'},'text':{'type':'string','minLength':1,'maxLength':12000}},'required':['id','text'],'additionalProperties':False}},
     {'name':'terminal.cancel','description':'Detiene una terminal delegada propia y sus procesos hijos.','inputSchema':{'type':'object','properties':{'id':{'type':'string'}},'required':['id']}},
 ]
 
@@ -69,9 +71,12 @@ class TerminalTasks:
             return {key:job[key] for key in ('id','chat','status')}
 
     def watch(self, job):
+        while job['process'].poll() is None:
+            self.receive(job)
+            time.sleep(.2)
         code=job['process'].wait()
         with self.lock:
-            if job['status'] not in ('running','starting'):return
+            if job['status'] not in ('running','starting','waiting','waiting_user'):return
             path=self.folder(job['chat'])/job['id']/'result.json'
             try:
                 if path.stat().st_size>200000: raise ValueError()
@@ -82,6 +87,7 @@ class TerminalTasks:
                     job.update(status='failed',error=f'Gentle dejó un resultado parcial pero cerró con código {code}. Verifica antes de repetir.')
             except (OSError,ValueError):
                 job.update(status='failed',error=f'Terminal cerrada sin resultado confirmado (salida {code}). Revisa los archivos antes de repetir.')
+            self.clear_dialogs(job['id'])
             self.save(job)
             # Results stay in the originating chat even after the user switches.
             with self.runtime.lock:
@@ -93,10 +99,92 @@ class TerminalTasks:
         self.runtime.deliver_terminal_completion(job)
 
 
+    def _owned_active(self, identity, chat):
+        job = self.jobs.get(identity)
+        r = self.runtime
+        if (not job or job['chat'] != chat or chat != r.conversation
+                or job.get('generation') != r.stop_generation or job.get('epoch') != r.pi_epoch
+                or not r.storage.config.get('code_enabled') or job['process'].poll() is not None):
+            raise ValueError('La terminal ya no está activa o no pertenece a este chat autorizado.')
+        return job
+
+    def send(self, identity, text, chat):
+        if not isinstance(text,str) or not text.strip() or len(text)>12000:
+            raise ValueError('La indicación debe tener entre 1 y 12.000 caracteres.')
+        with self.runtime.transition_lock, self.lock:
+            job=self._owned_active(identity,chat)
+            directory=self.folder(chat)/identity
+            if job.get('question'):
+                self.reply(identity,job['question'],{'value':text},chat)
+                return {'id':identity,'status':'reply_sent'}
+            inbox=directory/'inbox';inbox.mkdir(exist_ok=True)
+            if len(list(inbox.glob('*.json')))>=32:raise RuntimeError('La terminal tiene demasiadas indicaciones pendientes.')
+            job['message_sequence']=job.get('message_sequence',0)+1
+            target=inbox/(f"{job['message_sequence']:020d}-"+uuid.uuid4().hex+'.json');tmp=target.with_suffix('.tmp')
+            tmp.write_text(json.dumps({'text':text}),encoding='utf-8');tmp.replace(target)
+            return {'id':identity,'status':'queued','message_id':target.stem}
+
+    def reply(self, identity, request_id, data, chat):
+        with self.runtime.transition_lock, self.lock:
+            job=self._owned_active(identity,chat)
+            if job.get('question')!=request_id:raise ValueError('La pregunta ya no está pendiente.')
+            value=data.get('value','')
+            if not isinstance(value,str) or len(value)>12000:raise ValueError('Respuesta demasiado larga.')
+            target=self.folder(chat)/identity/('reply-'+request_id+'.json')
+            tmp=target.with_suffix('.tmp');tmp.write_text(json.dumps({'value':value,'cancelled':bool(data.get('cancelled'))}),encoding='utf-8');tmp.replace(target)
+            job.pop('question',None)
+            dialog_id='terminal:'+identity+':'+request_id
+            self.runtime.dialogs.pop(dialog_id,None)
+            self.runtime.emit('dialog_resolved',{'id':dialog_id})
+            return {'sent':True}
+
+    def receive(self, job):
+        r=self.runtime
+        try:
+            path=self.folder(job['chat'])/job['id']/'state.json'
+            if path.stat().st_size>300000:return
+            raw=path.read_text(encoding='utf-8')
+            if job.get('last_state')==raw:return
+            state=json.loads(raw)
+            if state.get('status') not in ('running','waiting','waiting_user'):return
+            with r.transition_lock, self.lock:
+                self._owned_active(job['id'],job['chat'])
+                job['last_state']=raw;job['status']=state['status']
+                text=str(state.get('text',''))[:60000]
+                if text:
+                    job['result']=text
+                    r.storage.message(job['chat'],'assistant',f"Terminal {job['id'][:8]} · pendiente\n"+text)
+                    r.emit('notice',{'text':f"Terminal {job['id'][:8]} espera indicaciones. Puedes responder en este chat."})
+                request=state.get('question')
+                if isinstance(request,dict):
+                    request_id=request.get('id','');prompt=request.get('prompt')
+                    try:valid_id=str(uuid.UUID(request_id))==request_id
+                    except (ValueError,TypeError,AttributeError):valid_id=False
+                    if valid_id and isinstance(prompt,str) and 0<len(prompt)<=12000:
+                        job['question']=request_id
+                        dialog_id='terminal:'+job['id']+':'+request_id
+                        record={'id':dialog_id,'method':'input','title':'Pregunta de terminal '+job['id'][:8],
+                                'message':prompt,'terminal_id':job['id'],'request_id':request_id,'chat':job['chat']}
+                        r.dialogs[dialog_id]=record
+                        r.storage.message(job['chat'],'assistant',f"Terminal {job['id'][:8]} pregunta:\n"+prompt)
+                        r.emit('dialog',record)
+                self.save(job)
+                r.publish_activity({'type':'subagent_status','task_id':job['id'],'status':job['status']})
+            if state['status']=='waiting':
+                r.deliver_terminal_completion(job)
+        except (OSError,ValueError,TypeError):return
+
+    def clear_dialogs(self, identity):
+        for dialog_id, record in list(self.runtime.dialogs.items()):
+            if record.get('terminal_id')==identity:
+                self.runtime.dialogs.pop(dialog_id,None)
+                self.runtime.emit('dialog_resolved',{'id':dialog_id})
+
     def cancel(self, identity, chat):
         with self.lock:
             job=self.jobs.get(identity)
             if not job or job['chat']!=chat:raise ValueError('La terminal no pertenece a este chat activo.')
+            self.clear_dialogs(identity)
             process=job['process']
             if process.poll() is not None:return {'id':identity,'status':job['status']}
             if os.name != 'nt':
@@ -140,7 +228,7 @@ class TerminalTasks:
                 if path.stat().st_size>200000:continue
                 record=json.loads(path.read_text(encoding='utf-8'))
                 if record.get('chat')!=chat:continue
-                if record['id'] not in self.jobs and record['status'] in ('running','starting'):
+                if record['id'] not in self.jobs and record['status'] in ('running','starting','waiting','waiting_user'):
                     record.update(status='interrupted',error='ARISE reinició; no se reconecta ni reenvía automáticamente.')
                 records.append(record)
             except (OSError,ValueError,KeyError):continue
