@@ -1,3 +1,16 @@
+# ARISE 0.4.33 QA
+
+- Check managed ScreenView, InputControl and Forge releases at startup; update
+  changed packages with hash validation and rollback on activation failure.
+  Private Transcription updates require existing repository access.
+- Keep delegated terminals connected to their originating chat for questions,
+  replies and new instructions. A completed turn no longer ends the task.
+- Scroll long agent questions and delegation approvals while keeping response
+  controls and Accept/Reject buttons visible.
+- Preserve disabled tools, working custom MCP commands and existing permissions.
+- The InputControl indicator fix is maintained separately in its QA branch;
+  it becomes downloadable only after its corrected binary is published.
+
 # ARISE 0.4.32 QA
 
 - Descarga de Parakeet y sus runtimes desde la release fijada de ARISE en
