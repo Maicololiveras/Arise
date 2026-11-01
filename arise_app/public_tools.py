@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import urllib.request
 import zipfile
+from .https import open_https
 
 TOOLS = {'forge': 'forge-mcp', 'screenview': 'screenview-mcp', 'inputcontrol': 'inputcontrol-mcp'}
 BASE = 'https://raw.githubusercontent.com/Maicololiveras/Arise/herramientas/manifests/'
@@ -12,7 +13,7 @@ BASE = 'https://raw.githubusercontent.com/Maicololiveras/Arise/herramientas/mani
 
 def fetch_manifest(name, opener=None):
     # Never use github_opener here: public downloads must not carry credentials.
-    opener = opener or urllib.request.urlopen
+    opener = opener or open_https
     package = TOOLS[name]
     with opener(BASE + name + '.json', timeout=30) as response:
         raw = response.read(65537)
@@ -37,7 +38,7 @@ def fetch_manifest(name, opener=None):
 
 
 def install_public_tool(name, root, notify=lambda message: None, opener=None):
-    opener = opener or urllib.request.urlopen
+    opener = opener or open_https
     manifest = fetch_manifest(name, opener)
     package = TOOLS[name]
     url = manifest['url']

@@ -1,3 +1,13 @@
+# ARISE 0.4.34 QA
+
+- Use Windows native certificate validation for application updates, public
+  tool downloads and Python GitHub requests. Preserve certificate and hostname
+  verification, HTTPS-only redirects and installer/package SHA-256 checks.
+- Package the native trust-store adapter with the Windows executable.
+- Show actionable guidance when a download certificate is not trusted. A proxy
+  CA must already be trusted by Windows; ARISE never installs certificates or
+  disables TLS verification automatically.
+
 # ARISE 0.4.33 QA
 
 - Check managed ScreenView, InputControl and Forge releases at startup; update

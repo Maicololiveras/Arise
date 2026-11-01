@@ -12,7 +12,7 @@ $channel = if ($env:ARISE_BUILD_CHANNEL) { $env:ARISE_BUILD_CHANNEL } else { 'ma
 if ($channel -notin @('main','qa')) { throw 'Canal de build invalido' }
 [IO.File]::WriteAllText((Join-Path $root 'arise_app/resources/update-channel.json'), ('{"channel":"' + $channel + '"}'), (New-Object Text.UTF8Encoding($false)))
 & python scripts/build_icon.py; Check-Exit 'Icono ARISE'
-& python -m PyInstaller --icon artifacts/arise.ico --noconfirm --clean --windowed --onedir --name ARISE --collect-all docx --collect-all faster_whisper --collect-all ctranslate2 --collect-all whisper --collect-all vosk --collect-all sounddevice --add-data 'web;web' --add-data 'assets;assets' --add-data 'arise_app/resources;arise_app/resources' run.py
+& python -m PyInstaller --icon artifacts/arise.ico --noconfirm --clean --windowed --onedir --name ARISE --collect-all truststore --collect-all docx --collect-all faster_whisper --collect-all ctranslate2 --collect-all whisper --collect-all vosk --collect-all sounddevice --add-data 'web;web' --add-data 'assets;assets' --add-data 'arise_app/resources;arise_app/resources' run.py
 Check-Exit 'Aplicación nativa'
 $target = Join-Path $root 'dist\ARISE'
 Copy-Item -LiteralPath 'host\target\release\arise-host.exe' -Destination (Join-Path $target 'ARISE-host.exe')
