@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+from datetime import datetime, timezone
 
 from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, QTimer, Signal
 
@@ -12,7 +13,13 @@ ERRORS = {
     'unsupported': 'Parakeet no está disponible para esta plataforma.',
     'no-input-device': 'No se encontró micrófono. Selecciona uno predeterminado en Windows.',
     'unsupported-input': 'El formato del micrófono predeterminado no es compatible.',
-    'capture': 'No se pudo grabar. Revisa el micrófono predeterminado y sus permisos.',
+    'device-open': 'Apertura: no se pudo abrir el micrófono predeterminado. Cierra otras apps de audio y revisa el dispositivo y el acceso al micrófono en Windows.',
+    'capture': 'Captura: el flujo de audio falló después de abrirse. Revisa la conexión del micrófono y otras apps de audio; no implica por sí solo un fallo de permisos.',
+    'model-load': 'Carga del modelo: Parakeet no pudo cargarse. Libera memoria y, si persiste, repara el dictado desde el menú.',
+    'decode': 'Transcripción: Parakeet no pudo procesar el audio. Reintenta una frase corta; si persiste, repara el dictado.',
+    'not-installed': 'Resolución del modelo: faltan archivos. Repara el dictado desde el menú.',
+    'worker-exited': 'El motor local se cerró inesperadamente. Revisa Node y las dependencias del runtime.',
+    'protocol': 'El motor local devolvió una respuesta inválida. Repara el dictado.',
     'runtime-load': 'No se pudo cargar el audio. En Windows revisa Microsoft Visual C++ Runtime.',
     'empty-audio': 'No se grabó audio. Espera a ver «Escuchando» antes de hablar.',
     'no-speech': 'No reconocí palabras. Pulsa el micrófono para intentarlo de nuevo.',
@@ -34,12 +41,48 @@ class Dictation(QObject):
     def __init__(self, root, parent=None):
         super().__init__(parent)
         self.root = Path(root) / 'dictation' / 'voice'
+        self.history_path = self.root.parent / 'history.json'
+        try:
+            rows = json.loads(self.history_path.read_text(encoding='utf-8'))
+            self.history = [r for r in rows[-100:] if isinstance(r, dict)] if isinstance(rows, list) else []
+        except (OSError, ValueError):
+            self.history = []
+        self.download_component = 'Parakeet TDT 0.6B v3 + runtime'
         self.process = None
         self.state = 'idle'
         self.context = ''
         self.buffer = b''
         self.cancelled = False
         self.received_final = False
+
+    def record_event(self, status, *, code='', received=None, total=None):
+        # Closed fields only: never persist worker stderr, audio, transcript or prompts.
+        row = {'time': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+               'component': self.download_component, 'status': status, 'stage': self.state}
+        if code: row['code'] = code if code in ERRORS else 'internal'
+        if received is not None:
+            row.update(received=max(0, received), total=max(0, total))
+        if status == 'progress' and self.history and self.history[-1].get('status') == 'progress' and self.history[-1].get('component') == self.download_component:
+            self.history[-1] = row
+        else:
+            self.history.append(row)
+        self.history = self.history[-100:]
+        try:
+            self.history_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = self.history_path.with_suffix('.tmp')
+            temporary.write_text(json.dumps(self.history, ensure_ascii=False), encoding='utf-8')
+            os.replace(temporary, self.history_path)
+        except OSError:
+            pass  # History failure must not lose the current draft or interrupt capture.
+
+    def history_text(self):
+        lines = [f'Destino local de modelos y runtime: {self.root}',
+                 'Solo diagnóstico; no se guardan audio ni transcripciones.', '']
+        for row in self.history:
+            progress = f" · {row['received']/1048576:.1f}/{row['total']/1048576:.1f} MB" if 'received' in row else ''
+            lines.append(f"{row.get('time', '')} · {row.get('component', '')} · {row.get('status', '')} · {row.get('stage', '')}{progress}")
+            if row.get('code'): lines.append(ERRORS.get(row['code'], 'Fallo interno del dictado.'))
+        return '\n'.join(lines) if self.history else '\n'.join(lines) + 'Todavía no hay operaciones registradas.'
 
     @property
     def active(self):
@@ -71,7 +114,9 @@ class Dictation(QObject):
         process.readyReadStandardError.connect(lambda: process.readAllStandardError())
         process.finished.connect(lambda *_: self.complete(process))
         process.errorOccurred.connect(lambda _: self.complete(process) if process.state() == QProcess.NotRunning else None)
+        self.download_component = 'Parakeet TDT 0.6B v3 + runtime'
         self.set_state('starting')
+        self.record_event('started')
         bridge = script or Path(__file__).parent / 'resources/parakeet/bridge.mjs'
         process.start(node, [str(bridge), str(self.root.resolve())] + (['--repair'] if repair else []))
 
@@ -92,19 +137,28 @@ class Dictation(QObject):
                 if kind == 'state' and data.get('state') in ('starting','installing','recording','transcribing'):
                     # Once stop/cancel is requested no late event may re-enable recording.
                     if self.state != 'cancelling': self.set_state(data['state'])
+                elif kind == 'download' and data.get('component') in ('model', 'runtime'):
+                    self.download_component = 'Parakeet TDT 0.6B v3' if data['component'] == 'model' else 'sherpa-onnx / node-cpal runtime'
+                    self.record_event('download-started')
+                elif kind == 'download-complete' and data.get('component') in ('model', 'runtime'):
+                    self.record_event('download-verified')
                 elif kind == 'progress':
                     received, total = int(data['received']), int(data['total'])
+                    self.record_event('progress', received=received, total=total)
                     self.message.emit(f'Preparando dictado local: {received/1048576:.0f} / {total/1048576:.0f} MB. Pulsa el micrófono para cancelar.')
                 elif kind == 'installed':
+                    self.record_event('installed')
                     self.received_final = True
                     self.message.emit('Dictado listo. Pulsa el micrófono para hablar. Usa el micrófono predeterminado de Windows.')
                 elif kind == 'result':
                     text = data.get('text')
                     if not isinstance(text, str) or len(text) > 16384: raise ValueError()
                     self.received_final = True
+                    self.record_event('transcribed')
                     self.transcript.emit(self.context, text.strip())
                     if data.get('truncated'): self.message.emit('Se alcanzaron 2 minutos. El texto quedó en el borrador.')
                 elif kind == 'error':
+                    self.record_event('failed', code=data.get('code', 'internal'))
                     self.received_final = True
                     self.message.emit(ERRORS.get(data.get('code'), 'No se pudo completar el dictado. Tu borrador se conserva; vuelve a intentarlo.'))
             except (ValueError, TypeError, KeyError):
@@ -138,7 +192,10 @@ class Dictation(QObject):
     def complete(self, process):
         if process is not self.process: return
         self.read_output(process)
+        if self.cancelled:
+            self.record_event('cancelled')
         if not self.cancelled and not self.received_final:
+            self.record_event('failed', code='worker-exited')
             self.message.emit('El proceso de dictado se cerró. Tu borrador se conserva; revisa Node y el micrófono.')
         self.process = None; self.set_state('idle'); self.finished.emit(); process.deleteLater()
 

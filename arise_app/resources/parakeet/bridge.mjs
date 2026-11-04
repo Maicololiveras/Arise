@@ -35,8 +35,8 @@ try {
     send({type:'state',state:'installing'});
     let last=0;
     const onProgress=p=>{if(Date.now()-last>250){last=Date.now();send({type:'progress',received:p.overallReceivedBytes,total:p.overallTotalBytes});}};
-    if(status.runtime?.state!=='installed') await installVoiceRuntime({voiceHome,target,signal:abort.signal,onProgress});
-    if(status.model.state!=='installed') await installVoiceModel({voiceHome,signal:abort.signal,onProgress});
+    if(status.runtime?.state!=='installed') {send({type:'download',component:'runtime'});await installVoiceRuntime({voiceHome,target,signal:abort.signal,onProgress});send({type:'download-complete',component:'runtime'});}
+    if(status.model.state!=='installed') {send({type:'download',component:'model'});await installVoiceModel({voiceHome,signal:abort.signal,onProgress});send({type:'download-complete',component:'model'});}
     if(!cancelled) send({type:'installed'});
   } else {
     session=createVoiceSession({voiceHome,target,onStateChange:state=>{

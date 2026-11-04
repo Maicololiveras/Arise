@@ -93,7 +93,8 @@ class NativeTests(unittest.TestCase):
             QTest.qWait(80)
             self.assertEqual(sent, ["hola\narise"])
             self.assertEqual(panel.input.toPlainText(), "")
-        self.assertEqual(panel.mic_button.toolTip(), "Dictar texto · clic para grabar")
+        self.assertIn("Dictar al borrador", panel.mic_button.toolTip())
+        self.assertIn("conversación de voz", panel.voice_button.toolTip())
         self.assertEqual(panel.windowTitle(), "ARISE Assistant")
 
     def test_failed_image_send_keeps_draft_then_success_clears_it(self):

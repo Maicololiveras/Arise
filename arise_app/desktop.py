@@ -12,7 +12,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QTimer, QObject, Signal, QEvent, QPoint, QSize, QBuffer, QIODevice
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QImage, QDesktopServices, QShortcut, QKeySequence
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
-from PySide6.QtWidgets import (QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
+from PySide6.QtWidgets import (QPlainTextEdit, QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QPushButton, QLineEdit, QTextBrowser, QTextEdit, QComboBox, QCheckBox, QTabWidget,
     QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QSpinBox, QDialogButtonBox, QInputDialog, QWidgetAction, QScrollArea, QProgressDialog, QSizePolicy)
 from .orb import build_orb
@@ -116,6 +116,7 @@ def control_icon(name):
         "folder": '<path d="M3 7V5h7l2 2h9v13H3Z"/>',
         "settings": '<path d="m9 3-.5 3-2 1-2.8-1-2 3 2.3 2v2L1.7 15l2 3 2.8-1 2 1 .5 3h4l.5-3 2-1 2.8 1 2-3-2.3-2v-2l2.3-2-2-3-2.8 1-2-1-.5-3Z"/><circle cx="11" cy="12" r="3"/>',
         "send": '<path d="m3 3 18 9-18 9 3-9ZM6 12h15"/>',
+        "wave": '<path d="M3 10v4M7 6v12M12 3v18M17 6v12M21 10v4"/>',
         "mic": '<rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>',
         "mic-up": '<rect x="5" y="7" width="6" height="10" rx="3"/><path d="M2 12v2a6 6 0 0 0 12 0M8 20v2M5 22h6M19 12V2m-3 3 3-3 3 3"/>',
         "stop": '<rect x="5" y="5" width="14" height="14" rx="2"/>',
@@ -156,7 +157,9 @@ class Settings(QDialog):
         tabs = QTabWidget(); layout.addWidget(tabs)
         self.fields, self.keys, self.mcp = {}, {}, {}
         config = self.runtime.storage.config
-        voice = QWidget(); f = QFormLayout(voice); tabs.addTab(voice, "Voz y audio")
+        voice = QWidget(); f = QFormLayout(voice); tabs.addTab(voice, "Conversación de voz")
+        dictation_help = QLabel("Dictado al borrador: Parakeet TDT 0.6B v3 local, micrófono predeterminado del sistema. Es independiente de los modelos de conversación configurados aquí.")
+        dictation_help.setWordWrap(True); f.addRow(dictation_help)
         self.fields["voice_provider"] = WheelSafeCombo(); self.fields["voice_provider"].addItems(["local", "forge-local", "forge-openai", "openai", "gemini"])
         self.fields["voice_provider"].setCurrentText(config["voice_provider"])
         f.addRow("Proveedor", self.fields["voice_provider"])
@@ -568,6 +571,7 @@ class Panel(QWidget):
         self.navigation_menu.addAction("Cerrar sesión del chat (conservar historial)", lambda: controller.background(lambda:(controller.voice.end_session(), self.runtime.suspend_chat())))
         self.navigation_menu.addAction("Recuperar último mensaje · Alt+Q", self.restore_draft)
         self.navigation_menu.addAction("Configurar todo desde ZIP…", controller.install_model_pack)
+        self.navigation_menu.addAction("Historial de dictado y descargas…", self.show_dictation_history)
         self.navigation_menu.addAction("Reparar dictado local Parakeet…", lambda: controller.start_dictation(repair=True) if not controller.dictation.active else None)
         self.navigation_menu.addAction(control_icon("settings"), "Ajustes…", controller.show_settings)
         self.command_dialog = None
@@ -578,11 +582,13 @@ class Panel(QWidget):
         self.folder_button = self.icon_button(row, "folder", "Elegir carpeta del proyecto", self.open_project)
         self.icon_button(row, "plus", "Adjuntar imagen", self.choose_image)
         self.icon_button(row, "settings", "Ajustes", controller.show_settings)
+        self.mic_button = self.icon_button(row, "mic", "Dictar al borrador · Parakeet · micrófono predeterminado", self.toggle_voice)
+        self.mic_button.setCheckable(True)
         row.addStretch(1)
         self.icon_button(row, "stop", "Detener voz y tarea", controller.stop)
         self.send_button = self.icon_button(row, "send", "Enviar · Enter", self.send)
-        self.mic_button = self.icon_button(row, "mic", "Dictar texto · clic para grabar", self.toggle_voice)
-        self.mic_button.setCheckable(True)
+        self.voice_button = self.icon_button(row, "wave", "Iniciar conversación de voz", controller.wake)
+        self.voice_button.setStyleSheet("background:#126BCA; border-radius:17px;")
         self.cancel_dictation = QShortcut(QKeySequence('Escape'), self)
         self.cancel_dictation.activated.connect(controller.cancel_dictation)
         self.reload()
@@ -593,6 +599,14 @@ class Panel(QWidget):
         button.setFixedSize(34, 34); button.setToolTip(label); button.setAccessibleName(label)
         if callback: button.clicked.connect(lambda checked=False: callback())
         row.addWidget(button); return button
+
+    def show_dictation_history(self):
+        dialog = QDialog(self); dialog.setWindowTitle("Dictado · descargas y diagnóstico")
+        layout = QVBoxLayout(dialog)
+        view = QPlainTextEdit(); view.setReadOnly(True)
+        view.setPlainText(self.controller.dictation.history_text()); layout.addWidget(view)
+        close = QPushButton("Cerrar"); close.clicked.connect(dialog.accept); layout.addWidget(close)
+        dialog.resize(580, 420); dialog.exec()
 
     def toggle_voice(self):
         if self.controller.dictation.state == 'recording':
@@ -605,7 +619,7 @@ class Panel(QWidget):
             self.mic_button.setChecked(False)
 
     def dictation_state(self, state):
-        labels = {'idle': 'Dictar texto · clic para grabar',
+        labels = {'idle': 'Dictar al borrador · Parakeet · micrófono predeterminado',
                   'starting': 'Preparando micrófono… · clic para cancelar',
                   'installing': 'Preparando Parakeet local (unos 670 MB)… · clic para cancelar',
                   'recording': 'Escuchando… · pulsa el micrófono ↑ para transcribir',
@@ -616,6 +630,7 @@ class Panel(QWidget):
         self.mic_button.setChecked(state == 'recording')
         self.mic_button.setToolTip(label); self.mic_button.setAccessibleName(label)
         self.dictation_label.setText(label); self.dictation_label.setVisible(state != 'idle')
+        self.voice_button.setEnabled(state == "idle")
         self.controller.last_interaction = time.monotonic()
 
     def insert_dictation(self, chat, text):

@@ -28,7 +28,10 @@ unexpected_skips = [test for test, reason in result.skipped
                  'test_installer_ancestors.InstallerAncestorTests.test_cycle_and_reused_parent_are_bounded',
                  'test_installer_ancestors.InstallerAncestorTests.test_shutdown_exit_race_and_live_failure',
              }
-             and reason == 'Windows PowerShell required')]
+             and reason == 'Windows PowerShell required')
+    and not (os.name != 'nt'
+             and test.id() == 'test_https.HTTPSTests.test_native_windows_context_keeps_validation_enabled'
+             and reason == 'Native Windows certificate store')]
 if unexpected_skips:
     print('Unexpected skipped tests: '+', '.join(test.id() for test in unexpected_skips),file=sys.stderr)
 raise SystemExit(0 if result.wasSuccessful() and not unexpected_skips else 1)

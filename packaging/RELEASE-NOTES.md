@@ -1,3 +1,12 @@
+# ARISE 0.4.35 QA
+
+- Preserve the microphone's complete default audio format instead of combining it with a separately advertised sample format.
+- Distinguish stream opening, recording, model loading and transcription failures. Add a bounded local dictation/download history without audio or transcript logging.
+- Separate the draft dictation microphone from the blue voice-conversation button and clarify their independent model settings.
+- Document the optional npm recovery path and its validation limits.
+- Unblock Linux CI by allowing only the native Windows TLS test to skip there; Windows still runs it.
+- Physical dictation and clean-PC desktop control validation remain pending (#10, #7, #8). Cross-project Engram retrieval is not changed in this release.
+
 # ARISE 0.4.34 QA
 
 - Use Windows native certificate validation for application updates, public

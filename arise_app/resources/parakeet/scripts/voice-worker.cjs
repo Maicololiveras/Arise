@@ -147,13 +147,12 @@ async function validateModel(model, uid, openRead, signal) {
 	}
 }
 
-// Prefers 32-bit float input; otherwise keeps the device default when it is a
-// format this worker can scale. Rates and channel counts stay at the default.
+// Keep the complete device default tuple. A supported sample format alone
+// does not establish support at the default rate and channel count (WASAPI).
 function chooseInputConfig(convenience, deviceId) {
 	const defaults = convenience.getDefaultInputConfig(deviceId);
-	const formats = convenience.getSupportedFormats(deviceId);
 	if (!isRecord(defaults) || !isInteger(defaults.sampleRate, 8000, 384000) || !isInteger(defaults.channels, 1, 64)) fail("unsupported-input");
-	const sampleFormat = Array.isArray(formats) && formats.includes("f32") ? "f32" : defaults.sampleFormat;
+	const sampleFormat = defaults.sampleFormat;
 	if (!Object.hasOwn(SAMPLE_FORMATS, sampleFormat)) fail("unsupported-input");
 	return { sampleRate: defaults.sampleRate, channels: defaults.channels, sampleFormat };
 }
@@ -352,7 +351,7 @@ class WorkerSession {
 				queueCapacityBuffers: 64,
 			});
 		} catch {
-			fail("capture");
+			fail("device-open");
 		}
 		if (this.state !== "loading") return this.closeStream();
 		this.state = "recording";

@@ -134,3 +134,40 @@ rl.on('line',line=>{
         self.controller.close()
         self.assertFalse(psutil.pid_exists(pid))
         self.assertFalse(self.controller.voice.muted)
+
+    def test_voice_control_is_separate_and_blocked_during_dictation(self):
+        from unittest.mock import patch
+        with patch.object(self.controller.voice, 'wake') as wake:
+            QTest.mouseClick(self.panel.voice_button, Qt.LeftButton)
+            self.wait_for(lambda: wake.called)
+        self.record()
+        self.assertFalse(self.panel.voice_button.isEnabled())
+        self.assertTrue(self.panel.mic_button.isEnabled())
+        self.controller.cancel_dictation()
+        self.wait_for(lambda: self.controller.dictation.state == 'idle')
+        self.assertTrue(self.panel.voice_button.isEnabled())
+
+    def test_persistent_download_history_does_not_store_transcript_or_raw_error(self):
+        self.helper.write_text("""
+const send=x=>console.log(JSON.stringify(x));
+send({type:'state',state:'installing'});
+send({type:'download',component:'model'});
+send({type:'progress',received:128,total:256});
+send({type:'error',code:'model-load',message:'SECRET-DEVICE-NAME'});
+""", encoding='utf-8')
+        self.panel.input.setPlainText('PRIVATE-DRAFT')
+        QTest.mouseClick(self.panel.mic_button, Qt.LeftButton)
+        self.wait_for(lambda: self.controller.dictation.state == 'idle')
+        d = self.controller.dictation
+        stored = d.history_path.read_text(encoding='utf-8')
+        self.assertIn('model-load', stored)
+        self.assertIn('128', stored)
+        self.assertNotIn('SECRET-DEVICE-NAME', stored)
+        self.assertNotIn('PRIVATE-DRAFT', stored)
+        from arise_app.dictation import Dictation
+        restored = Dictation(self.temp.name)
+        self.assertIn('Carga del modelo', restored.history_text())
+        self.assertIn(str(restored.root), restored.history_text())
+        self.runtime.steer.assert_not_called()
+        for _ in range(150): restored.record_event('progress', received=1, total=2)
+        self.assertLessEqual(len(restored.history), 100)

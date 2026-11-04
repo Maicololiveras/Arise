@@ -44,3 +44,7 @@ pnpm.cmd bin --global
 Ajusta la ruta de Git si se instaló en otra carpeta. Si falta el tar de Windows, actualiza o repara el sistema. No sustituyas una versión global de pnpm que otro proyecto necesite; ARISE usa su propia copia.
 
 El canal `main` de Gentle descarga el código como archivo tar; Git no se presenta como requisito de esa descarga. Node/pnpm/Go ya tienen mecanismos de adquisición en el instalador oficial. La mejora solicitada es completar el inventario y la recuperación de requisitos para Windows limpio.
+
+## Alternative npm installation and recovery
+
+See [Gentle Shell npm recovery](GENTLE-NPM-RECOVERY.md) for requirements, separate installation/launcher/RPC checks, and validation limits.

@@ -92,6 +92,7 @@ function harness(t                  , fake              = {}, io                
 		getDefaultInputConfig: () => fake.defaults ?? { sampleRate: 48000, channels: 2, sampleFormat: "i16" },
 		getSupportedFormats: () => fake.formats ?? ["i16"],
 		createInputStream: async (options                       ) => {
+			if (fake.openError) throw new Error("private device detail");
 			const stream             = { options, closes: 0, close: async () => void stream.closes++ };
 			streams.push(stream);
 			return stream;
@@ -183,14 +184,14 @@ test("records multichannel audio, resamples it to 16 kHz mono and closes its ret
 	assert.ok(wave .samples.every((sample) => Math.abs(sample - 0.25) < 1e-6));
 });
 
-test("prefers float input and transcribes on its own when the recording limit is reached", async (t) => {
+test("keeps the default format even when float is advertised and transcribes at the recording limit", async (t) => {
 	const worker = harness(t, { defaults: { sampleRate: 8000, channels: 1, sampleFormat: "i16" }, formats: ["i16", "f32"] });
 	worker.send(startRequest(worker.paths, { maxRecordingMs: 1000 }));
 	await worker.waitFor(() => worker.types().includes("recording"));
 	const [stream] = worker.streams;
-	assert.equal(stream .options.config.sampleFormat, "f32");
-	stream .options.onData(new Float32Array(6000).fill(0.5));
-	stream .options.onData(new Float32Array(6000).fill(0.5));
+	assert.equal(stream .options.config.sampleFormat, "i16");
+	stream .options.onData(new Int16Array(6000).fill(16384));
+	stream .options.onData(new Int16Array(6000).fill(16384));
 	await worker.done;
 	assert.deepEqual(worker.types(), ["recording", "transcribing", "result"]);
 	assert.equal(worker.messages.at(-1) .truncated, true);
@@ -443,4 +444,20 @@ test("the recording limit during verification transcribes once the model is veri
 	reads.release();
 	await worker.done;
 	assert.deepEqual(worker.messages.at(-1), { schema: SCHEMA, type: "result", text: "hello world", truncated: true });
+});
+
+
+test("device opening and running capture failures have distinct sanitized codes", async (t) => {
+  const opening = harness(t, {openError: true});
+  opening.send(startRequest(opening.paths));
+  await opening.done;
+  assert.equal(opening.messages.at(-1).code, "device-open");
+  assert.ok(!opening.raw.join("").includes("private device detail"));
+  const running = harness(t);
+  running.send(startRequest(running.paths));
+  await running.waitFor(() => running.types().includes("recording"));
+  running.streams[0].options.onError(new Error("private device detail"));
+  await running.done;
+  assert.equal(running.messages.at(-1).code, "capture");
+  assert.equal(running.streams[0].closes, 1);
 });
