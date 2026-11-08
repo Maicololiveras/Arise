@@ -148,9 +148,9 @@ class Settings(QDialog):
         intro=QLabel("Elige voz, conecta el agente y habilita las herramientas que usarás.");intro.setWordWrap(True);layout.addWidget(intro)
         quick_setup=QPushButton("Configurar todo desde ZIP")
         quick_setup.clicked.connect(controller.install_model_pack);layout.addWidget(quick_setup)
-        gentle_setup=QPushButton("Configurar Gentle · estable o último main")
+        gentle_setup=QPushButton("Configurar / reparar Gentle integrado")
         gentle_setup.clicked.connect(controller.install_gentle);layout.addWidget(gentle_setup)
-        native_setup=QPushButton("Alternativa: instalar desde la TUI de Gentle AI · QA")
+        native_setup=QPushButton("Avanzado: instalador externo de Gentle AI · QA")
         native_setup.clicked.connect(controller.install_gentle_native);layout.addWidget(native_setup)
         connections=QPushButton('Conexiones, celular y recordatorios · QA')
         connections.clicked.connect(self.show_connections);layout.addWidget(connections)
@@ -213,6 +213,11 @@ class Settings(QDialog):
         self.button(f, "Elegir modelo Piper", lambda: self.pick("piper_model"))
         self.button(f, "Probar conversación", self.test_voice)
         agent = QWidget(); f = QFormLayout(agent); tabs.addTab(agent, "Agente")
+        self.fields['engine_mode'] = WheelSafeCombo()
+        self.fields['engine_mode'].addItem('Integrado en ARISE (recomendado)', 'bundled')
+        self.fields['engine_mode'].addItem('Instalación externa (avanzado)', 'external')
+        self.fields['engine_mode'].setCurrentIndex(0 if config.get('engine_mode','bundled') == 'bundled' else 1)
+        f.addRow('Motor del asistente', self.fields['engine_mode'])
         self.text_field(f, "preferred_name", "Cómo llamarte (vacío: usuario del PC)", config.get("preferred_name", ""))
         self.fields["preferred_name"].setMaxLength(80)
         for key, label in (("workspace", "Carpeta de trabajo"), ("pi_command", "Comando Pi (lista JSON)"), ("gentle_path", "Carpeta Gentle Shell"), ("agent_provider", "Proveedor del agente"), ("agent_model", "Modelo del agente")):
@@ -345,7 +350,7 @@ class Settings(QDialog):
         for key, field in self.fields.items():
             if isinstance(field, QCheckBox): value = field.isChecked()
             elif isinstance(field, QSpinBox): value = field.value()
-            elif isinstance(field, QComboBox): value = field.currentData() if key.endswith("_device") else field.currentText()
+            elif isinstance(field, QComboBox): value = field.currentData() if key.endswith("_device") or key == "engine_mode" else field.currentText()
             else: value = field.text().strip()
             changes[key] = value
         changes["pi_command"] = json.loads(changes["pi_command"])
@@ -459,10 +464,19 @@ class Settings(QDialog):
         self.controller.background(download, complete, failed)
 
     def detect_agent(self):
+        if self.fields['engine_mode'].currentData() == 'bundled' and self.runtime.storage.config.get('owned_engine_root'):
+            self.message.setText('ARISE usa su motor integrado. Configurar / reparar verifica el paquete; no busca instalaciones globales.')
+            return
         from .discovery import detect
-        found = detect(self.runtime.storage.config)
+        selection = dict(self.runtime.storage.config)
+        external = self.fields['engine_mode'].currentData() == 'external'
+        if external and selection.get('owned_engine_root'):
+            for key in ('gentle_agent_home', 'gentle_path', 'gentle_bundle_root'):
+                selection[key] = ''
+            selection['pi_command'] = ['pi']
+        found = detect(selection)
         if found.get("gentle_agent_home"):
-            self.runtime.settings({key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel", "gentle_bundle_root")})
+            self.runtime.settings({**{key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel", "gentle_bundle_root")}, "engine_mode": "external" if external else "bundled"})
         if found["pi_command"]: self.fields["pi_command"].setText(json.dumps(found["pi_command"]))
         if found["gentle_path"]: self.fields["gentle_path"].setText(found["gentle_path"])
         self.message.setText("Pi: " + ("detectado" if found["pi_command"] else "no encontrado") + " · Gentle Shell: " + ("detectado" if found["gentle_path"] or found["gentle_installed_package"] else "no encontrado"))
@@ -829,6 +843,8 @@ class Controller(QObject):
         if start_voice and getattr(sys, "frozen", False) and not os.getenv("ARISE_SKIP_NETWORK_SETUP"): QTimer.singleShot(1500, self.check_updates)
 
     def install_gentle_native(self):
+        if self.runtime.storage.config.get('engine_mode','bundled') == 'bundled':
+            self.install_gentle(); return
         if getattr(self, 'gentle_busy', False): return
         answer=QMessageBox.question(None, "Instalación nativa de Gentle", "Esta alternativa abre la TUI oficial en otra consola. Conserva el motor actual de ARISE: la conexión del entorno nativo con ARISE todavía no está habilitada.\n\n¿Probar la instalación independiente?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if answer != QMessageBox.Yes: return
@@ -1221,8 +1237,14 @@ class Controller(QObject):
             self.runtime.emit("notice", {"text": "Ejecuta Pi y /login en tu terminal."}); return
         from .processes import executable_argv
         import subprocess
-        command = executable_argv(self.runtime.storage.config["pi_command"])
-        subprocess.Popen(command, cwd=self.runtime.storage.config["workspace"], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        config = self.runtime.storage.config
+        from .engram_setup import engine_environment
+        from .owned_engine import environment
+        env = environment(engine_environment(os.environ, config), config)
+        command = executable_argv(config["pi_command"])
+        if config.get('owned_engine_root') and config.get('engine_mode') == 'bundled':
+            command = [command[0], str(Path(__file__).parent/'resources/gentle-shell.mjs'), command[1]]
+        subprocess.Popen(command, env=env, cwd=config["workspace"], creationflags=subprocess.CREATE_NEW_CONSOLE)
 
     def open_data(self):
         if os.name == "nt": os.startfile(str(self.runtime.storage.root))

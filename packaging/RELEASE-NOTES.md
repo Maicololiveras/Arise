@@ -1,3 +1,12 @@
+# ARISE 0.4.36 QA
+
+- Bundle Gentle Shell 4.7.0, Pi 1.5.0, pinned native Gentle AI 4.4.0 and Engram 3.7.0. No separate Gentle installation is required.
+- Default to an ARISE-owned agent, configuration, credentials and memory store. Preserve external installations and databases; existing accounts require login in the new private environment.
+- Update bundled engine paths on relocation/upgrade while preserving owned settings and authentication. Keep explicit external-engine mode for advanced use.
+- Adapt Gentle 4.7 dialogs for RPC and propagate the adapted extensions to delegated agents, preserving chat authorization and cancellation.
+- Stage and checksum Engram during packaging; use a private session-owned server rather than adopting an unrelated global service.
+- Add isolated-runtime, upgrade and real parent/child integration checks; test the frozen Windows bundle without global Node/Gentle on PATH.
+
 # ARISE 0.4.35 QA
 
 - Preserve the microphone's complete default audio format instead of combining it with a separately advertised sample format.

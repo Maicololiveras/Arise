@@ -12,7 +12,7 @@ Copy-Item -LiteralPath (Join-Path $root 'vendor/package-lock.json') -Destination
 & npm ci --prefix $nodeRoot --ignore-scripts --no-audit --no-fund;Check-Exit 'Pi y Gentle Shell'
 Copy-Item -LiteralPath (Join-Path $root 'vendor/forge-voice') -Destination (Join-Path $bundle 'forge-voice') -Recurse
 & node (Join-Path $PSScriptRoot 'install-gentle-native.mjs') (Join-Path $nodeRoot 'node_modules/gentle-pi')
-Check-Exit 'Gentle AI nativo verificado (Windows requiere Go 1.25.10+)'
+Check-Exit 'Gentle AI nativo verificado (Windows requiere Go 1.25.14+)'
 # Ship npm for private-tool provisioning on PCs without any Node installation.
 & npm install --prefix $nodeRoot --ignore-scripts --no-save --package-lock=false --no-audit --no-fund 'npm@11.19.0'
 Check-Exit 'npm integrado para instalación automática de herramientas'
@@ -23,11 +23,16 @@ if($GentlePath){
     $custom=Join-Path $bundle 'gentle-shell';Copy-Item -LiteralPath $source -Destination $custom -Recurse
     $gentle='@bundle/gentle-shell'
 }
+& python (Join-Path $PSScriptRoot 'prepare_owned_engine.py') --bundle $bundle
+Check-Exit 'Engram integrado verificado'
 $manifest=@{
+    owned_engine=1
+    engram_bin='@bundle/engram/engram.exe'
+    memory_package='@bundle/node/node_modules/gentle-engram'
     pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     gentle_path=$gentle
     wake_model='@bundle/models/vosk-model-small-es-0.42'
-    versions=@{pi='1.4.0';gentle='4.5.0';arise='0.4.35';vosk='small-es-0.42'}
+    versions=@{pi='1.5.0';gentle='4.7.0';arise='0.4.36';vosk='small-es-0.42'}
     mcp=@{}
 }
 & python (Join-Path $PSScriptRoot 'prepare_voice_pack.py') --destination $bundle --output (Join-Path (Split-Path $Target -Parent) 'ARISE-Voice-Models-es.zip')

@@ -134,6 +134,8 @@ class Runtime:
         for key in config:
             if key in changes:
                 config[key] = changes[key]
+        if config.get("engine_mode") not in ("bundled", "external"):
+            raise ValueError("Selecciona motor integrado o externo.")
         if not isinstance(config.get("preferred_name", ""), str) or len(config.get("preferred_name", "")) > 80:
             raise ValueError("El nombre debe ser texto de hasta 80 caracteres.")
         config["preferred_name"] = " ".join(config.get("preferred_name", "").split())
@@ -169,7 +171,7 @@ class Runtime:
         elif config["mcp"] != self.storage.config["mcp"] or config["workspace"] != self.storage.config["workspace"]:
             self.disconnect()
         elif any(config.get(key) != self.storage.config.get(key) for key in (
-                "pi_command", "pi_extra_args", "gentle_path", "gentle_agent_home", "gentle_bundle_root",
+                "pi_command", "pi_extra_args", "gentle_path", "gentle_agent_home", "gentle_bundle_root", "engine_mode", "owned_engine_root",
                 "agent_provider", "agent_model", "thinking", "code_enabled", "engram_bin", "preferred_name")):
             self.disconnect_pi()
         if any(config.get(key) != self.storage.config.get(key) for key in
@@ -210,6 +212,9 @@ class Runtime:
             if self.pi:
                 self.pi.close()
                 self.pi = None
+            from .bundle import configure_bundle
+            if self.storage.config.get("engine_mode", "bundled") == "bundled":
+                configure_bundle(self)  # Chat preferences cannot restore stale global engine paths.
             config = self.storage.config
             if config.get('gentle_path'):
                 from .discovery import installed_pi_version
@@ -239,11 +244,13 @@ class Runtime:
                 env.update(self.credentials.environment())
             from .engram_setup import engine_environment
             env = engine_environment(env, config)
+            from .owned_engine import environment
+            env = environment(env, config)
             if config.get("agent_provider") and config.get("agent_model"):
                 command += ["--provider", config["agent_provider"], "--model", config["agent_model"]]
             if config.get("thinking"):
                 command += ["--thinking", config["thinking"]]
-            if config.get("gentle_path") and not config.get("gentle_agent_home"):
+            if config.get("gentle_path") and (not config.get("gentle_agent_home") or env.get("ARISE_GENTLE_OWNED") == "1"):
                 gentle = Path(config["gentle_path"]).resolve()
                 if not (gentle / "package.json").is_file() or not (gentle / "extensions").is_dir():
                     raise ValueError("gentle_path debe apuntar al paquete Gentle Shell completo.")
@@ -251,10 +258,14 @@ class Runtime:
                 extension_files.extend(p / 'index.ts' for p in (gentle / 'extensions').iterdir() if p.is_dir() and (p / 'index.ts').is_file())
                 if not extension_files:
                     raise ValueError("Gentle Shell no contiene extensiones cargables.")
+                rpc_extensions = []
                 for extension_file in extension_files:
                     from .gentle_ui import extension_for_rpc
                     extension_file = extension_for_rpc(gentle, self.storage.root, extension_file)
+                    rpc_extensions.append(str(extension_file))
                     command += ["--extension", str(extension_file)]
+                if env.get("ARISE_GENTLE_OWNED") == "1":
+                    env["ARISE_GENTLE_RPC_EXTENSIONS"] = json.dumps(rpc_extensions)
                 command += ["--skill", str(gentle / "skills"), "--prompt-template", str(gentle / "prompts"), "--theme", str(gentle / "themes")]
             self.pi = JsonProcess(command, cwd=config["workspace"], env=env,
                 on_event=lambda event: self.session_event(epoch, event))

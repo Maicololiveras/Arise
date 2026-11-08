@@ -12,6 +12,9 @@ def audit(root):
     missing=[name for name in required if not (bundle/name).is_file()]
     if missing:raise RuntimeError('Bundle base incompleto: '+', '.join(missing))
     manifest=json.loads((bundle/'manifest.json').read_text(encoding='utf-8-sig'))
+    if manifest.get('owned_engine') == 1:
+        for leaf in ('engram/engram.exe','node/node_modules/gentle-engram/package.json'):
+            if not (bundle/leaf).is_file(): raise RuntimeError('Incomplete owned engine: '+leaf)
     node=bundle/'node/node_modules'
     shell=json.loads((node/'gentle-pi/package.json').read_text())
     pi=json.loads((node/'@earendil-works/pi-coding-agent/package.json').read_text())

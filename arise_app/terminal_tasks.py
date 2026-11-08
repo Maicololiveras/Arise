@@ -60,6 +60,9 @@ class TerminalTasks:
             env.update(r.credentials.environment())
             env.update(ARISE_TERMINAL_TASK=str(directory),ARISE_GENTLE_ROOT=config['gentle_path'],ARISE_GENTLE_HOME=config['gentle_agent_home'],PI_CODING_AGENT_DIR=config['gentle_agent_home'])
             if config.get('gentle_bundle_root'):env['ARISE_GENTLE_PREFIX']=config['gentle_bundle_root']
+            from .engram_setup import engine_environment
+            from .owned_engine import environment
+            env = environment(engine_environment(env, config), config)
             job=dict(id=identity,chat=chat,status='starting',task=task,result='',error='',epoch=r.pi_epoch,generation=generation)
             try:
                 process=subprocess.Popen(args,cwd=config['workspace'],env=env,creationflags=subprocess.CREATE_NEW_CONSOLE)

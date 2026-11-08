@@ -101,11 +101,12 @@ def main():
     if not lock.acquire(): lock.close(); return 0
     if getattr(sys, "frozen", False): os.environ.setdefault("ARISE_CHAT_ROOT", str(application_root() / "chat"))
     runtime = Assistant(root)
-    found = detect(runtime.storage.config)
-    changes = {key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel") if found.get(key)}
-    if changes and not runtime.storage.config.get("gentle_agent_home"): runtime.settings(changes)
-    # Run after discovery so stale global paths never overwrite the offline fallback.
     configure_bundle(runtime)
+    if not runtime.storage.config.get('owned_engine_root') or runtime.storage.config.get('engine_mode') == 'external':
+        found = detect(runtime.storage.config)
+        changes = {key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel") if found.get(key)}
+        if changes and not runtime.storage.config.get("gentle_agent_home"): runtime.settings(changes)
+        configure_bundle(runtime)
     server = make_server(runtime)
     voice = VoiceService(runtime)
     runtime.voice_service = voice

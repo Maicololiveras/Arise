@@ -140,6 +140,17 @@ def adopt_gentle(runtime, changes):
 
 
 def install_gentle(runtime, timeout=3600, force_update=False):
+    from .owned_engine import enabled
+    from .bundle import configure_bundle
+    manifest = application_root()/'bundle/manifest.json'
+    if enabled(runtime.storage.config) and manifest.is_file() and json.loads(manifest.read_text(encoding='utf-8-sig')).get('owned_engine') == 1:
+        with runtime.transition_lock:
+            if runtime.busy or runtime.pi_has_children:
+                raise RuntimeError('Detén las tareas antes de reparar el motor integrado.')
+            result = configure_bundle(runtime)
+            runtime.connect_pi()
+            runtime.emit('notice', {'text':'Gentle integrado configurado y conectado. Sus actualizaciones llegan con ARISE.'})
+            return result
     if os.name!='nt':raise RuntimeError('Este instalador de Gentle requiere Windows.')
     if not LOCK.acquire(blocking=False):raise RuntimeError('El instalador de Gentle ya está abierto.')
     try:

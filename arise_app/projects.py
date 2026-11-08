@@ -112,4 +112,7 @@ class ProjectSessions:
         path=Path(self.get(conversation)['folder'],'preferences.json')
         if not path.is_file():return {}
         data=json.loads(path.read_text(encoding='utf-8'))
-        return {key:value for key,value in data.items() if key in PREFERENCES}
+        keys = set(PREFERENCES)
+        if self.storage.config.get('engine_mode', 'bundled') == 'bundled' and self.storage.config.get('owned_engine_root'):
+            keys -= {'pi_command', 'gentle_path'}
+        return {key:value for key,value in data.items() if key in keys}

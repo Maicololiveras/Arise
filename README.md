@@ -110,3 +110,8 @@ Consulta [REMOTE.md](docs/REMOTE.md). El gateway ofrece conversación por texto 
 [Arquitectura](docs/ARCHITECTURE.md) · [Identidad](assets/identity.json) · [Validación](docs/VALIDATION.md) · [Checklist Windows](docs/WINDOWS-CHECK.md).
 
 Renderer y fuente del orbe reutilizados de [praxisgenai-harness](https://github.com/Maicololiveras/praxisgenai-harness/blob/main/docs/ARISE-ORB.md). JetBrains Mono conserva su licencia OFL. Pi, Gentle Shell y los MCP conservan sus respectivas licencias.
+
+### Integrated engine (QA 0.4.36)
+
+Gentle Shell 4.7.0 now runs from ARISE’s own bundle and private configuration.
+See [owned runtime setup, upgrades and external-mode recovery](docs/owned-gentle-runtime.md).

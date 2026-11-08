@@ -33,6 +33,7 @@ class SocketClosureTests(unittest.TestCase):
 
 @unittest.skipUnless(CLI.is_file() and shutil.which('node'), 'Pi real requerido')
 class OrchestratorRealTests(unittest.TestCase):
+    owned = False
     def test_docx_local_tools_subagent_same_chat_switch_return(self):
         requests=[]; results=[]; child_started=threading.Event(); release_child=threading.Event(); child_disconnected=threading.Event()
         class Model(BaseHTTPRequestHandler):
@@ -78,6 +79,10 @@ class OrchestratorRealTests(unittest.TestCase):
             (definitions/'probe.md').write_text('---\nname: probe\ndescription: QA read-only probe\ntools: read\nmodel: arise-test/arise-test\nthinking: off\n---\nTEST_CHILD_SYSTEM. Responde con el resultado de la prueba.\n')
             r=Assistant(root/'data');r.select_project(str(work))
             r.storage.config.update(pi_command=[shutil.which('node'),str(CLI)],pi_extra_args=['--offline','--no-extensions','--no-skills','--no-context-files'],agent_provider='arise-test',agent_model='arise-test',thinking='off',gentle_path=str(CLI.parents[4]/'gentle-pi'),mcp={})
+            if self.owned:
+                gentle = CLI.parents[4]/'gentle-pi'
+                (home/'settings.json').write_text(json.dumps({'packages':[{'source':str(gentle),'extensions':[]}]}))
+                r.storage.config.update(gentle_agent_home=str(home), owned_engine_root=str(root/'engine'), engine_mode='bundled')
             bridge=make_server(r);threading.Thread(target=bridge.serve_forever,daemon=True).start()
             env={'PI_CODING_AGENT_DIR':str(home),'PI_OFFLINE':'1','PI_TELEMETRY':'0','GENTLE_PI_CONFIG_HOME':str(root/'gentle-config')}
             def prompt(text):
@@ -123,3 +128,7 @@ class OrchestratorRealTests(unittest.TestCase):
                 release_child.set()
                 r.close();r.storage.db.close();bridge.shutdown();bridge.server_close()
         model.shutdown();model.server_close()
+
+
+class OwnedOrchestratorRealTests(OrchestratorRealTests):
+    owned = True
