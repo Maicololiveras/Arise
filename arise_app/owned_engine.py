@@ -47,6 +47,8 @@ def prepare(runtime, bundle, manifest):
     meta = json.loads((memory/'package.json').read_text(encoding='utf-8'))
     if meta.get('name') != 'gentle-engram' or meta.get('engram', {}).get('startupPolicy') != 1:
         raise RuntimeError('El complemento de memoria integrado está incompleto.')
+    native = artifact(manifest['gentle_ai_bin'])
+    if not native.is_file(): raise RuntimeError('Falta Gentle AI integrado. Reinstala ARISE.')
     binary = artifact(manifest['engram_bin'])
     if not binary.is_file(): raise RuntimeError('Falta Engram integrado. Reinstala ARISE.')
     base = runtime.storage.root/'engine'

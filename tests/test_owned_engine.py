@@ -20,8 +20,10 @@ class OwnedEngineTests(unittest.TestCase):
         (bundle/'node/node.exe').write_text('fixture')
         memory=modules/'gentle-engram';memory.mkdir()
         (memory/'package.json').write_text(json.dumps({'name':'gentle-engram','engram':{'startupPolicy':1}}))
+        (gentle/'.gentle-ai/v4.4.0').mkdir(parents=True)
+        (gentle/'.gentle-ai/v4.4.0/gentle-ai.exe').write_text('fixture')
         (bundle/'engram').mkdir();(bundle/'engram/engram.exe').write_text('fixture')
-        manifest={'owned_engine':1,'pi_command':['@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js'],
+        manifest={'owned_engine':1,'gentle_ai_bin':'@bundle/node/node_modules/gentle-pi/.gentle-ai/v4.4.0/gentle-ai.exe','pi_command':['@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js'],
                   'gentle_path':'@bundle/node/node_modules/gentle-pi','engram_bin':'@bundle/engram/engram.exe',
                   'memory_package':'@bundle/node/node_modules/gentle-engram','versions':{'gentle':'4.7.0','pi':'1.5.0'}}
         (bundle/'manifest.json').write_text(json.dumps(manifest))
@@ -122,3 +124,22 @@ class OwnedEngineTests(unittest.TestCase):
                     self.assertTrue((base/'gentle-ai').exists())
             finally:
                 r.close();server.shutdown();server.server_close();thread.join(5)
+
+    def test_interactive_launcher_loads_gentle_with_filtered_settings(self):
+        import shutil
+        import subprocess
+        code=Path(__file__).resolve().parents[1]
+        modules=code/'vendor/node_modules';gentle=modules/'gentle-pi'
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t);home=root/'engine/agent';home.mkdir(parents=True)
+            (home/'settings.json').write_text(json.dumps({'packages':[{'source':str(gentle),'extensions':[]}]}))
+            config={'engine_mode':'bundled','owned_engine_root':str(root/'engine'),'gentle_agent_home':str(home),
+                    'gentle_path':str(gentle),'pi_command':[shutil.which('node'),str(modules/'@earendil-works/pi-coding-agent/dist/bundle/cli.js')]}
+            env=environment({**os.environ,'ENGRAM_STARTUP_POLICY':'deny','PI_OFFLINE':'1'},config)
+            # Same package selection as login/terminal mode; RPC only provides a headless observation channel.
+            command=[config['pi_command'][0],str(code/'arise_app/resources/gentle-shell.mjs'),config['pi_command'][1],'--mode','rpc','--no-session']
+            result=subprocess.run(command,input='{"id":"probe","type":"get_commands"}\n',capture_output=True,text=True,env=env,cwd=root,timeout=35)
+            self.assertEqual(result.returncode,0,result.stderr)
+            messages=[json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
+            response=next(m for m in messages if m.get('id')=='probe')
+            self.assertTrue(any(c['name']=='gentle:status' for c in response['data']['commands']))

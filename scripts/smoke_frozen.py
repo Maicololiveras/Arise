@@ -69,6 +69,7 @@ with tempfile.TemporaryDirectory(prefix='arise-frozen-') as temporary:
         if remote:remote.shutdown()
         try:process.wait(timeout=15)
         except subprocess.TimeoutExpired:process.terminate();process.wait(timeout=5)
+    env['PATH']=os.environ.get('PATH','')  # Remaining renderer/voice checks retain their original environment.
     output=Path('artifacts/frozen-orb.png').resolve();output.parent.mkdir(exist_ok=True)
     env['ARISE_CHAT_ROOT']=str(root/'renderer-chats')
     result=subprocess.run([str(engine),'--data-dir',str(root/'renderer'),'--screenshot',str(output)],env=env,timeout=30)

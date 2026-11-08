@@ -49,15 +49,15 @@ if (root && home) {
   });
   piArgs = invocation.args;
   if (process.env.ARISE_GENTLE_OWNED === '1') {
-    if (process.env.ARISE_GENTLE_RPC_EXTENSIONS) {
-      const injection = await import(pathToFileURL(join(root, 'runtime/child-package-injection.mjs')).href);
-      invocation.env[injection.CHILD_PACKAGE_INJECTION_ENV] = injection.encodeChildPackageInjection({
-        noExtensions: false, extensionPaths: JSON.parse(process.env.ARISE_GENTLE_RPC_EXTENSIONS),
-      });
-    } else {
+    const injection = await import(pathToFileURL(join(root, 'runtime/child-package-injection.mjs')).href);
+    const rpcExtensions = process.env.ARISE_GENTLE_RPC_EXTENSIONS;
+    if (!rpcExtensions) {
       // Interactive login/delegated terminals use upstream's complete package.
       piArgs.push('--extension', root);
     }
+    invocation.env[injection.CHILD_PACKAGE_INJECTION_ENV] = injection.encodeChildPackageInjection({
+      noExtensions: false, extensionPaths: rpcExtensions ? JSON.parse(rpcExtensions) : [root],
+    });
   }
   for (const key of Object.keys(process.env)) {
     if (!(key in invocation.env)) delete process.env[key];
