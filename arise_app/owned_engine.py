@@ -51,7 +51,9 @@ def prepare(runtime, bundle, manifest):
     if not native.is_file(): raise RuntimeError('Falta Gentle AI integrado. Reinstala ARISE.')
     binary = artifact(manifest['engram_bin'])
     if not binary.is_file(): raise RuntimeError('Falta Engram integrado. Reinstala ARISE.')
-    base = runtime.storage.root/'engine'
+    # Canonicalize the explicitly selected data root first (Windows 8.3 aliases
+    # are legitimate). Still reject redirected children below that boundary.
+    base = runtime.storage.root.resolve()/'engine'
     home = base/'agent'
     # Do not adopt a linked/replaced home into an unrelated location.
     for directory in (base, home, base/'home', base/'gentle-ai', base/'memory'):

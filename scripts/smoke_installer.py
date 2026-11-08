@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-',ignore_cleanup_errors=T
     root=Path(temporary); install=root/'Installed ARISE'; data=root/'data'; data.mkdir()
     config={**DEFAULTS,'onboarding_complete':True,'wake_enabled':False,'workspace':str(root/'Workspace'),'pi_command':[str(install/'bundle/node/node.exe'),str(install/'bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/cli.js')],'gentle_path':str(install/'bundle/node/node_modules/gentle-pi')}
     (data/'settings.json').write_text(json.dumps(config),encoding='utf-8')
-    agent=root/'agent';agent.mkdir()
+    agent=data/'engine/agent';agent.mkdir(parents=True)
     (agent/'settings.json').write_text(json.dumps({'packages':[],'telemetry':False}),encoding='utf-8')
     (agent/'models.json').write_text(json.dumps({'providers':{'arise-smoke':{'baseUrl':'http://127.0.0.1:1/v1','api':'openai-completions','apiKey':'fixture-only','models':[{'id':'fixture','input':['text'],'contextWindow':32000,'maxTokens':1000}]}}}),encoding='utf-8')
     env={**os.environ,'PI_CODING_AGENT_DIR':str(agent),'PI_OFFLINE':'1','QT_QPA_PLATFORM':'offscreen','ARISE_SKIP_NETWORK_SETUP':'1'}

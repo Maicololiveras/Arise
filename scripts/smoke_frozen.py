@@ -42,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='arise-frozen-') as temporary:
         state=remote.connect_pi()
         if not state.get('gentleVerified'):raise RuntimeError('Bundled Gentle Shell did not load')
         settings=json.loads((data/'settings.json').read_text(encoding='utf-8-sig'))
-        if settings['gentle_agent_home'] != str(agent): raise RuntimeError('Engine adopted a foreign home')
+        if Path(settings['gentle_agent_home']).resolve() != agent.resolve(): raise RuntimeError('Engine adopted a foreign home')
         if settings['engram_bin'] != str(package/'bundle/engram/engram.exe'): raise RuntimeError('Engine adopted a foreign Engram')
         if 'mem_search' not in remote.status()['capabilities']['pi_tools_observed']:
             raise RuntimeError('Owned memory tools were not registered')

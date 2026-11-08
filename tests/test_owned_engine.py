@@ -46,8 +46,8 @@ class OwnedEngineTests(unittest.TestCase):
                 self.assertEqual(len(json.loads((home/'settings.json').read_text())['packages']),2)
             backup=json.loads((root/'data/engine/selection-backup.json').read_text())
             self.assertEqual(backup['pi_command'],['global-pi'])
-            self.assertEqual(r.storage.config['pi_command'][0],str(b/'node/node.exe'))
-            self.assertEqual(r.storage.config['engram_bin'],str(b/'engram/engram.exe'))
+            self.assertEqual(r.storage.config['pi_command'][0],str((b/'node/node.exe').resolve()))
+            self.assertEqual(r.storage.config['engram_bin'],str((b/'engram/engram.exe').resolve()))
 
     def test_external_mode_is_not_adopted_and_incomplete_bundle_fails_before_config(self):
         with tempfile.TemporaryDirectory() as t:
@@ -61,7 +61,7 @@ class OwnedEngineTests(unittest.TestCase):
 
     def test_env_isolates_config_and_private_memory_and_keeps_identity(self):
         with tempfile.TemporaryDirectory() as t:
-            root=Path(t);r,b,m=self.fixture(root);r.storage.config.update(prepare(r,b,m))
+            root=Path(t).resolve();r,b,m=self.fixture(root);r.storage.config.update(prepare(r,b,m))
             real=root/'user';real.mkdir();(real/'.gitconfig').write_text('[user]')
             base={'HOME':str(real),'USERPROFILE':str(real),'GENTLE_PI_GENTLE_AI_DEV_BINARY':'foreign',
                   'GENTLE_PI_AGENTS_CHILD':'1','PI_CODING_AGENT_DIR':'foreign', 'NODE_OPTIONS':'--import foreign',
@@ -95,7 +95,7 @@ class OwnedEngineTests(unittest.TestCase):
                 self.assertNotIn('gentle_path',restored)
                 self.assertEqual(restored['agent_model'],'chosen')
                 self.assertFalse(restored['code_enabled'])
-            finally:r.close()
+            finally:r.close();r.storage.db.close()
 
     def test_real_47_rpc_uses_own_home_without_global_gentle(self):
         import shutil
@@ -123,7 +123,7 @@ class OwnedEngineTests(unittest.TestCase):
                     self.assertTrue((home/'sessions').exists() or Path(r.sessions.get(r.conversation)['folder'],'session').exists())
                     self.assertTrue((base/'gentle-ai').exists())
             finally:
-                r.close();server.shutdown();server.server_close();thread.join(5)
+                r.close();r.storage.db.close();server.shutdown();server.server_close();thread.join(5)
 
     def test_interactive_launcher_loads_gentle_with_filtered_settings(self):
         import shutil
