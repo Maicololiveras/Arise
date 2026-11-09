@@ -29,7 +29,15 @@ with tempfile.TemporaryDirectory(prefix='arise-native-') as temporary:
         while time.monotonic() < deadline:
             descriptor = read_descriptor(data)
             if ping(descriptor): break
-            if process.poll() is not None: raise RuntimeError('Frozen engine exited before readiness')
+            if process.poll() is not None:
+                # The host normally silences child output. Reproduce a failed CI
+                # startup using this isolated, credential-free fixture only.
+                try:
+                    diagnostic = subprocess.run([str(engine), '--daemon', '--data-dir', str(data)], env=env, capture_output=True, text=True, timeout=10)
+                    print('Frozen startup diagnostic:', diagnostic.stderr[-12000:], flush=True)
+                except subprocess.TimeoutExpired:
+                    print('Direct engine remained alive; inspect the host exit code.', flush=True)
+                raise RuntimeError(f'Frozen engine exited before readiness (host exit {process.returncode})')
             time.sleep(.2)
         else: raise TimeoutError('Frozen daemon readiness timeout')
         remote = RemoteAssistant(descriptor, data)

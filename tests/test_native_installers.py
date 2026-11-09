@@ -54,3 +54,23 @@ class NativePublicationTests(unittest.TestCase):
             self.assertIn('--draft=false', publish)
             self.assertIn('--latest=false', publish)
             self.assertNotIn('--clobber', create)
+
+
+class BundlePermissionsTests(unittest.TestCase):
+    @unittest.skipIf(__import__('os').name == 'nt', 'POSIX package permissions')
+    def test_public_code_is_readable_without_changing_linked_private_data(self):
+        spec = importlib.util.spec_from_file_location('build_native', ROOT / 'scripts/build_native.py')
+        builder = importlib.util.module_from_spec(spec); spec.loader.exec_module(builder)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); package = root / 'package'; native = package / '.gentle-ai'
+            native.mkdir(parents=True, mode=0o700)
+            binary = native / 'gentle-ai'; binary.write_bytes(b'public executable'); binary.chmod(0o700)
+            manifest = native / 'integrity.json'; manifest.write_text('{}'); manifest.chmod(0o600)
+            private = root / 'private'; private.write_text('private fixture'); private.chmod(0o600)
+            (package / 'link').symlink_to(private)
+            builder.public_bundle_permissions(package)
+            self.assertEqual(native.stat().st_mode & 0o777, 0o755)
+            self.assertEqual(binary.stat().st_mode & 0o777, 0o755)
+            self.assertEqual(manifest.stat().st_mode & 0o777, 0o644)
+            self.assertEqual(private.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(binary.read_bytes(), b'public executable')

@@ -43,7 +43,7 @@ def build(identity, verify=False):
     stage.mkdir(parents=True)
     if system == 'windows':
         compiler = shutil.which('ISCC') or str(Path(os.environ.get('ProgramFiles(x86)', 'C:/Program Files (x86)')) / 'Inno Setup 6/ISCC.exe')
-        run(compiler, f'/DAppVersion={__version__}', f'/DTargetArch={"x64os" if arch == "x64" else "arm64"}', f'/DTargetName={arch}', ROOT / 'packaging/ARISE-Native.iss')
+        run(compiler, '/Q', f'/DAppVersion={__version__}', f'/DTargetArch={"x64os" if arch == "x64" else "arm64"}', f'/DTargetName={arch}', ROOT / 'packaging/ARISE-Native.iss')
         artifact = output / (stem + '-Setup.exe')
         installed = Path(os.environ['LOCALAPPDATA']) / 'Programs/ARISE-Native-Preview'
         install = [artifact, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', f'/LOG={output / (identity + "-install.log")}']

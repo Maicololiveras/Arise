@@ -31,6 +31,22 @@ def run(*args, **kwargs):
     return subprocess.run([str(a) for a in args], check=True, **kwargs)
 
 
+def public_bundle_permissions(package):
+    """Allow users to read system-installed code, never profile data or symlinks.
+
+    The official native installer creates a private 0700/0600 download cache.
+    This tree contains only distributable code and public integrity manifests.
+    Normalize it before sealing the macOS app or building root-owned packages.
+    """
+    for path in [package, *package.rglob('*')]:
+        if path.is_symlink():
+            continue
+        if path.is_dir():
+            path.chmod(0o755)
+        elif path.is_file():
+            path.chmod(0o755 if path.stat().st_mode & 0o111 else 0o644)
+
+
 def stage_engram(bundle, identity):
     system, arch = identity.split('-')
     upstream = {'macos': 'darwin'}.get(system, system)
@@ -120,6 +136,8 @@ def build(expected):
     }
     (bundle / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     shutil.copy2(ROOT / 'docs/NATIVE-DISTRIBUTIONS.md', (package / 'Contents/Resources/README.txt' if mac else package / 'README.txt'))
+    if not windows:
+        public_bundle_permissions(package)
     if mac:
         info = package / 'Contents/Info.plist'
         with info.open('rb') as stream: metadata = plistlib.load(stream)
