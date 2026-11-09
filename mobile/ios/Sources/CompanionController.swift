@@ -22,10 +22,10 @@ final class CompanionController: UIViewController, WKNavigationDelegate, WKUIDel
         let connect = UIButton(type: .system)
         connect.setTitle("Connect", for: .normal)
         connect.addTarget(self, action: #selector(openConnection), for: .touchUpInside)
-        let disconnect = UIButton(type: .system)
-        disconnect.setTitle("Disconnect", for: .normal)
-        disconnect.addTarget(self, action: #selector(disconnect), for: .touchUpInside)
-        let buttons = UIStackView(arrangedSubviews: [connect, disconnect])
+        let disconnectButton = UIButton(type: .system)
+        disconnectButton.setTitle("Disconnect", for: .normal)
+        disconnectButton.addTarget(self, action: #selector(disconnect), for: .touchUpInside)
+        let buttons = UIStackView(arrangedSubviews: [connect, disconnectButton])
         buttons.distribution = .fillEqually
         status.numberOfLines = 0
         status.font = .preferredFont(forTextStyle: .footnote)

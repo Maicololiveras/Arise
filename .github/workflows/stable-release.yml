@@ -2,10 +2,11 @@ name: ARISE stable distributions
 on:
   push:
     branches: [main]
-    paths: ['releases/stable.json']
+    paths: ['releases/stable.json', '.github/workflows/stable-release.yml']
   workflow_dispatch:
 permissions:
   contents: write
+  actions: read
 jobs:
   validate:
     runs-on: ubuntu-latest
