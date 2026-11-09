@@ -7,10 +7,11 @@ import sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from arise_app import __version__
-REPO='Maicololiveras/Arise';commit=os.environ['GITHUB_SHA']
-if os.environ['GITHUB_REF_NAME'] != 'main': raise RuntimeError('Publish only from main')
+REPO='Maicololiveras/Arise';commit=os.environ.get('ARISE_RELEASE_SOURCE_SHA') or os.environ['GITHUB_SHA']
 channel=os.environ['ARISE_RELEASE_CHANNEL']
 if channel not in ('main','qa'): raise RuntimeError('Invalid release channel')
+if os.environ['GITHUB_REF_NAME'] != 'main' and not (os.environ['GITHUB_REF_NAME'] == 'qa' and channel == 'qa'):
+    raise RuntimeError('Stable publication requires main; QA may publish only Preview')
 tag=('qa-v' if channel=='qa' else 'v')+__version__
 setup=Path('release/dist/ARISE-Setup.exe')
 if not setup.is_file():raise RuntimeError('Tested installer artifact missing')

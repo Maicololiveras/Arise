@@ -1,0 +1,96 @@
+name: Publish verified QA Preview
+on:
+  push:
+    branches: [qa]
+    paths: ['.github/workflows/publish-verified-preview.yml']
+  workflow_dispatch:
+    inputs:
+      windows_run:
+        description: 'Successful QA verification run'
+        required: true
+        default: '42692998177'
+      native_run:
+        description: 'Successful QA native installer run for the same source'
+        required: true
+        default: '42692997193'
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: arise-release-metadata
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/qa'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ARISE_RELEASE_CHANNEL: qa
+      ARISE_NATIVE_CHANNEL: preview
+      WINDOWS_RUN: ${{ inputs.windows_run || '42692998177' }}
+      NATIVE_RUN: ${{ inputs.native_run || '42692997193' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify source and successful build provenance
+        id: source
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          def gh(path):
+              return json.loads(subprocess.check_output(['gh','api',path],text=True))
+          sources=[]
+          for key, workflow in [('WINDOWS_RUN','verify.yml'),('NATIVE_RUN','native-distributions.yml')]:
+              run_id=os.environ[key]
+              assert run_id.isdigit(), 'Invalid run ID'
+              run=gh(f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}')
+              assert run['conclusion']=='success' and run['status']=='completed', 'Build has not passed'
+              assert run['head_branch']=='qa' and run['path']=='.github/workflows/'+workflow
+              assert run['head_repository']['full_name']==os.environ['GITHUB_REPOSITORY']
+              sources.append(run['head_sha'])
+          assert sources[0]==sources[1], 'The installers must come from the same source'
+          source=sources[0]
+          subprocess.run(['git','merge-base','--is-ancestor',source,'HEAD'],check=True)
+          changed=subprocess.check_output(['git','diff','--name-only',source,'HEAD'],text=True).splitlines()
+          allowed={'scripts/publish_update.py','scripts/publish_native.py','scripts/release_readme.py','scripts/sync_release_docs.py','README.md'}
+          assert all(p in allowed or p.startswith(('.github/workflows/','docs/','tests/')) for p in changed), 'Application source changed: build and verify it first'
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write('sha='+source+'\n')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: arise-windows-build-and-tests
+          path: release
+          run-id: ${{ env.WINDOWS_RUN }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: ARISE-Windows-Complete
+          path: release/complete
+          run-id: ${{ env.WINDOWS_RUN }}
+          github-token: ${{ github.token }}
+      - name: Publish Complete Preview and updater feed
+        env:
+          ARISE_RELEASE_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: python scripts/publish_update.py
+      - name: Release temporary Windows artifact space
+        run: rm -rf release
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ARISE-*-preview
+          path: release-assets
+          merge-multiple: true
+          run-id: ${{ env.NATIVE_RUN }}
+          github-token: ${{ github.token }}
+      - name: Publish six verified Core Preview installers
+        env:
+          ARISE_RELEASE_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: python scripts/publish_native.py release-assets
+      - name: Reconcile all published download tables
+        run: python scripts/sync_release_docs.py

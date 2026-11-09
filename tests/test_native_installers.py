@@ -48,7 +48,7 @@ class NativePublicationTests(unittest.TestCase):
         from types import SimpleNamespace
         def command(args, **kwargs):
             return SimpleNamespace(returncode=1 if args[:3] == ['gh', 'release', 'view'] else 0, stdout='{"assets": []}')
-        with tempfile.TemporaryDirectory() as tmp, patch.object(publisher.subprocess, 'run', side_effect=command) as run, patch.dict('os.environ', GITHUB_SHA='fixture-commit', GITHUB_REF_NAME='main', GITHUB_RUN_ID='123'), patch('scripts.release_readme.publish_native_metadata') as metadata:
+        with tempfile.TemporaryDirectory() as tmp, patch.object(publisher.subprocess, 'run', side_effect=command) as run, patch.dict('os.environ', GITHUB_SHA='fixture-commit', GITHUB_REF_NAME='qa', GITHUB_RUN_ID='123'), patch('scripts.release_readme.publish_native_metadata') as metadata:
             root = Path(tmp); self.fixture(root)
             publisher.main(root)
             create, publish = [call.args[0] for call in run.call_args_list[1:3]]
@@ -59,8 +59,8 @@ class NativePublicationTests(unittest.TestCase):
             self.assertNotIn('--clobber', create)
             metadata.assert_called_once()
 
-    def test_publication_rejects_qa_as_source_branch(self):
-        with patch.dict('os.environ', GITHUB_REF_NAME='qa'), patch.object(publisher.subprocess, 'run') as run:
+    def test_stable_publication_rejects_qa_as_source_branch(self):
+        with patch.dict('os.environ', GITHUB_REF_NAME='qa', ARISE_NATIVE_CHANNEL='stable'), patch.object(publisher.subprocess, 'run') as run:
             with self.assertRaisesRegex(RuntimeError, 'only from main'):
                 publisher.main('unused')
             run.assert_not_called()

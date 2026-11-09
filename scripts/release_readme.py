@@ -45,14 +45,14 @@ def update_readme(text, manifests):
     return text[:start] + block + '\n\n' + text[end:]
 
 
-def publish_metadata(api, channel, manifest, sync_other=True):
-    """Publish both channel indexes on main; fast-forward the QA mirror safely."""
+def publish_metadata(api, channel, manifest, sync_other=True, branch="main"):
+    """Update metadata without overwriting independent QA source changes."""
     import base64
     import json
     if channel not in ('main', 'qa'):
         raise ValueError('Invalid release channel')
     repo = 'repos/Maicololiveras/Arise'
-    head = api(f'{repo}/git/ref/heads/main')['object']['sha']
+    head = api(f'{repo}/git/ref/heads/{branch}')['object']['sha']
     commit = api(f'{repo}/git/commits/{head}')
     paths = {'main': 'updates/windows.json', 'qa': 'updates/windows-preview.json'}
     manifests = {}
@@ -72,10 +72,13 @@ def publish_metadata(api, channel, manifest, sync_other=True):
     tree = api(f'{repo}/git/trees', {'base_tree': commit['tree']['sha'], 'tree': entries})
     result = api(f'{repo}/git/commits', {'message': f'Publish {channel} {manifest["version"]} download links [skip ci]',
                                       'parents': [head], 'tree': tree['sha']})
-    api(f'{repo}/git/refs/heads/main', {'sha': result['sha'], 'force': False}, method='PATCH')
+    api(f'{repo}/git/refs/heads/{branch}', {'sha': result['sha'], 'force': False}, method='PATCH')
     if sync_other:
-        # Divergent QA work is rejected by GitHub's non-force ref update.
-        api(f'{repo}/git/refs/heads/qa', {'sha': result['sha'], 'force': False}, method='PATCH')
+        qa_head = api(f'{repo}/git/ref/heads/qa')['object']['sha']
+        if qa_head == head:
+            api(f'{repo}/git/refs/heads/qa', {'sha': result['sha'], 'force': False}, method='PATCH')
+        else:
+            publish_metadata(api, channel, manifest, sync_other=False, branch='qa')
 
 
 def native_downloads(text, version, assets, run_id):
@@ -107,10 +110,10 @@ def native_downloads(text, version, assets, run_id):
     return text
 
 
-def publish_native_metadata(api, version, assets, run_id):
+def publish_native_metadata(api, version, assets, run_id, branch="main"):
     import base64
     repo = 'repos/Maicololiveras/Arise'
-    head = api(f'{repo}/git/ref/heads/main')['object']['sha']
+    head = api(f'{repo}/git/ref/heads/{branch}')['object']['sha']
     commit = api(f'{repo}/git/commits/{head}')
     entries = []
     for path in ('README.md', 'docs/NATIVE-DISTRIBUTIONS.md'):
@@ -120,8 +123,14 @@ def publish_native_metadata(api, version, assets, run_id):
         if updated != source:
             entries.append({'path': path, 'mode': '100644', 'type': 'blob', 'content': updated})
     if not entries:
+        if branch == 'main': publish_native_metadata(api, version, assets, run_id, branch='qa')
         return
     tree = api(f'{repo}/git/trees', {'base_tree': commit['tree']['sha'], 'tree': entries})
     result = api(f'{repo}/git/commits', {'message': f'Publish ARISE Preview {version} native downloads [skip ci]', 'parents': [head], 'tree': tree['sha']})
-    for branch in ('main', 'qa'):
-        api(f'{repo}/git/refs/heads/{branch}', {'sha': result['sha'], 'force': False}, method='PATCH')
+    api(f'{repo}/git/refs/heads/{branch}', {'sha': result['sha'], 'force': False}, method='PATCH')
+    if branch == 'main':
+        qa_head = api(f'{repo}/git/ref/heads/qa')['object']['sha']
+        if qa_head == head:
+            api(f'{repo}/git/refs/heads/qa', {'sha':result['sha'], 'force':False}, method='PATCH')
+        else:
+            publish_native_metadata(api, version, assets, run_id, branch='qa')

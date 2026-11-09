@@ -1,6 +1,6 @@
 # Voice controls, study assistance and interface language
 
-Implementation: **0.4.42 QA**. The public Stable and Preview downloads remain at the versions shown in the generated release tables until publication from main. QA builds are verification artifacts, not an automatic Stable update.
+Implementation: **0.4.42 QA**. Public downloads are listed in the generated release tables. Verified QA builds publish to Preview and update its feed on main; Stable application code and its feed are unchanged.
 
 ## Voice controls
 
