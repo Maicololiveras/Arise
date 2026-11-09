@@ -22,6 +22,8 @@ def setup_desktop_tools(runtime, selected=None):
     selected = list(selected) if isinstance(selected, (list, tuple)) else selected
     if selected is not None and (not selected or not isinstance(selected, list) or any(name not in (*COMPONENTS, "forge") for name in selected)):
         raise ValueError("Selección de herramientas inválida.")
+    from .platforms import native_preview
+    if native_preview(): raise RuntimeError('Este paquete nativo de prueba no incluye instaladores de herramientas de escritorio. Configura un MCP compatible de forma explícita.')
     if os.name!='nt': raise RuntimeError('Manos y ojos requieren Windows para instalarse desde ARISE.')
     if not LOCK.acquire(blocking=False): raise RuntimeError('La instalación de manos y ojos ya está en curso.')
     try:
@@ -183,7 +185,8 @@ def tool_update_available(runtime, name):
 
 def auto_setup(runtime):
     """Repair missing tools and refresh managed versions when the application starts."""
-    if os.name != 'nt': return
+    from .platforms import native_preview
+    if os.name != 'nt' or native_preview(): return
     with runtime.transition_lock:
         voice = getattr(runtime, 'voice_service', None)
         if runtime.busy or getattr(runtime, 'desktop', False) or (voice and voice.active.is_set()):

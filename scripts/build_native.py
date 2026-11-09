@@ -91,7 +91,9 @@ def build(expected):
     for name in ('package.json', 'package-lock.json'):
         shutil.copy2(ROOT / 'vendor' / name, node_root / name)
     run(npm, 'ci', '--prefix', node_root, '--ignore-scripts', '--no-audit', '--no-fund')
-    run(npm, 'install', '--prefix', node_root, '--ignore-scripts', '--no-save', '--package-lock=false', '--no-audit', '--no-fund', 'npm@11.19.0')
+    npm_stage = ROOT / 'build/native-npm'
+    run(npm, 'install', '--prefix', npm_stage, '--ignore-scripts', '--no-save', '--package-lock=false', '--no-audit', '--no-fund', 'npm@11.19.0')
+    shutil.copytree(npm_stage / 'node_modules/npm', node_root / 'node_modules/npm')
     gentle = node_root / 'node_modules/gentle-pi'
     run(node, ROOT / 'scripts/install-gentle-native.mjs', gentle)
     # The official resolver also verifies the native install's provenance.
@@ -112,7 +114,7 @@ def build(expected):
         'capabilities': {'desktop_tools_bundled': False, 'offline_models_bundled': False, 'automatic_updates': False},
     }
     (bundle / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
-    shutil.copy2(ROOT / 'docs/NATIVE-DISTRIBUTIONS.md', package / 'README.txt')
+    shutil.copy2(ROOT / 'docs/NATIVE-DISTRIBUTIONS.md', (package / 'Contents/Resources/README.txt' if mac else package / 'README.txt'))
     if mac:
         # Added resources must be included in the final ad-hoc seal. Not notarization.
         run('codesign', '--force', '--deep', '--sign', '-', package)

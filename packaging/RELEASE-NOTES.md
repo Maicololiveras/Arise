@@ -1,4 +1,4 @@
-# 0.4.38 — Native distribution previews
+# ARISE 0.4.38 Native previews
 
 Six native core build targets: Windows, Linux and macOS on x64 and ARM64.
 Private desktop MCP servers and offline models are not bundled in these previews.

@@ -44,6 +44,7 @@ with tempfile.TemporaryDirectory(prefix='arise-native-') as temporary:
         if remote: remote.shutdown()
         try: process.wait(timeout=20)
         except subprocess.TimeoutExpired: process.terminate(); process.wait(timeout=10)
+    env['ARISE_CHAT_ROOT'] = str(root / 'renderer-chats')
     output = Path('artifacts') / (identity + '-orb.png'); output.parent.mkdir(exist_ok=True)
     subprocess.run([str(engine), '--data-dir', str(root / 'renderer'), '--screenshot', str(output.resolve())], env=env, check=True, timeout=45)
     if not output.is_file() or output.stat().st_size < 1000: raise RuntimeError('Frozen renderer image missing')

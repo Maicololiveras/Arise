@@ -154,6 +154,11 @@ class Settings(QDialog):
         native_setup.clicked.connect(controller.install_gentle_native);layout.addWidget(native_setup)
         connections=QPushButton('Conexiones, celular y recordatorios · QA')
         connections.clicked.connect(self.show_connections);layout.addWidget(connections)
+        from .platforms import native_preview, has_vosk
+        if native_preview():
+            notice = QLabel("Versión nativa de prueba: actualización manual; herramientas de escritorio y modelos offline no incluidos. Consulta la guía de esta distribución.")
+            notice.setWordWrap(True); layout.addWidget(notice)
+            native_setup.setEnabled(False)
         tabs = QTabWidget(); layout.addWidget(tabs)
         self.fields, self.keys, self.mcp = {}, {}, {}
         config = self.runtime.storage.config

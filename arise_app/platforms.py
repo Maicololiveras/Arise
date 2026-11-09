@@ -32,3 +32,9 @@ def bundled_executable(root, relative):
 def has_vosk():
     import importlib.util
     return importlib.util.find_spec("vosk") is not None
+
+
+def native_preview():
+    import json
+    marker = Path(__file__).parent / 'resources/update-channel.json'
+    return marker.is_file() and json.loads(marker.read_text(encoding='utf-8')).get('format') == 'native-preview'
