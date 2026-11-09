@@ -15,8 +15,8 @@ The six native core previews are documented separately; their availability
 depends on successful native build and acceptance checks.
 
 <!-- arise-downloads:start -->
-- [Production Windows release](https://github.com/Maicololiveras/Arise/releases/latest)
-- [QA releases](https://github.com/Maicololiveras/Arise/releases)
+- **Production 0.4.37:** [Windows installer — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/v0.4.37/ARISE-Setup.exe) · [release and available assets](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37).
+- **QA 0.4.37:** [Windows installer — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [release and available assets](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37).
 <!-- arise-downloads:end -->
 
 1. Install `ARISE-Setup.exe`, or extract the complete Windows ZIP and run
