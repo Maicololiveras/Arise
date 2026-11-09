@@ -1,4 +1,4 @@
-# Native accounts, fluent voice and desktop layout (QA 0.4.37)
+# Native accounts, fluent voice and desktop layout (introduced in 0.4.37)
 
 ## Connect an account without a terminal
 
@@ -82,3 +82,7 @@ partial-playback failure, wake preferences and overlay acknowledgement ordering.
 A real online Gonzalo request produced nonempty audio in the development
 environment. Real account login, audible playback, hotword accuracy and physical
 Windows desktop repaint timing still require QA on the target PC.
+
+The user reported successful operation of QA 0.4.37 on their PC. This does not
+replace per-target device testing. Native preview exclusions and update behavior
+are listed in [NATIVE-DISTRIBUTIONS.md](NATIVE-DISTRIBUTIONS.md).

@@ -1,5 +1,9 @@
 # Gentle Shell 4.5.0 and native TUI installation — QA
 
+Historical version-specific record. Current setup is documented in
+[INSTALL-WINDOWS.md](INSTALL-WINDOWS.md); platform previews are described in
+[NATIVE-DISTRIBUTIONS.md](NATIVE-DISTRIBUTIONS.md).
+
 ## Versions are separate
 
 - ARISE's normal bundled integration: `gentle-pi@4.5.0` and Pi `1.4.0`, pinned

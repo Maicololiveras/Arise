@@ -6,7 +6,12 @@ from .discovery import command_available, gentle_valid, installed_pi_version
 
 
 def application_root():
-    return Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[1]
+    if getattr(sys, "frozen", False):
+        executable = Path(sys.executable).parent
+        if sys.platform == 'darwin' and executable.name == 'MacOS' and executable.parent.name == 'Contents':
+            return executable.parent / 'Resources'
+        return executable
+    return Path(__file__).resolve().parents[1]
 
 
 def configure_bundle(runtime):

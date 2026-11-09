@@ -1,5 +1,9 @@
 # QA 0.4.35: open issue review
 
+Historical version-specific record. Current setup is documented in
+[INSTALL-WINDOWS.md](INSTALL-WINDOWS.md); platform previews are described in
+[NATIVE-DISTRIBUTIONS.md](NATIVE-DISTRIBUTIONS.md).
+
 ## Delivered changes
 
 - **#11:** Added `GENTLE-NPM-RECOVERY.md`, linked from both Windows setup guides.

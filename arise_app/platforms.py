@@ -36,5 +36,7 @@ def has_vosk():
 
 def native_preview():
     import json
-    marker = Path(__file__).parent / 'resources/update-channel.json'
-    return marker.is_file() and json.loads(marker.read_text(encoding='utf-8')).get('format') == 'native-preview'
+    marker = os.path.join(os.path.dirname(__file__), 'resources', 'update-channel.json')
+    if not os.path.isfile(marker): return False
+    with open(marker, encoding='utf-8') as stream:
+        return json.load(stream).get('format') == 'native-preview'

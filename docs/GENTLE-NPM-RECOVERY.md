@@ -11,7 +11,7 @@ optional Pi peer dependency **>=1.2.0**. Optional means npm need not install Pi;
 opening the launcher and verifying ARISE RPC remain separate checks. Use a Node
 installation with npm available, and Git for Windows/Bash for Pi's shell tools.
 
-ARISE's bundled profile uses Node 24.21.0, npm 11.19.0, Gentle 4.5.0 and Pi 1.4.0.
+ARISE's bundled profile uses Node 24.21.0, npm 11.19.0, Gentle 4.7.0 and Pi 1.5.0.
 Those bundle pins do not certify every global npm installation. No npm-specific
 minimum or clean Windows global-install compatibility matrix has been validated
 for this alternative path. Record the actual versions when testing it.
@@ -67,7 +67,7 @@ step, not that ARISE has selected the same Node, Pi or agent home.
 ## 3. Detect and verify from ARISE
 
 1. Reopen ARISE so it receives the updated environment.
-2. In Settings, use **Detect Pi and Gentle Shell**, inspect the detected paths,
+2. In Settings, explicitly select **External installation (advanced)**, then use **Detect Pi and Gentle Shell**, inspect the detected paths,
    and save. The Gentle folder must contain its `package.json` and `extensions`;
    the launcher/shim directory and the agent home are different locations.
 3. Confirm the agent home matches the environment reported by the launcher.

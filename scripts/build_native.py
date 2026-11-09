@@ -83,7 +83,7 @@ def build(expected):
         command += ['--add-data', name + os.pathsep + name]
     run(*command, 'run.py')
     package = ROOT / ('dist/ARISE.app' if mac else 'dist/ARISE')
-    application = package / 'Contents/MacOS' if mac else package
+    application = package / 'Contents/Resources' if mac else package
     shutil.copy2(ROOT / ('host/target/release/arise-host' + suffix), application / ('ARISE-host' + suffix))
     bundle = application / 'bundle'; bundle.mkdir()
     node_root = bundle / 'node'; node_root.mkdir()
@@ -117,7 +117,8 @@ def build(expected):
     shutil.copy2(ROOT / 'docs/NATIVE-DISTRIBUTIONS.md', (package / 'Contents/Resources/README.txt' if mac else package / 'README.txt'))
     if mac:
         # Added resources must be included in the final ad-hoc seal. Not notarization.
-        run('codesign', '--force', '--deep', '--sign', '-', package)
+        run('codesign', '--force', '--sign', '-', application / 'ARISE-host')
+        run('codesign', '--force', '--sign', '-', package)
         run('codesign', '--verify', '--deep', '--strict', package)
     run(sys.executable, ROOT / 'scripts/smoke_native.py', application, identity)
     output = ROOT / 'artifacts'; output.mkdir(exist_ok=True)

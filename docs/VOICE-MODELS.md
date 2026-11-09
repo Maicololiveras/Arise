@@ -1,60 +1,69 @@
-# Paquete completo Windows · 0.4.1
+# Speech, dictation and models
 
-Descarga el artefacto `ARISE-Windows-Complete` de la ejecución validada. Extrae
-el ZIP de GitHub y después `ARISE-Windows-Complete.zip` en una carpeta permanente.
-Abre **Configurar ARISE.cmd**. Se cierra la instancia anterior y se abre la nueva.
-La aplicación prepara los modelos automáticamente; no necesita Python, Node ni
-LM Studio instalados. También existe **Configurar todo desde ZIP** en Ajustes.
+ARISE has three distinct paths: draft dictation, voice conversation and optional
+wake activation. Their models and devices are not interchangeable.
 
-El paquete de modelos incluye Vosk español, OpenAI Whisper `small.pt`,
-Qwen2.5-1.5B-Instruct Q4_K_M y llama.cpp b10991 para Windows x64 CPU. La voz de
-salida usa SAPI de Windows. Los pesos, fuentes, hashes y licencias viajan dentro
-del paquete. El build descarga de fuentes oficiales fijadas y verifica SHA-256;
-la instalación comprueba todos los archivos antes de usarlos. Esto no es firma
-Authenticode. El modelo conversacional es pequeño; no se presenta como sustituto
-de modelos grandes para tareas complejas.
+| Path | Behavior | Main requirement |
+| --- | --- | --- |
+| Dictation microphone | Record, stop, transcribe into the draft | Compatible pinned Parakeet runtime/model |
+| Voice conversation | Transcribe/respond/speak while work continues | Selected provider, devices and credentials or local models |
+| Wake activation | Listen for configured phrases | Opt-in Vosk runtime and activation model |
 
-Los modelos se instalan en la carpeta de datos ARISE, bajo `offline/<id>`.
-No se sobrescriben tus modelos anteriores. Si la prueba falla, se restauran los
-ajustes previos y se elimina la instalación incompleta. Conserva los permisos de
-micrófono y control de escritorio; pulsa micrófono para hablar. Mantén la carpeta
-de la aplicación portable. Necesitas espacio para el ZIP y la copia extraída.
+## Dictation
 
-La configuración del agente Pi y sus cuentas se conserva. Gmail/OAuth y herramientas
-privadas requieren la conexión correspondiente; no se incluyen credenciales en
-el ZIP. ScreenView/InputControl van integrados únicamente si el build ya dispone
-de `ARISE_COMPONENTS_TOKEN`; el paquete de modelos no sustituye esas herramientas.
+Click the microphone once to record and again to stop/transcribe. Review the
+inserted text before sending. Escape, Stop, chat switch and exit discard a
+cancelled result. Parakeet uses the system default input, which may differ from
+the conversation device. Downloads show progress and verify hashes; completion
+does not automatically open the microphone. See [Parakeet details](DICTATION-PARAKEET-QA.md).
 
-El workflow prueba instalación desde el ZIP e inferencia local usando el daemon
-congelado de Windows antes de publicar el artefacto completo. El reporte es
-`artifacts/offline-pack-validation.json`. No demuestra precisión del micrófono
-real ni la calidad de todas las delegaciones del modelo.
+## Output and Gonzalo
 
----
+Select Gonzalo in Voice settings and use the output-only preview. The bundled
+`msedge-tts` 2.1.1 adapter needs Microsoft's online service; no offline Gonzalo
+weights are distributed. System trust and explicit HTTP/HTTPS proxies are
+supported without disabling TLS. PAC and interactive proxy authentication are
+not implemented.
 
-# Voz local y modelos
+Fluent playback starts with a short phrase and prepares one following phrase.
+It is ordered and interruptible, not live model-token streaming or a fixed-latency
+guarantee. The established Windows build converts audio using bundled FFmpeg;
+native previews include Miniaudio decoding. Optional Windows fallback is visible
+and uses an installed system voice, not Gonzalo. A failure after speech begins
+does not replay the entire response through another voice.
 
-El instalador incluye Vosk small-es-0.42, faster-whisper 1.2.0, OpenAI Whisper 20250625 y PyTorch 2.8.0 CPU. Windows SAPI genera la voz de respuesta. No hace falta una API de voz para el modo local; el agente de texto usa el proveedor configurado en Pi.
+## Local and cloud conversation
 
-**Ajustes > Voz y audio**: proveedor local, motor auto. Auto reutiliza una ruta compatible elegida; sin ella busca faster-whisper en D:\Transcripcion con ia\whisper_models y la caché de Hugging Face, después .pt en %USERPROFILE%\.cache\whisper, y finalmente Vosk integrado. Un .pt nunca se pasa a faster-whisper. También puedes elegir manualmente archivo/carpeta o forzar vosk.
+Vosk, OpenAI Whisper `.pt` and faster-whisper/CTranslate2 folders require their
+matching engines. Never pass a `.pt` file to faster-whisper. Use explicit model
+selection or detection; a path alone does not prove a valid loaded model.
+The complete Windows model pack includes its pinned weights, provenance,
+licenses and checksums. Models are installed under the ARISE data directory.
+Installation validates before changing configuration and rolls back failures.
 
-Rutas mostradas por el usuario: base.pt y small.pt en C:\Users\maicolj\.cache\whisper; base, medium y tiny bajo D:\Transcripcion con ia\whisper_models. La captura es referencia: este entorno no puede comprobar ni cargar esos archivos en su PC.
+A local OpenAI-compatible dialogue server can run alongside Gentle, or voice
+can delegate directly to Pi. Its endpoint must be local, and a configured launch
+command must remain in the foreground. ARISE only stops the server it owns.
+External servers are reused, not terminated. Local STT/TTS does not make a cloud
+agent or Gonzalo offline.
 
-El build produce ARISE-Voice-Models-es.zip (~40 MB), con modelo Vosk, instrucciones, licencia y hashes SHA-256. **Instalar ZIP de modelos de voz** verifica rutas y manifiesto, y copia el modelo a la carpeta de datos. No reemplaza un modelo existente ni instala código del ZIP. No duplica los Whisper que ya tienes. SAPI usa las voces de Windows instaladas; una voz española adicional puede instalarse desde las opciones de idioma de Windows.
+OpenAI Realtime and Gemini Live use separate credentials and models. A ChatGPT
+subscription login does not grant a realtime API key. Provider availability
+and billing must be checked for the selected account.
 
-La activación por voz es opcional y queda desactivada hasta que la habilites. Las frases deben reconocerse con Vosk: prueba también una frase española, por ejemplo “hola asistente”, si “Arise” no se reconoce con tu pronunciación. El micrófono cerrado en reposo no puede escuchar una frase de activación.
+## Wake, interruption and limits
 
-La conversación local transcribe frases y genera voz mientras las tareas de Gentle trabajan en segundo plano. No tiene cancelación acústica de eco ni inferencia GPU en el build CPU. Piper sigue disponible si configuras su ejecutable y un modelo ONNX externo; no viene en este ZIP porque Windows ya aporta SAPI.
+Wake listening is off by default. Configure phrases, optional spoken response
+and whether to open the chat. Test recognition with your pronunciation. The
+renderer must remain running for automatic panel opening. Windows shortcuts
+are not claimed as cross-platform global shortcuts.
 
+Speech interruption, Stop and task cancellation have distinct effects. Use
+headphones to reduce feedback: acoustic echo cancellation is not implemented.
+UI questions may accept speech, but sensitive approvals retain their required
+review. Changing chats rejects late audio from the previous session.
 
-## Escucha e interrupciones (0.4.0)
-
-La voz local usa STT (Vosk/Whisper), un interlocutor local compatible con OpenAI y TTS (SAPI/Piper). No es un modelo end-to-end speech-to-speech. En Voz y audio configura la URL del servidor (por defecto LM Studio en http://127.0.0.1:1235/v1) y el modelo cargado; sin nombre usa el primero anunciado. El servidor y sus pesos deben estar instalados y en ejecución: el instalador no descarga un LLM. Solo admite una dirección local. La credencial opcional se guarda protegida.
-
-El interlocutor mantiene contexto por chat, conversa mientras Gentle trabaja y delega instrucciones con llamadas de herramientas. Consulta estados reales y anuncia resultados confirmados; la notificación de resultado no puede lanzar más tareas. El proveedor del agente de trabajo sigue siendo el configurado en Pi. Si el servidor local no está disponible al iniciar la conversación, la voz usa directamente Gentle; vuelve a iniciar la voz para intentar el interlocutor otra vez.
-
-La captura no espera a que termine una tarea ni a que acabe la salida hablada. VAD delimita frases con unos 500 ms de silencio; STT y delegación se procesan fuera de la captura. Al hablar se interrumpe la salida de voz, y el nuevo texto llega como instrucción/corrección a la sesión actual de Gentle. `deja de hablar` corta solo audio; `cancela la tarea` detiene el trabajo. El historial de Pi y el chat se conserva; la siguiente instrucción puede pedir continuar. Un cambio de chat descarta respuestas habladas tardías de la sesión anterior.
-
-Preguntas select/input/confirm de Gentle se leen y admiten respuesta hablada; una selección admite su número o texto. Aprobaciones de envío Gmail siguen requiriendo revisión visual. El wake word y la voz no abren el chat.
-
-Usa auriculares para evitar capturar el TTS del propio asistente. `Permitir interrupciones en voz local` y el umbral se ajustan en Voz y audio. No hay cancelación acústica de eco ni garantía de latencia fija: depende del micrófono, del tamaño del Whisper, CPU y modelo del agente. La prueba de concurrencia usa audio/TTS simulado; micrófono, calidad y latencia real requieren el PC Windows del usuario.
+Vosk 0.3.45 has no pinned wheel for macOS or Windows ARM64. Native previews do
+not bundle offline models or claim feature parity. See the
+[platform capability limits](NATIVE-DISTRIBUTIONS.md). Physical microphone,
+recognition accuracy, speaker selection and latency require on-device testing.

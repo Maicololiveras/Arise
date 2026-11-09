@@ -48,7 +48,8 @@ Keep the executable, internal libraries and bundle together.
 
 - Windows: run `ARISE/ARISE.exe`.
 - Linux: install `libportaudio2`, `libegl1`, `libopengl0`, `libxcb-cursor0` and
-  `libxkbcommon-x11-0` using your distribution's package manager, then run
+  `libxkbcommon-x11-0`, `libxcb-icccm4`, `libxcb-keysyms1` and
+  `libxcb-shape0` using your distribution's package manager, then run
   `./ARISE/ARISE` in a graphical session.
 - macOS: extract the ZIP and open `ARISE.app`. Preview apps are ad-hoc signed,
   not Developer ID signed or notarized. Enterprise policy or Gatekeeper may

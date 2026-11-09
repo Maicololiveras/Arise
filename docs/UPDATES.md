@@ -1,17 +1,49 @@
-# Actualizaciones de ARISE Assistant
+# Application and component updates
 
-La fuente de versiones es **main/updates/windows.json**, consultada mediante la API de GitHub con `ref=main`. La rama de implementación sigue siendo feature/native-orb-daemon. Publicar el descriptor no fusiona el código de la aplicación a main.
+Production Windows follows `main/updates/windows.json`; QA Windows follows the
+same path on `qa`. The embedded build channel controls selection, independently
+of any external Gentle channel. A QA installer never accepts a production feed
+or vice versa. Native core previews currently require manual replacement and
+never consult the Windows x64 installer feed.
 
-El pipeline prueba Docker y Windows, construye el instalador y prueba una reinstalación sobre ARISE en ejecución. Después publica una release inmutable y actualiza el descriptor en main con versión, novedades, asset_id, URL, tamaño y SHA-256. Es necesario incrementar la versión para publicar otro binario. Versiones de tres números, comparadas numéricamente; no se instalan versiones anteriores ni prereleases por accidente.
+The publisher waits for Docker, native Windows tests, frozen runtime, installer
+replacement and offline model checks. It publishes an immutable versioned
+release, then updates the originating feed and download links. A subsequent
+binary requires a new version. The production promotion of user-validated
+0.4.37 rebuilds on main instead of relabeling a QA executable.
 
-Al abrir ARISE instalado, la comprobación ocurre en segundo plano. Si hay novedades, muestra **Instalar actualización** / **Más tarde**. La descarga usa la API de assets, también para repos privados, y se verifica antes de ejecutarla. Un launcher PowerShell copiado a una carpeta temporal permanece fuera de los archivos a reemplazar. Pide el cierre del daemon y la UI, espera a guardar la sesión, cierra los procesos hijos propios y ejecuta el instalador en la misma ruta. El instalador también hace ese cierre al ejecutarlo manualmente, incluso para actualizar 0.3.0.
+The updater validates semantic version, channel, official release URL, asset ID,
+size and SHA-256. Downloads use HTTPS and preserve certificate/hostname checks.
+A temporary external launcher closes the UI/daemon, waits for session persistence
+and replaces the installed program. Process identification includes PID and
+creation time; it does not kill every Node process on the computer. Failure to
+stop owned processes blocks replacement.
 
-El cierre forzado es solo el último recurso, sobre PID + fecha de creación de procesos de la instalación y sus descendientes; no usa `taskkill /IM node.exe` ni cierra otras terminales. Si no puede cerrarlos, detiene la instalación antes de borrar archivos. Los archivos administrados de _internal y bundle/node se reemplazan; chat, worktrees, configuración, credenciales, memoria y tools en la carpeta de datos se conservan. Al finalizar se vuelve a abrir ARISE.
+Managed code and libraries are replaced; chats, settings, credentials, memory
+and data-directory tool installs are preserved. Back up the data directory with
+ARISE closed before a manual migration. Versions before the updater require a
+manual installer upgrade.
 
-## GitHub privado
+## Credentials and proxies
 
-En Credenciales, `github-updates` admite una credencial con lectura de Arise, screenview-mcp e inputcontrol-mcp. Windows la protege con DPAPI. Si existe `gh auth login`, se reutiliza su sesión para github.com. Las credenciales se utilizan en el daemon y no van en el descriptor, URL, launcher, instalador, argumentos de pip ni entorno del agente. Los redirects a los servidores de assets eliminan Authorization.
+Private GitHub access uses a configured credential or existing authenticated
+GitHub CLI session. Credentials do not enter release descriptors, command
+arguments or logs. Authorization is removed on asset-host redirects. Windows
+uses its native trust store; an organization proxy CA must already be trusted.
+ARISE does not install certificates or disable verification automatically.
 
-Al guardar el acceso GitHub, si faltan manos/ojos, el daemon los descarga desde el HEAD de la rama predeterminada de cada repo, fija el SHA descargado, instala sus dependencias en un Python incluido y copia el runtime a la carpeta de datos. No requiere Python del usuario ni privilegios de administrador. Configura los comandos stdio y comprueba los catálogos reales. También hay **Herramientas → Instalar y configurar manos y ojos**. Esta instalación requiere conexión y una cuenta con acceso a los repos privados. Instalar herramientas no activa automáticamente el permiso de control del escritorio.
+SHA-256 detects a mismatch with repository metadata; it is not Authenticode,
+Developer ID signing or an independent signature over the update channel.
 
-El SHA-256 detecta descargas incompletas o cambiadas respecto a main; no es una firma Authenticode ni una firma independiente del repositorio. Un error de red no interrumpe el chat. La versión 0.3.0 no tenía actualizador: el primer salto a 0.4.0 se instala manualmente; desde esa versión se usa este flujo.
+## Separate component lifecycles
+
+Managed ScreenView, InputControl and Forge use public manifests on `herramientas`.
+Transcription source updates need repository access. Each update stages a new
+runtime and verifies its MCP catalog before adoption; failures roll back its
+selection. Custom commands and disabled tools remain untouched.
+
+Bundled Gentle/Pi/Engram versions are updated with ARISE. An external installation
+is an explicit advanced choice. Model downloads and Android updates have their
+own feeds and acceptance gates. Merging ARISE does not publish a pending fix in
+another repository. See [tool updates](tool-updates.md) and
+[release channels](release-channels.md).

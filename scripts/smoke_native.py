@@ -15,7 +15,7 @@ package = Path(sys.argv[1]).resolve()
 identity = sys.argv[2]
 if target() != identity: raise RuntimeError('Smoke runner architecture mismatch')
 suffix = '.exe' if os.name == 'nt' else ''
-engine = package / ('ARISE' + suffix)
+engine = package.parent / 'MacOS/ARISE' if sys.platform == 'darwin' else package / ('ARISE' + suffix)
 report = {'target': identity, 'physical_audio_tested': False, 'desktop_control_tested': False}
 with tempfile.TemporaryDirectory(prefix='arise-native-') as temporary:
     root = Path(temporary); data = root / 'data'; agent = data / 'engine/agent'; agent.mkdir(parents=True)

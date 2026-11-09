@@ -1,6 +1,6 @@
 # Managed tool updates
 
-Packaged Windows ARISE checks its managed tools at startup, including the first launch after an application update. ScreenView, InputControl and Forge use the public manifests on the `herramientas` branch. A changed release tag or SHA-256 triggers an update even when the semantic version is unchanged. Transcription compares the private repository's default-branch commit when GitHub access is already configured; it does not request new credentials automatically.
+The complete Windows x64 installation checks its managed tools at startup, including the first launch after an application update. ScreenView, InputControl and Forge use the public manifests on the `herramientas` branch. A changed release tag or SHA-256 triggers an update even when the semantic version is unchanged. Transcription compares the private repository's default-branch commit when GitHub access is already configured; it does not request new credentials automatically.
 
 Each enabled component is handled independently:
 
@@ -25,3 +25,6 @@ Catalog verification confirms MCP startup, not the success of every desktop oper
 ```sh
 python -m pytest tests/test_tool_updates.py tests/test_tool_setup.py tests/test_selective_downloads.py tests/test_downloads.py tests/test_updates.py -q
 ```
+
+Native core previews disable this automatic Windows provisioning pass. They do
+not install x64 MCP packages as substitutes for native ARM64/Linux/macOS tools.

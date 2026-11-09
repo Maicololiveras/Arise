@@ -1,6 +1,7 @@
 # Android companion QA: wake phrase and overlay
 
-Status: implementation on `qa-connections-companion`, not main. This is a separate
+Historical implementation originated on `qa-connections-companion`. Use
+[MOBILE-GUIDED-QA.md](MOBILE-GUIDED-QA.md) for the current pairing flow. This is a separate
 Android APK, not part of the Windows installer. No iPad background listener is
 implemented. Target device: Xiaomi Redmi 13C; its Android/MIUI/HyperOS version has
 not yet been provided or tested.

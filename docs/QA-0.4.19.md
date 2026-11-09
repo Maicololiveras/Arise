@@ -1,22 +1,28 @@
-# QA 0.4.19
+# QA 0.4.19: delegated terminals and installer shutdown
 
-## Cambios
+Historical QA record. Use [current setup](INSTALL-WINDOWS.md) and
+[validation evidence](VALIDATION.md) for release status. Findings and pending
+checks below describe that revision, not every later build.
 
-Actividad plegable a la izquierda, parada compacta a la derecha. Se conserva el título nativo y se elimina la cabecera redundante. Alt+Q recupera el último mensaje del chat sin enviarlo ni sustituir un borrador; también figura en el menú.
+The compact activity area retained a reachable Stop control. Alt+Q restored the
+last user message without sending or replacing a nonempty draft.
 
-`terminal.delegate` solicita confirmación visible, exige ejecución local autorizada y un entorno Gentle configurado. Abre una consola Windows con Node/Pi/Gentle y una sesión propia por tarea. Máximo tres terminales activas. `terminal.list` consulta solo el chat actual; `terminal.cancel` cancela una tarea propia. Cambiar de chat, Detener o cerrar ARISE cancela las terminales administradas. Los resultados se guardan en el chat de origen. No se concede el token de manos/ojos del padre ni se habilita comunicación con sesiones ajenas.
+`terminal.delegate` required visible approval, local execution authorization and
+a valid Gentle environment. Each task had its own session, at most three active
+terminals, chat-scoped list/cancel and results. The child did not receive desktop
+bridge authority. Chat switch, Stop and exit cancelled managed terminals. Restart
+did not reconnect/replay jobs. A directory was not a filesystem sandbox and a
+model's final text was not verification. Later bidirectional delegation supersedes
+the original single-turn lifecycle; see the current delegation guide.
 
-Cada terminal ejecuta un turno de agente (con sus herramientas), devuelve texto público y cierra. Una respuesta del modelo no certifica que el trabajo esté correcto: el padre debe verificarlo. No se recuperan automáticamente procesos después de una caída de ARISE; las tareas quedan interrumpidas y requieren revisión. La carpeta de trabajo no es un aislamiento del sistema de archivos. Se mantienen las restricciones propias de Gentle.
+The 0.4.18 installer had timed out after 600 seconds while stopping processes;
+the log did not identify the blocked operation. Inspection found ancestry walks
+without PID-cycle detection. The fix bounded CIM queries, rejected cycles and
+newer reused parents, ran noninteractively and recorded installer-stop.log.
+Failure still blocked replacement; it did not bypass process checks.
 
-## Instalador Windows
-
-Confirmado: 0.4.18 superó windows-tests pero agotó 600 segundos en la primera instalación, durante la fase de cierre de procesos; publish-update se omitió por ese fallo. El registro no identifica la operación interna bloqueada.
-
-Defecto encontrado: el recorrido de antecesores no detectaba ciclos de PID. Ahora detiene ciclos y padres más recientes que el hijo, limita consultas CIM, ejecuta PowerShell sin interacción y registra etapas en installer-stop.log. La prueba Windows reproduce ciclos y reutilización de PID. No se elimina la comprobación de procesos ni se continúa reemplazando archivos si falla.
-
-## Evidencia y límites
-
-- UI Qt real en Linux a 340×480: actividad y parada caben; el chat gana espacio. Alt+Q probado con Qt.
-- Pruebas de aislamiento entre chats, consentimiento, cancelación de proceso real y ausencia del token del puente en el hijo.
-- Pi y Gentle reales en PTY Linux con proveedor SSE local controlado: arranque de tarea, respuesta pública, archivo de resultado y salida 0. No equivale a una consola Windows ni a un proveedor externo.
-- Pendiente: CI de Windows, instalación sobre ARISE activo, consola visible en Windows, proveedor real y comprobación física del atajo de emergencia. Publicación condicionada a los gates existentes.
+Evidence: real Qt at 340×480 on Linux; chat isolation, consent, process cancellation
+and missing child bridge token; real Pi/Gentle PTY with a local SSE provider and
+public result/exit 0. These were not a Windows console or external-provider test.
+Windows installer replacement, visible console and physical emergency shortcut
+remained acceptance gates at that revision.

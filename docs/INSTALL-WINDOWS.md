@@ -1,19 +1,48 @@
-# Instalar ARISE en otro computador Windows
+# Install ARISE on Windows
 
-Necesitas Windows x64, Internet durante la configuración y una cuenta GitHub con acceso a los cuatro repositorios privados de herramientas. La cuenta del proveedor del agente se autentica por separado. La prueba manual de micrófono, escritorio, chat y herramientas en el computador del usuario sigue pendiente; las pruebas automáticas de Windows no la sustituyen.
+The established installer targets Windows x64. For Windows ARM64 use the
+separate [native preview guide](NATIVE-DISTRIBUTIONS.md); do not assume the x64
+complete package is a native ARM64 distribution.
 
-## Descargar e instalar
+## Install or upgrade
 
-- [QA 0.4.8](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.8): pruebas; se actualiza desde `qa`.
-- [Producción publicada](https://github.com/Maicololiveras/Arise/releases/latest): se actualiza desde `main`.
+Download the installer from the [production release](https://github.com/Maicololiveras/Arise/releases/latest)
+or an explicitly selected QA release. Run `ARISE-Setup.exe` as your normal user.
+To upgrade, select the existing installation directory. The installer stops
+owned processes and preserves application data.
 
-Descarga el archivo **ARISE-Windows-Complete.zip** de la publicación, extrae todo y ejecuta **Configurar ARISE.cmd**. El ZIP contiene el instalador y el paquete de modelos. Mantén ambos juntos durante la configuración. Después abre **ARISE** desde Inicio.
+The optional `ARISE-Windows-Complete.zip` includes the installer and offline
+model pack. Extract everything and run `Configurar ARISE.cmd`; keep its files
+together. A normal update does not require downloading the model pack again.
 
-El paquete incluye Node, npm, Python, GitHub CLI, FFmpeg y los modelos locales. No necesitas instalar esos runtimes manualmente. Gentle utiliza su asistente oficial y puede descargar sus propios requisitos; elige estable o main explícitamente. Ese selector es independiente del canal QA/producción de ARISE.
+ARISE includes Node, Pi, Gentle Shell 4.7.0, native Gentle AI and Engram. The
+complete Windows package also supplies its Python/media tooling. Users do not
+need a global Gentle, npm or Go installation. Git/Bash and project-specific
+compilers may still be needed for coding tasks.
 
-## Autenticar GitHub
+## First run
 
-Tras instalar ARISE en su ruta predeterminada, abre PowerShell como tu usuario habitual y ejecuta:
+1. Keep the default integrated engine.
+2. Open **Settings > Agent > Connect account and choose model**. Complete the
+   provider's browser/device flow or enter a supported API key, then select a model.
+3. Send a text message. A selected model does not prove account entitlement.
+4. In Voice settings, select devices and test output. Configure dictation and
+   conversation separately; see [voice](VOICE-MODELS.md).
+5. Inspect real tool capabilities. Download/repair supported managed tools if
+   needed; authorize local execution and desktop control separately per chat.
+6. Test Stop before using desktop automation for substantive work.
+
+No terminal login is required for agent accounts. A chat subscription does not
+supply a paid realtime voice API key. Existing global Pi authentication is not
+copied into ARISE's private agent.
+
+## Optional private repository access
+
+Private Transcription or source-based tool provisioning requires a GitHub account
+with access to those repositories. Public managed tool packages use their own
+published manifests. GitHub access is independent of the model account.
+
+If CLI authentication is needed, the Windows package includes `gh`:
 
 ```powershell
 $gh = Join-Path $env:LOCALAPPDATA 'Programs\ARISE\bundle\gh\gh.exe'
@@ -21,37 +50,19 @@ $gh = Join-Path $env:LOCALAPPDATA 'Programs\ARISE\bundle\gh\gh.exe'
 & $gh auth status --hostname github.com
 ```
 
-Si elegiste otra carpeta de instalación, ajusta `$gh`. Completa el código de dispositivo en el navegador con la cuenta que puede leer los repositorios privados. No compartas tokens ni copies credenciales de otro computador.
+Adjust the installation path if necessary. Never share tokens. Repository
+access and an MCP catalog are not permission to capture or control the desktop.
 
-Comprueba el acceso:
+## Recovery
 
-```powershell
-foreach ($repo in 'screenview-mcp','inputcontrol-mcp','transcripcion-ia','forge-mcp') {
-    & $gh api "repos/Maicololiveras/$repo" --jq .full_name
-    if ($LASTEXITCODE -ne 0) { throw "Falta acceso a $repo" }
-}
-```
+Restart ARISE after changing PATH. Prefer repairing the integrated installation
+before selecting an external engine. External mode must be selected explicitly;
+its package directory, launcher and agent home are distinct paths. See
+[npm recovery](GENTLE-NPM-RECOVERY.md) and [Engram recovery](ENGRAM-RECOVERY-QA.md).
 
-También puedes instalar GitHub CLI globalmente, si quieres usar `gh` desde cualquier terminal:
+For certificate failures, have the network administrator repair the trusted CA
+chain. Do not disable TLS verification. For PortAudio errors, test the selected
+input/output and Windows microphone permissions; installing an agent package
+cannot repair an unavailable device.
 
-```powershell
-winget install --id GitHub.cli --exact --source winget
-```
-
-Cierra y abre PowerShell después de esa instalación; usa `gh auth login --hostname github.com --git-protocol https --web` y `gh auth status --hostname github.com`. Es opcional porque ARISE incluye su propio `gh`.
-
-## Completar la configuración
-
-1. Abre ARISE y completa el asistente de Gentle; conserva la elección de canal que prefieras.
-2. En Ajustes → Agente, usa **Abrir Pi para /login** y autentica el proveedor. Después pulsa **Conectar y listar modelos** y elige uno disponible.
-3. En Ajustes → Herramientas, pulsa **Instalar y reparar dependencias**. ARISE descargará ScreenView, InputControl, Transcripción y Forge con sus dependencias. Después usa **Guardar y comprobar herramientas**.
-4. Comprueba que aparecen los cuatro catálogos, envía un mensaje, crea un chat nuevo y prueba micrófono/altavoz. Para voz local elige Vosk/auto y confirma el permiso de micrófono de Windows.
-5. Para probar una actualización, conserva tus chats y configuración y acepta la siguiente versión del mismo canal cuando ARISE la ofrezca.
-
-La autenticación GitHub permite descargar las herramientas; no autentica el modelo del agente. Gmail solo requiere configuración si vas a utilizar esa integración.
-
-Referencias: [autenticación de GitHub CLI](https://cli.github.com/manual/gh_auth_login) y [instalación en Windows](https://github.com/cli/cli/blob/trunk/docs/install_windows.md).
-
-## Alternative npm installation and recovery
-
-See [Gentle Shell npm recovery](GENTLE-NPM-RECOVERY.md) for requirements, separate installation/launcher/RPC checks, and validation limits.
+[Update behavior](UPDATES.md) · [Windows acceptance checklist](WINDOWS-CHECK.md)

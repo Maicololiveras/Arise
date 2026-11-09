@@ -1,5 +1,9 @@
 # QA 0.4.22 — realtime delegation
 
+Historical version-specific record. Current setup is documented in
+[INSTALL-WINDOWS.md](INSTALL-WINDOWS.md); platform previews are described in
+[NATIVE-DISTRIBUTIONS.md](NATIVE-DISTRIBUTIONS.md).
+
 OpenAI and Gemini voice adapters now acknowledge an accepted Gentle Shell task without waiting for completion. Explicit tools query, correct and cancel a task belonging to the current chat. A new request during an active task returns busy rather than silently steering it. Runtime approvals and local execution permissions are unchanged.
 
 Final public output is announced once while the original voice session is still active and idle. Raw tool events and error diagnostics are not forwarded. Chat switch/generation changes reject stale dispatch and suppress old audio/results. Stop invalidates queued dispatch across its generation boundary. Reconnect does not replay work. The chat history remains the result destination if voice is closed.

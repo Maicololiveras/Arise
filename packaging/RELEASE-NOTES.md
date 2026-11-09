@@ -54,156 +54,140 @@ See docs/NATIVE-DISTRIBUTIONS.md for capabilities, requirements and validation.
 - Scroll long agent questions and delegation approvals while keeping response
   controls and Accept/Reject buttons visible.
 - Preserve disabled tools, working custom MCP commands and existing permissions.
-- The InputControl indicator fix is maintained separately in its QA branch;
-  it becomes downloadable only after its corrected binary is published.
+- The InputControl indicator fix has its own component release;
+  ARISE can acquire it only after the corrected binary is published.
 
 # ARISE 0.4.32 QA
 
-- Descarga de Parakeet y sus runtimes desde la release fijada de ARISE en
-  GitHub, para equipos donde el proxy bloquea Hugging Face o npm.
-- Rama independiente `distribution/parakeet-v3` con publicación reproducible,
-  verificación antes y después de subir, fuentes y hashes originales.
-- Se conserva la validación TLS y de integridad. El proxy debe permitir GitHub
-  y su CDN `release-assets.githubusercontent.com`.
-- Reintenta desde el micrófono; si una instalación anterior quedó inválida,
-  usa «Reparar dictado local Parakeet» en el menú del panel.
+- Download pinned Parakeet models/runtimes from ARISE's GitHub release for networks that block direct Hugging Face/npm access.
+- Maintain an independent distribution branch with upstream sources, reviewed hashes and verification before/after upload.
+- Preserve TLS and integrity checks; networks must allow GitHub and its release asset CDN.
+- Retry from the microphone or use the local dictation repair action for invalid previous installs.
 
 # ARISE 0.4.31 QA
 
-- Micrófono del panel: clic para grabar, micrófono ↑ para detener y transcribir
-  al borrador. Revisión y envío manual, sin ejecutar la transcripción.
-- Parakeet local de Gentle Shell 4.5.1: descarga guiada de componentes fijados,
-  verificación de integridad y ejecución en un proceso independiente.
-- Cancelación, cambio de chat, deshacer y borrador preservado durante el dictado.
-- Usa el micrófono predeterminado de Windows; preparación inicial de unos 670 MB
-  más runtime. Requiere Node 22+ y Visual C++ Runtime en Windows x64.
-- QA: interacción Qt y protocolo comprobados con audio simulado. Pendiente
-  captura física, descarga completa y precisión de español en Windows.
-- Android y VPS/Coolify no cambian en esta entrega.
+- Click the panel microphone to record, then microphone ↑ to stop and transcribe into the draft. Review/send remains manual.
+- Adapt Gentle Shell 4.5.1 Parakeet with verified component downloads and a separate worker.
+- Preserve drafts, undo, cancellation and chat-generation isolation.
+- Use the system default input; initial model preparation is about 670 MB plus runtime. Windows x64 requires Node 22+ and Visual C++ Runtime.
+- Qt/protocol checks use simulated audio; physical capture and Spanish accuracy remain separate acceptance. Android and VPS/Coolify are unchanged.
 
 # ARISE 0.4.30 QA
 
-- Windows + Android: configuración privada de Tailscale Serve desde el PC, QR de vinculación y puerto persistente entre reinicios. Rechaza sustituir servicios Serve ajenos o Funnel.
-- Verificación con autenticador TOTP protegido por DPAPI: caducidad, rechazo de reutilización, límite persistente de intentos, revocación y sesión móvil de hasta 30 días. El MFA del proveedor de Tailscale debe configurarse por separado.
-- Android 0.2.0-qa: lector QR, acceso a Tailscale y opciones de escucha avanzada plegadas.
-- Hablar graba hasta 29 segundos y transcribe en el PC para revisar antes de enviar; Escuchar sintetiza con una voz instalada en Windows. Adjunta hasta cuatro imágenes PNG/JPEG.
-- Permite reactivar explícitamente un chat vinculado si el PC está libre y responder aprobaciones de ese chat con autenticador; no amplía permisos del agente.
-- VPS/Coolify aplazado. Passkeys, avisos push, adjuntos de documentos y firma estable de distribución pendientes; no se presenta como versión de producción.
+- Prepare private Tailscale Serve from Windows, with chat-pairing QR and persistent local port. Reject replacement of unrelated Serve services and do not enable Funnel.
+- Add DPAPI-protected TOTP, expiry, replay rejection, persistent attempt limits, revocation and at most 30-day mobile access. Configure Tailscale-provider MFA separately.
+- Android 0.2.0 QA adds QR scanning, Tailscale access and collapsed advanced-listening settings.
+- Record up to 29 seconds on mobile for PC transcription into a draft; synthesize playback with an installed Windows voice. Accept up to four PNG/JPEG images.
+- Explicitly resume a linked chat only when the PC is idle; protected approvals need the authenticator and do not expand agent permissions.
+- VPS/Coolify, passkeys, push, document attachments and stable Android signing remain deferred.
 
 # ARISE 0.4.29 QA
 
-- El saludo usa el usuario del PC por defecto; elimina el nombre Maix fijo.
-- Ajustes > Agente > Cómo llamarte permite elegir otro nombre; dejarlo vacío restaura la detección automática. Guardar reconecta Pi para aplicar la preferencia.
+- Default the greeting name to the PC username instead of a fixed Maix value.
+- Allow an override in Agent settings; an empty value restores automatic detection. Saving reconnects Pi to apply the preference.
 
 # ARISE 0.4.28 QA
 
-- Actualizar/reinstalar Engram estable desde Ajustes > Agente: consulta releases oficiales, verifica SHA-256 y la versión del ejecutable antes de seleccionar una ruta explícita.
-- Reutiliza la instalación oficial de Engram bajo LocalAppData cuando el PATH heredado de ARISE no la contiene; sin modificar PATH de Windows ni borrar memorias.
-- Detecta Gentle instalado con npm y su carpeta de agente usando el verificador oficial; resuelve la entrada Pi desde package.json, incluido dist/bundle/cli.js.
-- Actualización explícita de Gentle/Pi mediante el asistente oficial, sin limitarse a reutilizar la instalación encontrada. No evita las comprobaciones de ACL/TLS ni cierra servidores externos de Engram.
-- Las descargas verificadas no certifican el proveedor de memoria: comprobar mem_doctor después. La actualización real en el PC afectado sigue pendiente.
+- Reinstall official stable Engram from settings, checking SHA-256 and executable version before adopting its explicit path.
+- Reuse the official LocalAppData binary when inherited PATH omits it, without global PATH changes or memory deletion.
+- Detect npm Gentle packages and official agent homes; resolve Pi from package metadata, including dist/bundle/cli.js.
+- Keep explicit Gentle/Pi updates in the official wizard, without bypassing ACL/TLS or terminating unrelated Engram servers.
+- A verified download is not proof of memory-provider selection; check mem_doctor afterward.
 
 # ARISE 0.4.27 QA
 
-- Android Companion 0.1.1 QA usa el primer fotograma del orbe original, igual que la identidad de escritorio, en launcher, pantalla inicial y burbuja.
-- Consulta de nuevas versiones Android al abrir la pantalla de configuración y mediante botón; la descarga exige confirmación y Android controla la instalación.
-- Metadatos públicos acotados, URL de APK limitada a releases del repositorio y publicación versionada antes de anunciar actualizaciones.
-- Respeta las barras del sistema en la configuración Android. Firma de depuración y migración desde APK anteriores siguen siendo limitaciones de QA; no se promete actualización en sitio ni ausencia de avisos de Play Protect.
+- Android 0.1.1 QA reuses the original orb frame in launcher, setup and overlay.
+- Check bounded public version metadata on opening settings or request; confirm before APK download and let Android authorize installation.
+- Constrain APK links to repository releases and publish before advertising updates.
+- Respect system bars. Debug signing may require reinstalling/re-pairing; no promise of in-place upgrades or absence of Play Protect warnings.
 
 # ARISE 0.4.26 QA
 
-- La finalización de una terminal delegada reactiva al agente inactivo para consultar y verificar el resultado, sin esperar otra pregunta del usuario.
-- Si el agente sigue trabajando, el aviso se encola mediante el protocolo prompt/followUp de Pi. Se comprueba la recepción; los errores se muestran y no provocan reenvíos automáticos.
-- Evita avisos duplicados y conserva el resultado en el chat de origen. No reconecta sesiones ni reactiva tareas tras cambiar de chat, detener o revocar ejecución local.
-- Reproducido el fallo anterior y comprobada la reactivación con Pi/Gentle real y proveedor simulado. Pendiente prueba en el PC con documento real y proveedor del usuario.
+- Wake an idle parent agent when a delegated terminal finishes so it can inspect/verify the public result.
+- While the parent is active, queue through Pi prompt/followUp and verify receipt. Errors remain visible without automatic resend.
+- Prevent duplicate notifications and wrong-chat delivery; do not reconnect stopped, switched or unauthorized jobs.
+- Real Pi/Gentle with a fixture provider reproduced and verified notification behavior; physical/provider/document acceptance remained separate.
 
 # ARISE 0.4.25 QA
 
-- QR en Ajustes > Conexiones, celular y recordatorios > Celular para descargar el APK Android QA, con opciones de abrir y copiar el enlace.
-- Publicación del APK en una release Android QA tras pasar pruebas, lint y compilación. El QR es de descarga y no contiene credenciales ni códigos de vinculación.
-- Se conserva el vínculo privado mediante Tailscale y código temporal. El APK no es compatible con iPad; se mantiene el acceso web.
-- APK firmado para depuración: las siguientes compilaciones pueden requerir reinstalación. Prueba física en Android pendiente.
+- Add a QR/link for downloading the Android QA APK, without pairing secrets.
+- Publish the QA APK only after tests, lint and build.
+- Retain private Tailscale pairing; APK overlays do not run on iPad, which uses the web client.
+- Debug signing and physical Android acceptance remain limitations.
 
 # ARISE 0.4.24 QA
 
-- Gentle Shell 4.5.0, Pi 1.4.0 y Gentle AI 4.3.1; instalador oficial actualizado y verificado por SHA-256.
-- Adaptación del panel unificado de perfiles y modelos, conservando las confirmaciones de Gentle.
-- Alternativa en Ajustes para abrir la TUI del binario Gentle AI e instalar Shell. Conserva el motor actual de ARISE.
-- Limitación: el Shell instalado mediante la TUI se verifica como CLI independiente; no se adopta automáticamente como motor RPC de ARISE porque el supervisor nativo no transmite su contexto de permisos y herramientas.
-- Incluye funciones experimentales de conexiones, recordatorios y puente móvil de QA. Requieren configuración y autorización explícitas; no se han verificado cuentas externas ni dispositivos móviles reales.
-- Pruebas automatizadas y compilación Windows obligatorias antes de publicar. Pendiente probar la instalación nativa por TUI en los PCs afectados; no se da por resuelto su fallo previo.
+- Pin Gentle Shell 4.5.0, Pi 1.4.0 and Gentle AI 4.3.1 with the verified official installer.
+- Adapt unified profiles/models while retaining upstream approvals.
+- Offer the native Gentle AI TUI as an advanced external installer; preserve ARISE's working engine.
+- A verified independent CLI is not automatically an ARISE RPC engine: the inspected supervisor did not forward the required context.
+- Include experimental connections/reminders/mobile features with explicit setup and approval. Real external accounts/devices and affected-PC TUI installation remain separate checks.
 
 # ARISE 0.4.23 QA
 
-- Comandos de la sesión en una ventana compacta con lista desplazable y búsqueda por nombre o descripción.
-- Búsqueda sin distinguir mayúsculas ni acentos; Enter ejecuta la selección, Esc cierra y las flechas permiten recorrer la lista enfocada.
-- La ventana se cierra al recargar/cambiar el chat; resultados de catálogos anteriores no se muestran en la nueva ventana.
-- Se conserva la ejecución y las confirmaciones del runtime.
+- Add a compact, searchable, scrollable session command palette.
+- Match case/accent-insensitively; Enter selects, Escape closes and arrows navigate.
+- Close on reload/chat switch and reject stale catalogs while retaining runtime approvals.
 
 # ARISE 0.4.22 QA
 
-- Voz OpenAI/Gemini: aceptación inmediata de tareas, consulta de estado y corrección/cancelación por identificador del chat.
-- Una nueva petición no modifica silenciosamente la tarea activa; los resultados tardíos no se entregan en otro chat.
-- Se conserva la ruta de voz local y las aprobaciones existentes. Calidad de audio y proveedores reales pendientes de prueba en PC.
-- Corregida la versión del instalador y del icono a 0.4.22; prueba temprana de coherencia entre aplicación, instalador, bundle y notas.
+- Realtime OpenAI/Gemini voice acknowledges accepted tasks without waiting for completion; query, correct or cancel by chat-owned ID.
+- New requests do not silently steer an active task; stale results do not reach another chat.
+- Preserve local voice and existing approvals; real provider/audio quality remains on-device acceptance.
+- Add early version consistency checks across application, installer, bundle and release notes.
 
 # ARISE 0.4.21 QA
 
-- Avisos de conexión Pi/Gentle y carga de herramientas en una barra discreta bajo el campo de escritura, fuera del historial.
-- Una línea de altura fija, texto completo al pasar el cursor y disponible para accesibilidad; no mueve el chat ni roba foco.
-- La barra se limpia al cambiar de chat; errores y confirmaciones mantienen su presentación visible.
+- Show connection/tool-loading notices in a quiet fixed-height line below input, outside conversation history.
+- Preserve full text in tooltip/accessibility without moving chat or stealing focus.
+- Clear on chat switch; errors and approvals stay visibly distinct.
 
 # ARISE 0.4.20 QA
 
-- Gentle Shell 4.3.0 y su instalador oficial fijados; Pi se mantiene en 1.2.0, compatible con el mínimo declarado.
-- Conserva la configuración aislada de Gentle 4.3 al reutilizar su entorno; los entornos vinculados y personalizados mantienen sus reglas.
-- Mantiene el host RPC interactivo, las confirmaciones, el aislamiento por chat y la parada de ARISE.
-- Gentle 4.3 incorpora temporales por sesión, registro de artefactos y Gentle AI 4.2.0. ARISE no borra esos directorios por su cuenta.
-- Requiere validar en CI la compilación e instalación Windows; no certifica el fallo entry-storage de otros PCs.
+- Pin Gentle Shell 4.3.0 and its official installer with compatible Pi 1.2.0.
+- Preserve isolated/linked/custom homes, interactive RPC, approvals, chat isolation and Stop.
+- Leave Gentle's session scratch/artifact lifecycle to its runtime.
+- Windows CI and affected-PC installation remain separate; this does not certify resolution of entry-storage.
 
 # ARISE 0.4.19 QA
 
-- Actividad compacta a la izquierda y Detener a la derecha; más espacio para el chat.
-- Alt+Q recupera el último mensaje sin enviarlo ni sobrescribir el borrador.
-- Delegación explícita en terminal Gentle por chat, con consentimiento, resultados propios y cancelación.
-- Instalador: recorrido de antecesores protegido contra ciclos/PID reutilizados, consultas acotadas y diagnóstico de parada.
-- Validación nativa de instalación y terminal Windows pendiente de CI y prueba en PC; detalles en docs/QA-0.4.19.md.
+- Compact activity and Stop controls; Alt+Q restores the last prompt without sending or overwriting a draft.
+- Add explicitly approved, chat-owned Gentle terminal delegation with results/cancellation.
+- Bound installer ancestry queries and guard PID cycles/reuse with shutdown diagnostics.
+- Windows installer/visible-terminal acceptance is tracked separately in the historical QA record.
 
 # ARISE 0.4.18 QA
 
-- Ventana de actualización con novedades desplazables y botones siempre fuera del área de scroll.
-- Tamaño inicial adaptado al espacio disponible; texto ajustado al ancho, sin scroll horizontal.
-- Instalar requiere confirmación explícita; Cerrar, Más tarde y Escape no instalan.
-- Interfaz Qt comprobada a 340 × 440 en Linux; validación nativa en Windows pendiente de CI y prueba del usuario.
+- Scroll release notes while keeping update buttons outside the scroll area.
+- Fit initial dialog size to available space with wrapping and no horizontal scroll.
+- Require explicit Install; Close, Later and Escape never install.
+- Validate Qt at 340×440 offscreen; native Windows acceptance remains separate.
 
 # ARISE 0.4.17 QA
 
-- Recupera el entorno privado existente de Gentle y usa su Node, Pi y carpeta de agente, sin consultar pnpm global.
-- Verifica la versión activa y rechaza instalaciones incompletas o ambiguas; conserva la comprobación nativa de Gentle y la verificación RPC antes de adoptar.
-- Transcripción instala MCP 1.x en su Python privado, compatible con mcp.server.fastmcp.
-- Pendientes: instalación inicial que falla en entry-storage y prueba física de micrófono -9996 en el PC afectado. Reutilizar requiere una instalación de Gentle completa.
+- Recover an existing official private Gentle runtime and its Node/Pi/home without invoking global pnpm.
+- Reject incomplete/ambiguous installs and verify native integrity and RPC before adoption.
+- Install MCP 1.x in private Transcription Python for FastMCP compatibility.
+- Initial entry-storage and physical PortAudio -9996 failures are not proven fixed by discovery alone.
 
-# ARISE 0.4.16 · QA
+# ARISE 0.4.16 QA
 
-- PowerShell: validación de pnpm transportada con EncodedCommand; los errores de E/S se clasifican sin exponer stderr. Las pruebas Windows invocan ahora Node y PowerShell como producción.
-- Forge: comprueba el adaptador Edge real; evita el aviso incorrecto basado en el puente antiguo.
-- Audio: identifica entrada/salida y código numérico de PortAudio; sin cambiar dispositivos o sustituir la voz.
-- Transcripción: identifica el módulo Python ausente, sin mostrar el traceback.
-- La causa final en el PC afectado requiere revalidación; no se anuncia resuelta por las pruebas de CI.
+- Transport pnpm validation via PowerShell EncodedCommand and classify I/O failures without exposing raw stderr.
+- Test the real Forge Edge adapter instead of inferring availability from the legacy bridge.
+- Identify PortAudio direction/code and missing transcription modules without silently changing devices or voices.
+- Preserve affected-PC acceptance rather than declaring a root cause from CI.
 
-# ARISE 0.4.15 · QA
+# ARISE 0.4.15 QA
 
-- Gentle: admite la junction local conocida de pnpm v11 y comprueba el destino y sus antecesores; rechaza otros enlaces y permisos de escritura no confiables.
-- Instalación automática de herramientas independiente: una transcripción fallida no descarta ScreenView, InputControl ni Forge.
-- Audio: distingue errores al abrir dispositivos y modelos Vosk ausentes o incompletos. No cambia la voz ni descarga modelos sin selección.
-- Pendiente: prueba en el PC personal afectado. No se ha confirmado la causa de su fallo de audio.
+- Recognize the narrowly defined pnpm v11 junction while validating its target/ancestors; retain denial of other links and untrusted write access.
+- Install tools independently so a failed Transcription package does not discard verified desktop components.
+- Distinguish audio-device opening from invalid Vosk models; no silent model download or voice substitution.
+- Physical affected-PC audio remained unverified.
 
-# ARISE 0.4.14 · QA
+# ARISE 0.4.14 QA
 
-- Sesión persistente entre mensajes y ajustes de voz; cambio de chat con historial propio y cierre controlado.
-- Capacidades reales visibles, autorización local por chat y ejecución mediante Gentle, sin activar escritorio.
-- Creación y lectura DOCX sin escritorio, con contenido verificado y plantilla DOCX opcional en modo añadir.
-- Actividad de ARISE: cuadro discreto y plegable, estados reales de herramientas/subagentes, modelo cuando se informa y progreso sin porcentajes inventados. No muestra razonamiento privado.
-- Parada conserva revocación de manos/ojos; cierra subagentes de fondo sin reiniciarlos automáticamente.
-
-Pruebas locales con Pi/Gentle reales y modelo simulado, DOCX real y UI Qt. Pendiente validación física de Windows, proveedor real y plantilla WEG del usuario. Detalles: docs/QA-ORCHESTRATOR-0.4.14.md.
+- Keep session continuity across messages and unrelated settings, with chat-scoped history and controlled shutdown.
+- Expose actual capabilities and require per-chat local execution separately from desktop control.
+- Create/read verified DOCX without desktop automation; templates support append-only content.
+- Show bounded public tool/subagent activity without private reasoning or invented progress.
+- Stop background child processes without automatic restart. Real Pi/Gentle fixtures, DOCX and Qt tests do not certify the user's physical Windows devices, production provider or WEG template.
