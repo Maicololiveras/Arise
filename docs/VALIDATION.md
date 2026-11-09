@@ -13,9 +13,11 @@ working successfully. This is user acceptance of that tested setup, not a claim
 that every provider/device combination or non-Windows target was exercised.
 
 [Production run 42634680905](https://github.com/Maicololiveras/Arise/actions/runs/42634680905)
-rebuilds the promoted revision with the production channel. Its status and the
-published main feed are authoritative for production availability; a promotion
-commit alone is not a downloadable release.
+passed all production gates and published v0.4.37. The main feed selects the
+production installer (413051665 bytes), SHA-256
+`4db4e1837640f6b4d744d5a92edc59df271d387e434372cfb7846643b4b9e153`.
+Its source commit is `654eeff6b3630971567912d08f6d9f4a237a0002`; it is a
+main-channel rebuild, not the QA executable.
 
 ## Native preview gates
 
@@ -30,6 +32,13 @@ A missing native dependency, failed smoke or unavailable runner is a failed or
 blocked target, never a pass inferred from another architecture. Core previews
 exclude private desktop MCP bundles and offline models. Signing/notarization,
 physical devices and per-target update acceptance remain separate release gates.
+
+The six-target matrix first passed in
+[run 42638622809](https://github.com/Maicololiveras/Arise/actions/runs/42638622809).
+Subsequent capability/UI and macOS trust refinements are tracked in
+[PR #12](https://github.com/Maicololiveras/Arise/pull/12), whose current CI is
+authoritative for its latest commit. Local validation of those refinements ran
+303 tests: 296 passed and seven explicit Windows-only skips.
 
 ## Run checks
 

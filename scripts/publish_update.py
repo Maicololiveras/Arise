@@ -29,7 +29,7 @@ assets=[str(setup),str(checksum)]
 if complete.stat().st_size < 2*1024**3: assets.append(str(complete))
 else:
     with open('packaging/RELEASE-NOTES.md','a') as output:
-        output.write('\nZIP completo: https://github.com/'+REPO+'/actions/runs/'+os.environ['GITHUB_RUN_ID']+' (artefacto ARISE-Windows-Complete).\n')
+        output.write('\nComplete ZIP: https://github.com/'+REPO+'/actions/runs/'+os.environ['GITHUB_RUN_ID']+' (ARISE-Windows-Complete artifact).\n')
 gh('release','create',tag,*assets,'--repo',REPO,'--target',commit,'--title','ARISE '+channel+' '+__version__,'--notes-file','packaging/RELEASE-NOTES.md',*flags)
 release=json.loads(gh('api',f'repos/{REPO}/releases/tags/{tag}'))
 asset=next(a for a in release['assets'] if a['name']=='ARISE-Setup.exe')
