@@ -24,9 +24,14 @@ def speech_chunks(text,first=180,following=360):
 def render_edge(voice,text,cancel):
     from .bundle import application_root
     from .forge_voice import edge_audio
-    ffmpeg=application_root()/'bundle/media/ffmpeg.exe'
+    from .platforms import bundled_executable
+    ffmpeg=bundled_executable(application_root(),'bundle/media/ffmpeg')
     executable=str(ffmpeg) if ffmpeg.is_file() else shutil.which('ffmpeg')
-    if not executable:raise RuntimeError('Falta FFmpeg para reproducir Gonzalo. Repara ARISE.')
+    try:
+        import miniaudio
+    except ImportError:
+        miniaudio=None
+    if not executable and miniaudio is None:raise RuntimeError('Falta el decodificador de audio. Repara ARISE.')
     parts=speech_chunks(text) if voice.runtime.storage.config.get('voice_fluent',True) else [text[:10000]]
     abort=threading.Event();started=False
     class Cancel:
@@ -37,6 +42,9 @@ def render_edge(voice,text,cancel):
         def prepare(index):
             mp3=Path(temporary)/f'{index}.mp3';wavfile=mp3.with_suffix('.wav')
             if stopped() or not edge_audio(voice.runtime,parts[index],mp3,combined,voice.active,voice.shutdown):return None
+            if miniaudio is not None:
+                decoded=miniaudio.decode_file(str(mp3),output_format=miniaudio.SampleFormat.SIGNED16,nchannels=1,sample_rate=24000)
+                return decoded.samples.tobytes(),24000
             process=subprocess.Popen([executable,'-y','-i',str(mp3),'-ac','1','-ar','24000',str(wavfile)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
             import time
             deadline=time.monotonic()+30

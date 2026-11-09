@@ -102,7 +102,8 @@ class ForgeConnection:
 def edge_bridge_command():
     import shutil
     from .bundle import application_root
-    root=application_root();node=root/'bundle/node/node.exe';bridge=root/'bundle/forge-voice/bridge.mjs';package=root/'bundle/node/package.json'
+    from .platforms import bundled_executable
+    root=application_root();node=bundled_executable(root,'bundle/node/node');bridge=root/'bundle/forge-voice/bridge.mjs';package=root/'bundle/node/package.json'
     if not bridge.is_file():
         bridge=Path(__file__).resolve().parents[1]/'vendor/forge-voice/bridge.mjs'
         package=bridge.parent.parent/'package.json';node=Path(shutil.which('node') or '')

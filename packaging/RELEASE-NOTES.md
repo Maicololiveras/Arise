@@ -1,3 +1,11 @@
+# 0.4.38 — Native distribution previews
+
+Six native core build targets: Windows, Linux and macOS on x64 and ARM64.
+Private desktop MCP servers and offline models are not bundled in these previews.
+Native artifacts require their own CI and physical acceptance before promotion.
+Preview updates are manual; the Windows x64 feed is disabled in preview archives.
+See docs/NATIVE-DISTRIBUTIONS.md for capabilities, requirements and validation.
+
 # ARISE 0.4.37 QA
 
 - Connect provider accounts and select chat models inside Settings using the native Pi/Gentle SDK; no terminal login is required.

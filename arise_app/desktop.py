@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from PySide6.QtCore import Qt, QTimer, QObject, Signal, QEvent, QPoint, QSize, QBuffer, QIODevice
+from PySide6.QtCore import Qt, QTimer, QObject, Signal, QEvent, QPoint, QSize, QBuffer, QIODevice, QUrl
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QImage, QDesktopServices, QShortcut, QKeySequence
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import (QPlainTextEdit, QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
@@ -1300,7 +1300,7 @@ class Controller(QObject):
         AccountsDialog(self.runtime, self.panel).exec()
 
     def open_data(self):
-        if os.name == "nt": os.startfile(str(self.runtime.storage.root))
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.runtime.storage.root)))
 
     def restart(self):
         if not getattr(self.runtime, "is_remote", False):
@@ -1345,8 +1345,9 @@ def main():
         sys.argv.remove("--daemon")
         from .daemon import main as daemon_main
         return daemon_main()
-    parser = argparse.ArgumentParser(description="ARISE · Orbe Windows")
-    parser.add_argument("--data-dir", default=str(Path(os.getenv("LOCALAPPDATA", Path.home() / ".local" / "share")) / "ARISE-Orb"))
+    parser = argparse.ArgumentParser(description="ARISE · Desktop assistant")
+    from .platforms import data_directory
+    parser.add_argument("--data-dir", default=str(data_directory()))
     parser.add_argument("--shutdown", action="store_true", help="Cerrar interfaz, daemon y sus procesos para actualizar")
     parser.add_argument("--background", action="store_true")
     parser.add_argument("--settings", action="store_true")

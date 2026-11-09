@@ -21,6 +21,9 @@ def prepare(runtime, bundle, manifest):
     """Validate before adoption; retain the previous engine selection for rollback."""
     if manifest.get('owned_engine') != 1 or not enabled(runtime.storage.config):
         return {}
+    from .platforms import target
+    if manifest.get("target") and manifest["target"] != target():
+        raise RuntimeError("The bundled engine belongs to another operating system or architecture.")
     bundle = Path(bundle).resolve()
     config = runtime.storage.config
     def artifact(value):
