@@ -1,0 +1,36 @@
+name: ARISE stable distributions
+on:
+  push:
+    branches: [main]
+    paths: ['releases/stable.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate requested stable version and branch
+        run: |
+          python - <<'PY'
+          import json, os
+          from arise_app import __version__
+          assert os.environ['GITHUB_REF_NAME'] == 'main', 'Stable releases require main'
+          assert json.load(open('releases/stable.json'))['version'] == __version__, 'Stable request must match source version'
+          PY
+  desktop:
+    needs: validate
+    uses: ./.github/workflows/native-distributions.yml
+    with:
+      release_channel: stable
+  windows-complete:
+    needs: validate
+    uses: ./.github/workflows/verify.yml
+    secrets: inherit
+    with:
+      release_channel: stable
+  android:
+    needs: validate
+    uses: ./.github/workflows/android-stable.yml
+    secrets: inherit

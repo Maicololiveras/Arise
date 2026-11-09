@@ -46,7 +46,7 @@ class PublishedDocsTests(unittest.TestCase):
     def test_instruction_links_resolve_in_root_and_nested_guides(self):
         from pathlib import Path
         root = render_catalog({})
-        readme = Path('README.md').read_text()
+        readme = (Path(__file__).resolve().parents[1] / 'README.md').read_text(encoding='utf-8')
         for system in ('windows', 'linux', 'macos', 'android', 'ios'):
             self.assertIn(f'(#install-{system})', root)
             self.assertIn(f'<a id="install-{system}"></a>', readme)
@@ -76,3 +76,18 @@ class PublishedDocsTests(unittest.TestCase):
         updated = native_downloads(source, '0.4.39', [], None)
         self.assertIn('[Core 0.4.39]', updated)
         self.assertIn('[Complete 0.4.37]', updated)
+
+    def test_stable_native_is_separate_and_requires_complete_assets(self):
+        names=[f'ARISE-0.4.40-{os}-{arch}{ext}' for os, ext in
+            (('windows','-Setup.exe'),('linux','.deb'),('macos','.pkg')) for arch in ('x64','arm64')]
+        assets=names+[n+'.sha256' for n in names]
+        catalog=published_catalog([release('native-stable-v0.4.40',assets)])
+        self.assertIn('native_stable',catalog)
+        self.assertNotIn('native',catalog)
+        self.assertIn('/native-stable-v0.4.40/ARISE-0.4.40-linux-arm64.deb',render_catalog(catalog))
+        self.assertNotIn('native_stable',published_catalog([release('native-stable-v0.4.40',assets,prerelease=True)]))
+
+    def test_preview_refresh_preserves_stable_core_urls(self):
+        from scripts.release_readme import native_downloads
+        url='https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-arm64.deb'
+        self.assertIn(url,native_downloads('[Core 0.4.40]('+url+')','0.4.41',[],None))

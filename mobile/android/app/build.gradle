@@ -1,13 +1,33 @@
 plugins { id 'com.android.application' }
+def stableChannel = providers.gradleProperty('ariseStable').orNull == 'true'
 android {
     namespace 'com.praxis.arise'
     compileSdk 35
     defaultConfig {
-        applicationId 'com.praxis.arise.qa'
+        applicationId stableChannel ? 'com.praxis.arise' : 'com.praxis.arise.qa'
         minSdk 26
         targetSdk 35
         versionCode 3
         versionName '0.2.0-qa'
+        if (stableChannel) versionName '0.2.0'
+        buildConfigField 'boolean', 'IS_PREVIEW', stableChannel ? 'false' : 'true'
+        manifestPlaceholders = [appLabel: stableChannel ? 'ARISE Companion' : 'ARISE Companion Preview']
+    }
+    signingConfigs {
+        stable {
+            if (System.getenv('ARISE_ANDROID_KEYSTORE')) {
+                storeFile file(System.getenv('ARISE_ANDROID_KEYSTORE'))
+                storePassword System.getenv('ARISE_ANDROID_STORE_PASSWORD')
+                keyAlias System.getenv('ARISE_ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ARISE_ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.stable
+            debuggable false
+        }
     }
     buildFeatures { buildConfig true }
     sourceSets.main.res.srcDir(layout.buildDirectory.dir("generated/ariseRes"))
@@ -34,3 +54,13 @@ tasks.register('generateAriseOrb') {
     }
 }
 tasks.named('preBuild').configure { dependsOn('generateAriseOrb') }
+
+// A stable release must never fall back to the debug signing key.
+tasks.configureEach { task ->
+    if (task.name in ['validateSigningRelease', 'packageRelease', 'bundleRelease']) {
+        task.doFirst {
+            if (!stableChannel || !System.getenv('ARISE_ANDROID_KEYSTORE'))
+                throw new GradleException('Stable signing configuration is required')
+        }
+    }
+}

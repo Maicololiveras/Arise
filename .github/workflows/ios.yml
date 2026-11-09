@@ -1,0 +1,47 @@
+name: ARISE iOS companion
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/ios/**', '.github/workflows/ios.yml']
+  pull_request:
+    paths: ['mobile/ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  simulator:
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          cd mobile/ios
+          xcodegen generate
+      - name: Select available simulator
+        env:
+          DEVICE_FAMILY: ${{ matrix.device }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))['devices']
+          device=next(d for runtime,items in devices.items() if 'iOS' in runtime for d in items if d['name'].startswith(os.environ['DEVICE_FAMILY']))
+          with open(os.environ['GITHUB_ENV'],'a') as f: f.write('SIMULATOR_ID='+device['udid']+'\n')
+          PY
+      - name: Compile and test iPhone or iPad
+        working-directory: mobile/ios
+        run: xcodebuild -project ARISECompanion.xcodeproj -scheme ARISECompanion -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -derivedDataPath build -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO test
+      - name: Package simulator app
+        working-directory: mobile/ios
+        run: ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Debug-iphonesimulator/ARISECompanion.app ARISE-iOS-simulator.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ARISE-iOS-${{ matrix.device }}-simulator
+          path: |
+            mobile/ios/ARISE-iOS-simulator.zip
+            mobile/ios/TestResults.xcresult

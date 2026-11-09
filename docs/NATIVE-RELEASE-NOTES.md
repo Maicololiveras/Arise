@@ -1,4 +1,6 @@
-# ARISE Preview 0.4.39
+# ARISE Preview 0.4.40
+
+Stable Core is published separately as `native-stable-v0.4.40` after all six native gates pass. Preview retains `native-v0.4.40`; neither channel implies private desktop tools or offline models are bundled.
 
 Built and published exclusively from main. QA mirrors main; ARISE Preview is the public prerelease name.
 
@@ -10,7 +12,7 @@ Six architecture-specific installers, with the owned Gentle Shell 4.7.0 engine:
 | Ubuntu 24.04 | `linux-x64.deb` | `linux-arm64.deb` |
 | macOS 15 | `macos-x64.pkg` | `macos-arm64.pkg` |
 
-Each filename begins with `ARISE-0.4.39-`. Download the matching installer and
+Each filename begins with `ARISE-0.4.40-`. Download the matching installer and
 its `.sha256` file. Installation, installed engine/UI, same-version reinstall,
 uninstall and preservation checks must pass on all six native runners before
 this prerelease is published. Per-target JSON reports accompany the installers.

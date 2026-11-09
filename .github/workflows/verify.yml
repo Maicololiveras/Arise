@@ -3,6 +3,11 @@ on:
   push:
     branches: [main, qa-connections-companion]
   pull_request:
+  workflow_call:
+    inputs:
+      release_channel:
+        type: string
+        default: preview
   workflow_dispatch:
     inputs:
       release_channel:
@@ -13,7 +18,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: arise-verification-${{ github.ref }}
+  group: arise-verification-${{ inputs.release_channel || 'preview' }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   parakeet-mirror:

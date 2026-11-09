@@ -93,8 +93,10 @@ def build(expected):
     cpu = 'aarch64' if identity.endswith('arm64') else 'x86_64'
     if not any(line.startswith('host: ' + cpu + '-') for line in rust.splitlines()):
         raise RuntimeError('Rust compiler host does not match the native target')
+    from arise_app.distribution import native_release
+    release = native_release()
     marker = ROOT / 'arise_app/resources/update-channel.json'
-    marker.write_text(json.dumps({'channel': 'qa', 'target': identity, 'format': 'native-preview'}))
+    marker.write_text(json.dumps({'channel': release['build_channel'], 'target': identity, 'format': 'native-core'}))
     run('cargo', 'build', '--release', '--locked', '--manifest-path', ROOT / 'host/Cargo.toml')
     command = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--windowed', '--onedir', '--name', 'ARISE',
                '--collect-all', 'truststore', '--collect-all', 'docx', '--collect-all', 'sounddevice', '--collect-all', 'miniaudio']
@@ -141,9 +143,9 @@ def build(expected):
     if mac:
         info = package / 'Contents/Info.plist'
         with info.open('rb') as stream: metadata = plistlib.load(stream)
-        metadata['CFBundleIdentifier'] = 'com.praxisgenai.arise.preview'
-        metadata['CFBundleDisplayName'] = 'ARISE Preview'
-        metadata['CFBundleName'] = 'ARISE Preview'
+        metadata['CFBundleIdentifier'] = release['mac_id']
+        metadata['CFBundleDisplayName'] = release['title']
+        metadata['CFBundleName'] = release['title']
         metadata['CFBundleShortVersionString'] = __version__
         metadata['CFBundleVersion'] = __version__
         metadata['NSMicrophoneUsageDescription'] = 'ARISE uses the microphone for dictation and voice features you explicitly enable.'
@@ -154,7 +156,7 @@ def build(expected):
         run('codesign', '--verify', '--deep', '--strict', package)
     run(sys.executable, ROOT / 'scripts/smoke_native.py', application, identity)
     output = ROOT / 'artifacts'; output.mkdir(exist_ok=True)
-    stem = f'ARISE-{__version__}-{identity}-preview'
+    stem = f"ARISE-{__version__}-{identity}-{release['channel']}"
     if mac:
         archive = output / (stem + '.zip')
         run('ditto', '-c', '-k', '--sequesterRsrc', '--keepParent', package, archive)

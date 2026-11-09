@@ -80,6 +80,11 @@ def publish_metadata(api, channel, manifest, sync_other=True):
 
 def native_downloads(text, version, assets, run_id):
     """Refresh published native links and measured sizes, not stable links."""
+    protected = []
+    def preserve_stable(match):
+        protected.append(match[0])
+        return f'ARISE_STABLE_LINK_{len(protected)-1}_PLACEHOLDER'
+    text = re.sub(r'https://github\.com/Maicololiveras/Arise/releases/(?:download|tag)/native-stable-v[^)\s]+', preserve_stable, text)
     text = re.sub(r'Version \d+\.\d+\.\d+ (?:adds|provides)', 'Version ' + version + ' provides', text)
     text = re.sub(r'native-v\d+\.\d+\.\d+', 'native-v' + version, text)
     text = re.sub(r'ARISE-\d+\.\d+\.\d+-(?=windows|linux|macos)', 'ARISE-' + version + '-', text)
@@ -97,6 +102,8 @@ def native_downloads(text, version, assets, run_id):
         if asset['name'].endswith(('.exe', '.deb', '.pkg')):
             pattern = r'(^\|[^\n]*?/native-v' + re.escape(version) + '/' + re.escape(asset['name']) + r'\) \| )\d+ MB'
             text = re.sub(pattern, lambda m: m[1] + str(round(asset['size'] / 1_000_000)) + ' MB', text, flags=re.M)
+    for index, link in enumerate(protected):
+        text = text.replace(f'ARISE_STABLE_LINK_{index}_PLACEHOLDER', link)
     return text
 
 

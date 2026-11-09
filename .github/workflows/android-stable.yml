@@ -1,0 +1,69 @@
+name: ARISE stable Android
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: arise-android-stable
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require persistent release signing credentials
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE" && test -n "$STORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD" || { echo 'Configure the four ANDROID signing secrets. A debug-signed APK cannot be published as stable.'; exit 1; }
+          printf '%s' "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/arise-release.jks"
+          chmod 600 "$RUNNER_TEMP/arise-release.jks"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Test and build signed release APK and AAB
+        working-directory: mobile/android
+        env:
+          ARISE_ANDROID_KEYSTORE: ${{ runner.temp }}/arise-release.jks
+          ARISE_ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ARISE_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ARISE_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: gradle --no-daemon -PariseStable=true testDebugUnitTest lintRelease assembleRelease bundleRelease
+      - name: Verify signature and publish immutable stable version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cp mobile/android/app/build/outputs/apk/release/app-release.apk ARISE-Android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs ARISE-Android.apk > signing-report.txt
+          cat signing-report.txt
+          if grep -qi "Android Debug" signing-report.txt; then echo "Debug certificate cannot sign a stable release"; exit 1; fi
+          cp mobile/android/app/build/outputs/bundle/release/app-release.aab ARISE-Android.aab
+          sha256sum ARISE-Android.apk > ARISE-Android.apk.sha256
+          sha256sum ARISE-Android.aab > ARISE-Android.aab.sha256
+          python scripts/publish_android_stable.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ARISE-Android-stable-validation
+          path: |
+            mobile/android/app/build/reports/
+            ARISE-Android.apk*
+            ARISE-Android.aab*
+      - name: Remove temporary signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/arise-release.jks"

@@ -23,18 +23,20 @@ def published_catalog(releases):
         if release.get('draft') or not release.get('published_at'):
             continue
         tag = release['tag_name']
-        match = re.fullmatch(r'(native-v|android-qa-v|qa-v|v)(\d+\.\d+\.\d+)(-qa)?', tag)
+        match = re.fullmatch(r'(native-stable-v|native-v|android-qa-v|android-v|qa-v|v)(\d+\.\d+\.\d+)(-qa)?', tag)
         if not match:
             continue
         prefix, version, suffix = match.groups()
-        kind = {'native-v': 'native', 'android-qa-v': 'android', 'qa-v': 'preview', 'v': 'stable'}[prefix]
+        kind = {'native-v': 'native', 'android-qa-v': 'android', 'qa-v': 'preview', 'v': 'stable', 'native-stable-v': 'native_stable', 'android-v': 'android_stable'}[prefix]
+        if kind in ('stable', 'native_stable', 'android_stable') and release.get('prerelease'):
+            continue
         if suffix and kind != 'android':
             continue
         names = {a['name'] for a in release.get('assets', []) if a.get('size', 0) > 0}
         required = ({f'ARISE-{version}-{os}-{arch}{ext}' for os, ext in
                      (('windows', '-Setup.exe'), ('linux', '.deb'), ('macos', '.pkg'))
-                     for arch in ('x64', 'arm64')} if kind == 'native' else
-                    {'ARISE-Android-QA.apk'} if kind == 'android' else {'ARISE-Setup.exe'})
+                     for arch in ('x64', 'arm64')} if kind in ('native', 'native_stable') else
+                    {'ARISE-Android-QA.apk'} if kind == 'android' else {'ARISE-Android.apk', 'ARISE-Android.aab'} if kind == 'android_stable' else {'ARISE-Setup.exe'})
         # Incomplete uploads must not become advertised downloads.
         if not required.issubset(names) or not {n + '.sha256' for n in required}.issubset(names):
             continue
@@ -53,12 +55,12 @@ def render_catalog(catalog, readme_url=""):
         url = f"https://github.com/{REPO}/releases/download/{item['tag']}/{filename}"
         return f"[{label + ' ' if label else ''}{item['version']}]({url}) · [SHA-256]({url}.sha256)"
 
-    def native(os, arch):
-        item = catalog.get('native')
+    def native(os, arch, kind="native"):
+        item = catalog.get(kind)
         if not item:
             return "Not released"
         ext = {'windows': '-Setup.exe', 'linux': '.deb', 'macos': '.pkg'}[os]
-        return link('native', f"ARISE-{item['version']}-{os}-{arch}{ext}", 'Core')
+        return link(kind, f"ARISE-{item['version']}-{os}-{arch}{ext}", 'Core')
 
     def instructions(system):
         return f"[Install →]({readme_url}#install-{system})"
@@ -66,13 +68,13 @@ def render_catalog(catalog, readme_url=""):
     stable = '<!-- arise-windows-stable -->' + link('stable', 'ARISE-Setup.exe', 'Complete') + '<!-- /arise-windows-stable -->'
     preview = '<!-- arise-windows-preview -->' + link('preview', 'ARISE-Setup.exe', 'Complete') + '<!-- /arise-windows-preview -->'
     rows = [
-        ('Windows 11', 'x64', stable, preview + '<br>' + native('windows', 'x64'), 'windows'),
-        ('Windows 11', 'ARM64', 'Not released', native('windows', 'arm64'), 'windows'),
-        ('Linux · Ubuntu 24.04', 'x64', 'Not released', native('linux', 'x64'), 'linux'),
-        ('Linux · Ubuntu 24.04', 'ARM64', 'Not released', native('linux', 'arm64'), 'linux'),
-        ('macOS 15', 'Intel x64', 'Not released', native('macos', 'x64'), 'macos'),
-        ('macOS 15', 'Apple Silicon ARM64', 'Not released', native('macos', 'arm64'), 'macos'),
-        ('Android 8+', 'Mobile companion', 'Not released', link('android', 'ARISE-Android-QA.apk'), 'android'),
+        ('Windows 11', 'x64', stable + '<br>' + native('windows', 'x64', 'native_stable'), preview + '<br>' + native('windows', 'x64'), 'windows'),
+        ('Windows 11', 'ARM64', native('windows', 'arm64', 'native_stable'), native('windows', 'arm64'), 'windows'),
+        ('Linux · Ubuntu 24.04', 'x64', native('linux', 'x64', 'native_stable'), native('linux', 'x64'), 'linux'),
+        ('Linux · Ubuntu 24.04', 'ARM64', native('linux', 'arm64', 'native_stable'), native('linux', 'arm64'), 'linux'),
+        ('macOS 15', 'Intel x64', native('macos', 'x64', 'native_stable'), native('macos', 'x64'), 'macos'),
+        ('macOS 15', 'Apple Silicon ARM64', native('macos', 'arm64', 'native_stable'), native('macos', 'arm64'), 'macos'),
+        ('Android 8+', 'Mobile companion', link('android_stable', 'ARISE-Android.apk'), link('android', 'ARISE-Android-QA.apk'), 'android'),
         ('iOS / iPadOS', 'Mobile companion', 'Not released', 'Not released', 'ios'),
     ]
     lines = [START, '## Downloads', '',
@@ -81,8 +83,8 @@ def render_catalog(catalog, readme_url=""):
         '| --- | --- | --- | --- | --- |']
     lines += [f'| {os} | {arch} | {stable} | {preview} | {instructions(system)} |'
               for os, arch, stable, preview, system in rows]
-    lines += ['', '**Stable** is the established release channel. **ARISE Preview** is for testing newer builds.', '',
-        '**Complete** and **Core** are different packages: Core previews include the integrated agent engine, but exclude private desktop MCP servers and offline speech models. A higher Core version does not imply feature parity with Complete.', '',
+    lines += ['', '**Stable** is the established release channel. **ARISE Preview** is for testing newer builds. Stable Core packages retain the same documented capability limits as Core Preview.', '',
+        '**Complete** and **Core** are different packages: Core packages include the integrated agent engine, but exclude private desktop MCP servers and offline speech models. A higher Core version does not imply feature parity with Complete.', '',
         '“Not released” means no installer is currently published for that platform and channel. iOS is separate from macOS.', '', END]
     return '\n'.join(lines)
 

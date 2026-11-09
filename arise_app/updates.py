@@ -50,8 +50,8 @@ def validate_manifest(data, current=__version__, channel=None):
 def check_update(current=__version__, opener=open_https, channel=None):
     marker = Path(__file__).parent / 'resources/update-channel.json'
     identity = json.loads(marker.read_text(encoding='utf-8')) if marker.is_file() else {}
-    if identity.get('format') == 'native-preview':
-        return None  # Preview archives are replaced manually; never install an x64 EXE.
+    if identity.get('format') in ('native-preview', 'native-core'):
+        return None  # Native Core packages are replaced manually; never install an x64 EXE.
     channel = channel or build_channel()
     if channel not in ('main', 'qa'): raise ValueError('Canal inválido.')
     url = MANIFEST_URL.replace('updates/windows.json', 'updates/windows-preview.json') if channel == 'qa' else MANIFEST_URL

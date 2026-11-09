@@ -49,7 +49,7 @@ public class MainActivity extends Activity {
         identity.setContentDescription("Orbe ARISE");
         int iconSize=(int)(80*getResources().getDisplayMetrics().density);
         box.addView(identity,new LinearLayout.LayoutParams(-1,iconSize));
-        label(box, "ARISE Companion · QA", 24);
+        label(box, BuildConfig.IS_PREVIEW ? "ARISE Companion · Preview" : "ARISE Companion", 24);
         updateStatus=label(box,"Versión "+BuildConfig.VERSION_NAME+" · Buscando actualizaciones…",14);
         button(box,"Buscar actualización / ver descarga",v->{
             if(availableUpdate!=null) showUpdate(); else checkUpdate(true);
@@ -145,8 +145,8 @@ public class MainActivity extends Activity {
         AppUpdate update=availableUpdate;
         if(update==null) return;
         new AlertDialog.Builder(this).setTitle("ARISE Android "+update.version)
-            .setMessage("Se abrirá GitHub para descargar ARISE-Android-QA.apk. Android te pedirá confirmar la instalación. "
-                +"Esta versión QA usa firma de depuración; si Android rechaza la actualización por firma, conserva tu configuración antes de reinstalar. "
+            .setMessage("Se abrirá GitHub para descargar " + AppUpdate.APK + ". Android te pedirá confirmar la instalación. "
+                +(BuildConfig.IS_PREVIEW ? "Preview usa firma de depuración; conserva la configuración si debes reinstalar. " : "La actualización debe conservar la firma estable. ")
                 +"No se instalará ni se cambiarán permisos automáticamente.")
             .setNegativeButton("Ahora no",null).setPositiveButton("Abrir descarga",(d,w)->{
                 try { startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(update.url))); }

@@ -15,3 +15,6 @@ artifacts/
 assets/frames/
 chat/
 *.egg-info/
+/mobile/ios/*.xcodeproj/
+/mobile/ios/TestResults.xcresult/
+/mobile/ios/*.zip

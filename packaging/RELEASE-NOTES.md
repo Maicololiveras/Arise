@@ -1,4 +1,6 @@
-# ARISE 0.4.39 Preview
+# ARISE 0.4.40 Preview
+
+Stable Core installers now have separate identities on all six desktop targets. Android stable requires a persistent release signature. The initial iPhone/iPad companion is available as source and simulator CI; Apple device distribution is not yet published. CI also fixes UTF-8 documentation reads, Docker README inclusion, and channel-aware Start menu validation.
 
 - Publish stable and Preview installers from main only; keep QA as a fast-forward mirror.
 - Read both Windows update channels from separate, validated manifests on main.

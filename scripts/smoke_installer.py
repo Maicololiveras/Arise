@@ -75,7 +75,8 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-',ignore_cleanup_errors=T
         if not icon.is_file() or icon.read_bytes()!=Path('artifacts/arise.ico').read_bytes():
             raise RuntimeError('Installed orb icon does not match the packaged brand')
         import win32com.client
-        shortcut=Path(os.environ['APPDATA'])/'Microsoft/Windows/Start Menu/Programs/ARISE/ARISE.lnk'
+        product='ARISE Preview' if os.environ.get('ARISE_BUILD_CHANNEL') == 'qa' else 'ARISE'
+        shortcut=Path(os.environ['APPDATA'])/'Microsoft/Windows/Start Menu/Programs'/product/(product+'.lnk')
         icon_location=win32com.client.Dispatch('WScript.Shell').CreateShortCut(str(shortcut)).IconLocation
         shortcut_icon=Path(icon_location.rsplit(',',1)[0].strip('"'))
         if not shortcut.is_file() or not shortcut_icon.is_file() or not os.path.samefile(shortcut_icon,icon):

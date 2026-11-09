@@ -1,7 +1,7 @@
 name: Synchronize published documentation
 on:
   workflow_run:
-    workflows: ['ARISE Preview installers', 'ARISE Preview Android', 'ARISE verification']
+    workflows: ['ARISE Preview installers', 'ARISE Preview Android', 'ARISE verification', 'ARISE stable distributions', 'ARISE stable Android']
     types: [completed]
     branches: [main]
   release:
@@ -16,7 +16,6 @@ concurrency:
   cancel-in-progress: false
 jobs:
   reconcile:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -73,6 +73,13 @@ class NativePublicationTests(unittest.TestCase):
             self.assertEqual(run.call_count, 1)
             self.assertEqual(run.call_args.args[0][:3], ['gh', 'release', 'view'])
 
+    def test_stable_rejects_preview_acceptance_reports(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict('os.environ', GITHUB_REF_NAME='main', ARISE_NATIVE_CHANNEL='stable'), patch.object(publisher.subprocess, 'run') as run:
+            root=Path(tmp);self.fixture(root)
+            with self.assertRaisesRegex(RuntimeError,'stable build evidence'):publisher.main(root)
+            run.assert_not_called()
+
+
 
 class BundlePermissionsTests(unittest.TestCase):
     @unittest.skipIf(__import__('os').name == 'nt', 'POSIX package permissions')

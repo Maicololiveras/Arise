@@ -4,13 +4,22 @@
 #ifndef TargetArch
   #error TargetArch is required
 #endif
+#ifndef AppTitle
+  #define AppTitle "ARISE Preview"
+#endif
+#ifndef AppIdentity
+  #define AppIdentity "PRAXISGENAI.ARISE.NativePreview"
+#endif
+#ifndef AppFolder
+  #define AppFolder "ARISE-Native-Preview"
+#endif
 [Setup]
-AppId=PRAXISGENAI.ARISE.NativePreview
-AppName=ARISE Preview
+AppId={#AppIdentity}
+AppName={#AppTitle}
 AppVersion={#AppVersion}
 AppPublisher=PRAXISGENAI
-DefaultDirName={localappdata}\Programs\ARISE-Native-Preview
-DefaultGroupName=ARISE Preview
+DefaultDirName={localappdata}\Programs\{#AppFolder}
+DefaultGroupName={#AppTitle}
 PrivilegesRequired=lowest
 ArchitecturesAllowed={#TargetArch}
 ArchitecturesInstallIn64BitMode={#TargetArch}
@@ -29,7 +38,7 @@ Source: "..\dist\ARISE\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Type: filesandordirs; Name: "{app}\_internal"
 Type: filesandordirs; Name: "{app}\bundle"
 [Icons]
-Name: "{group}\ARISE Preview"; Filename: "{app}\ARISE.exe"
-Name: "{group}\Uninstall ARISE Preview"; Filename: "{uninstallexe}"
+Name: "{group}\{#AppTitle}"; Filename: "{app}\ARISE.exe"
+Name: "{group}\Uninstall {#AppTitle}"; Filename: "{uninstallexe}"
 [Run]
-Filename: "{app}\ARISE.exe"; Description: "Open ARISE Preview"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\ARISE.exe"; Description: "Open {#AppTitle}"; Flags: nowait postinstall skipifsilent
