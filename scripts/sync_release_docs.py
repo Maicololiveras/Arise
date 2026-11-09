@@ -45,16 +45,45 @@ def published_catalog(releases):
     return selected
 
 
-def render_catalog(catalog):
-    lines = [START, '## Published downloads (automatic)', '',
-             'Versions below refer to published installers, not unreleased source changes.', '',
-             '| Platform / channel | Published version | Downloads |', '| --- | --- | --- |']
-    for kind, label in (('stable', 'Windows complete / stable'), ('preview', 'Windows complete / ARISE Preview'),
-                        ('native', 'Windows, Linux and macOS / x64 and ARM64 Preview'), ('android', 'Android / ARISE Preview')):
+def render_catalog(catalog, readme_url=""):
+    def link(kind, filename, label=""):
         item = catalog.get(kind)
-        value = f"{item['version']} | [Release and checksums](https://github.com/{REPO}/releases/tag/{item['tag']})" if item else 'Not published | —'
-        lines.append(f'| {label} | {value} |')
-    lines += ['| iOS | Not published | No iOS installer is currently distributed. |', '', END]
+        if not item:
+            return "Not released"
+        url = f"https://github.com/{REPO}/releases/download/{item['tag']}/{filename}"
+        return f"[{label + ' ' if label else ''}{item['version']}]({url}) · [SHA-256]({url}.sha256)"
+
+    def native(os, arch):
+        item = catalog.get('native')
+        if not item:
+            return "Not released"
+        ext = {'windows': '-Setup.exe', 'linux': '.deb', 'macos': '.pkg'}[os]
+        return link('native', f"ARISE-{item['version']}-{os}-{arch}{ext}", 'Core')
+
+    def instructions(system):
+        return f"[Install →]({readme_url}#install-{system})"
+
+    stable = '<!-- arise-windows-stable -->' + link('stable', 'ARISE-Setup.exe', 'Complete') + '<!-- /arise-windows-stable -->'
+    preview = '<!-- arise-windows-preview -->' + link('preview', 'ARISE-Setup.exe', 'Complete') + '<!-- /arise-windows-preview -->'
+    rows = [
+        ('Windows 11', 'x64', stable, preview + '<br>' + native('windows', 'x64'), 'windows'),
+        ('Windows 11', 'ARM64', 'Not released', native('windows', 'arm64'), 'windows'),
+        ('Linux · Ubuntu 24.04', 'x64', 'Not released', native('linux', 'x64'), 'linux'),
+        ('Linux · Ubuntu 24.04', 'ARM64', 'Not released', native('linux', 'arm64'), 'linux'),
+        ('macOS 15', 'Intel x64', 'Not released', native('macos', 'x64'), 'macos'),
+        ('macOS 15', 'Apple Silicon ARM64', 'Not released', native('macos', 'arm64'), 'macos'),
+        ('Android 8+', 'Mobile companion', 'Not released', link('android', 'ARISE-Android-QA.apk'), 'android'),
+        ('iOS / iPadOS', 'Mobile companion', 'Not released', 'Not released', 'ios'),
+    ]
+    lines = [START, '## Downloads', '',
+        'Choose your system and channel. Each link points to a published installer; versions can differ by platform.', '',
+        '| Operating system | Architecture | Stable | ARISE Preview | Installation |',
+        '| --- | --- | --- | --- | --- |']
+    lines += [f'| {os} | {arch} | {stable} | {preview} | {instructions(system)} |'
+              for os, arch, stable, preview, system in rows]
+    lines += ['', '**Stable** is the established release channel. **ARISE Preview** is for testing newer builds.', '',
+        '**Complete** and **Core** are different packages: Core previews include the integrated agent engine, but exclude private desktop MCP servers and offline speech models. A higher Core version does not imply feature parity with Complete.', '',
+        '“Not released” means no installer is currently published for that platform and channel. iOS is separate from macOS.', '', END]
     return '\n'.join(lines)
 
 
@@ -96,11 +125,11 @@ def main():
     root = f'repos/{REPO}'
     head = api(f'{root}/git/ref/heads/main')['object']['sha']
     commit = api(f'{root}/git/commits/{head}')
-    block = render_catalog(catalog)
     entries = []
     for path in GUIDES:
         data = api(f'{root}/contents/{path}?ref={head}')
         text = base64.b64decode(data['content']).decode()
+        block = render_catalog(catalog, "" if path == "README.md" else f"https://github.com/{REPO}/blob/main/README.md")
         updated = replace_block(text, block)
         if path == 'README.md' and 'stable' in catalog and 'preview' in catalog:
             manifests = {}

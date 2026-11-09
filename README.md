@@ -1,21 +1,5 @@
 # ARISE Assistant
 
-<!-- arise-published-platforms:start -->
-## Published downloads (automatic)
-
-Versions below refer to published installers, not unreleased source changes.
-
-| Platform / channel | Published version | Downloads |
-| --- | --- | --- |
-| Windows complete / stable | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37) |
-| Windows complete / ARISE Preview | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37) |
-| Windows, Linux and macOS / x64 and ARM64 Preview | 0.4.39 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39) |
-| Android / ARISE Preview | 0.2.0-qa | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/android-qa-v0.2.0-qa) |
-| iOS | Not published | No iOS installer is currently distributed. |
-
-<!-- arise-published-platforms:end -->
-
-
 ![ARISE Assistant animated orb](docs/identity/arise-assistant.gif)
 
 ARISE is a desktop assistant with a movable orb, a compact chat panel, voice,
@@ -24,24 +8,61 @@ do not need to install Pi, Gentle Shell, Node or Go separately.
 
 ![Native ARISE panel](docs/panel.png)
 
-## Install and connect
+## Quick navigation
 
-Use the published Windows installer for the established desktop experience.
-Six native core preview installers are also available for Windows, Ubuntu and
-macOS on x64 and ARM64. Read their capability limits before choosing a preview.
+[Downloads](#downloads) · [Windows](#install-windows) · [Linux](#install-linux) · [macOS](#install-macos) · [Android](#install-android) · [iOS](#install-ios) · [Account setup](#connect-your-account-and-test-arise) · [Video](#video-walkthrough)
 
-<!-- arise-downloads:start -->
-- **Production 0.4.37:** [Windows installer — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/v0.4.37/ARISE-Setup.exe) · [release and available assets](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37).
-- **ARISE Preview 0.4.37:** [Windows installer — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [release and available assets](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37).
-<!-- arise-downloads:end -->
+<!-- arise-published-platforms:start -->
+## Downloads
 
-### ARISE Preview installers — 0.4.39
+Choose your system and channel. Each link points to a published installer; versions can differ by platform.
 
-Choose the installer that matches your operating system and CPU. Each includes
+| Operating system | Architecture | Stable | ARISE Preview | Installation |
+| --- | --- | --- | --- | --- |
+| Windows 11 | x64 | <!-- arise-windows-stable -->[Complete 0.4.37](https://github.com/Maicololiveras/Arise/releases/download/v0.4.37/ARISE-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/v0.4.37/ARISE-Setup.exe.sha256)<!-- /arise-windows-stable --> | <!-- arise-windows-preview -->[Complete 0.4.37](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe.sha256)<!-- /arise-windows-preview --><br>[Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-x64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-x64-Setup.exe.sha256) | [Install →](#install-windows) |
+| Windows 11 | ARM64 | Not released | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-arm64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-arm64-Setup.exe.sha256) | [Install →](#install-windows) |
+| Linux · Ubuntu 24.04 | x64 | Not released | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-x64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-x64.deb.sha256) | [Install →](#install-linux) |
+| Linux · Ubuntu 24.04 | ARM64 | Not released | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb.sha256) | [Install →](#install-linux) |
+| macOS 15 | Intel x64 | Not released | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg.sha256) | [Install →](#install-macos) |
+| macOS 15 | Apple Silicon ARM64 | Not released | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg.sha256) | [Install →](#install-macos) |
+| Android 8+ | Mobile companion | Not released | [0.2.0-qa](https://github.com/Maicololiveras/Arise/releases/download/android-qa-v0.2.0-qa/ARISE-Android-QA.apk) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/android-qa-v0.2.0-qa/ARISE-Android-QA.apk.sha256) | [Install →](#install-android) |
+| iOS / iPadOS | Mobile companion | Not released | Not released | [Install →](#install-ios) |
+
+**Stable** is the established release channel. **ARISE Preview** is for testing newer builds.
+
+**Complete** and **Core** are different packages: Core previews include the integrated agent engine, but exclude private desktop MCP servers and offline speech models. A higher Core version does not imply feature parity with Complete.
+
+“Not released” means no installer is currently published for that platform and channel. iOS is separate from macOS.
+
+<!-- arise-published-platforms:end -->
+
+## Installation guides
+
+Start with the download table above. Follow the section for your operating system;
+then connect your account. Back up your profile before upgrading.
+
+### Before you install
+
+Choose the desktop installer that matches your operating system and CPU. Desktop packages include
 ARISE's own Gentle Shell 4.7.0, Pi, Node, Gentle AI and Engram; no separate
 Gentle installation is required. Sizes below are approximate decimal MB.
 
-#### Windows 11
+<a id="install-windows"></a>
+
+### Install on Windows
+
+**Windows x64 — Complete (Stable or Preview)**
+
+1. In the download table, choose **Complete** under Stable or ARISE Preview. Download `ARISE-Setup.exe` and its checksum.
+2. Close ARISE, back up your profile and verify the download. Run the installer as your normal Windows user.
+3. Keep the default installation folder. For an upgrade, select your existing installation directory.
+4. Launch ARISE from the Start menu and follow [Account setup](#connect-your-account-and-test-arise). You do not need to install Gentle Shell separately.
+5. Choose updates from the same channel. Do not run Stable and Preview simultaneously against the shared profile.
+
+**Windows 11 x64 / ARM64 — Core Preview**
+
+Use the matching native installer below. The Complete x64 package is not a native ARM64 installer.
+
 
 | Architecture | Installer | Size | Integrity |
 | --- | --- | --- | --- |
@@ -57,7 +78,14 @@ Gentle installation is required. Sizes below are approximate decimal MB.
 
 The preview EXE is unsigned. Verify its source and checksum if Windows blocks it; do not disable system protection.
 
-#### Linux — Ubuntu 24.04
+[Back to downloads ↑](#downloads)
+
+<a id="install-linux"></a>
+
+### Install on Linux
+
+These packages target **Ubuntu 24.04**. Select your CPU architecture below.
+
 
 | Architecture | Installer | Size | Integrity |
 | --- | --- | --- | --- |
@@ -90,7 +118,14 @@ The app is installed in `/opt/arise-native-preview`; removing it preserves the u
 
 These DEBs require Ubuntu 24.04 (glibc 2.39). Other Linux distributions are not certified.
 
-#### macOS 15
+[Back to downloads ↑](#downloads)
+
+<a id="install-macos"></a>
+
+### Install on macOS
+
+These packages target **macOS 15**, with separate Intel and Apple Silicon installers.
+
 
 | Architecture | Installer | Size | Integrity |
 | --- | --- | --- | --- |
@@ -124,6 +159,45 @@ Uninstalling preserves settings, accounts and memory. The complete Windows x64
 production release above remains the established desktop option.
 
 [Detailed native installation guide](https://github.com/Maicololiveras/Arise/blob/main/docs/NATIVE-DISTRIBUTIONS.md)
+
+[Back to downloads ↑](#downloads)
+
+<a id="install-android"></a>
+
+### Install on Android
+
+The Android Preview is a **companion to an existing PC installation**, not a standalone agent server. Requires Android 8 or later.
+
+1. Install and configure ARISE on your PC first; confirm that its chat works.
+2. Download the Android APK and SHA-256 file from the Preview column above. Verify the checksum before installing.
+3. Open the APK. If Android requests permission to install from your browser or file manager, grant it only to that app for this installation and turn it off afterward. Do not bypass a security warning for an unverified file.
+4. Open ARISE Companion. Connect the PC and phone to your authorized Tailscale network.
+5. On the PC, open **Settings > Connections > Mobile**. Follow the guided private HTTPS connection and authenticator setup, select the chat and generate the pairing code.
+6. On Android, enter the exact private HTTPS address shown on the PC and pair the selected chat. Start with a text message and test the Stop control.
+7. Microphone, notifications and overlay are optional and need explicit permissions. Wake listening requires a separately configured detector/key/model; installing the APK does not enable it. See the [Android setup guide](docs/android-companion-qa.md) for prerequisites and limitations.
+8. To update, install the newer published APK. Preview signing changes can require reinstalling and pairing again; preserve connection information first.
+
+[Back to downloads ↑](#downloads)
+
+<a id="install-ios"></a>
+
+### iOS and iPadOS availability
+
+**There is no native iOS/iPadOS installer, App Store release or TestFlight build published yet.** The macOS PKG is for Mac computers and cannot be installed on iPhone or iPad. An Android APK cannot be installed on iOS either.
+
+Native installation steps and download links will appear here once an iOS build is published and validated. Do not install unofficial profiles or packages presented as ARISE for iOS. See the [mobile connection guide](docs/MOBILE-GUIDED-QA.md) for the existing PC-hosted companion; this does not imply a native iOS release or background-listening support.
+
+[Back to downloads ↑](#downloads)
+
+## Video walkthrough
+
+The installation video is being prepared. Until it is available, use the written guides above.
+
+<!-- arise-video:start -->
+<!-- Paste the GitHub-hosted video attachment URL here on its own line once the walkthrough is published. -->
+<!-- arise-video:end -->
+
+Maintainers: [how to upload and embed the walkthrough](docs/README-VIDEO.md).
 
 ### Connect your account and test ARISE
 

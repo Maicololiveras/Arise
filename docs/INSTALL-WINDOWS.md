@@ -1,17 +1,26 @@
 # Install ARISE on Windows
 
 <!-- arise-published-platforms:start -->
-## Published downloads (automatic)
+## Downloads
 
-Versions below refer to published installers, not unreleased source changes.
+Choose your system and channel. Each link points to a published installer; versions can differ by platform.
 
-| Platform / channel | Published version | Downloads |
-| --- | --- | --- |
-| Windows complete / stable | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37) |
-| Windows complete / ARISE Preview | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37) |
-| Windows, Linux and macOS / x64 and ARM64 Preview | 0.4.39 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39) |
-| Android / ARISE Preview | 0.2.0-qa | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/android-qa-v0.2.0-qa) |
-| iOS | Not published | No iOS installer is currently distributed. |
+| Operating system | Architecture | Stable | ARISE Preview | Installation |
+| --- | --- | --- | --- | --- |
+| Windows 11 | x64 | <!-- arise-windows-stable -->[Complete 0.4.37](https://github.com/Maicololiveras/Arise/releases/download/v0.4.37/ARISE-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/v0.4.37/ARISE-Setup.exe.sha256)<!-- /arise-windows-stable --> | <!-- arise-windows-preview -->[Complete 0.4.37](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe.sha256)<!-- /arise-windows-preview --><br>[Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-x64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-x64-Setup.exe.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-windows) |
+| Windows 11 | ARM64 | Not released | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-arm64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-arm64-Setup.exe.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-windows) |
+| Linux · Ubuntu 24.04 | x64 | Not released | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-x64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-x64.deb.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-linux) |
+| Linux · Ubuntu 24.04 | ARM64 | Not released | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-linux) |
+| macOS 15 | Intel x64 | Not released | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-macos) |
+| macOS 15 | Apple Silicon ARM64 | Not released | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-macos) |
+| Android 8+ | Mobile companion | Not released | [0.2.0-qa](https://github.com/Maicololiveras/Arise/releases/download/android-qa-v0.2.0-qa/ARISE-Android-QA.apk) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/android-qa-v0.2.0-qa/ARISE-Android-QA.apk.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-android) |
+| iOS / iPadOS | Mobile companion | Not released | Not released | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-ios) |
+
+**Stable** is the established release channel. **ARISE Preview** is for testing newer builds.
+
+**Complete** and **Core** are different packages: Core previews include the integrated agent engine, but exclude private desktop MCP servers and offline speech models. A higher Core version does not imply feature parity with Complete.
+
+“Not released” means no installer is currently published for that platform and channel. iOS is separate from macOS.
 
 <!-- arise-published-platforms:end -->
 

@@ -7,6 +7,20 @@ REPO = 'https://github.com/Maicololiveras/Arise'
 
 
 def update_readme(text, manifests):
+    if '<!-- arise-windows-stable -->' in text:
+        for channel, marker in (('main', 'stable'), ('qa', 'preview')):
+            manifest = manifests[channel]
+            version = manifest['version']
+            tag = ('qa-v' if channel == 'qa' else 'v') + version
+            url = f'{REPO}/releases/download/{tag}/ARISE-Setup.exe'
+            if not re.fullmatch(r'\d+\.\d+\.\d+', version) or manifest.get('channel') != channel or manifest['installer_url'] != url:
+                raise ValueError('Invalid published Windows installer')
+            start, end = f'<!-- arise-windows-{marker} -->', f'<!-- /arise-windows-{marker} -->'
+            replacement = start + f'[Complete {version}]({url}) · [SHA-256]({url}.sha256)' + end
+            text, count = re.subn(re.escape(start) + r'.*?' + re.escape(end), lambda _: replacement, text, flags=re.S)
+            if count != 1:
+                raise ValueError('Missing or duplicate Windows download cell')
+        return text
     rows = []
     for channel, label in (('main', 'Production'), ('qa', 'ARISE Preview')):
         manifest = manifests[channel]
@@ -69,6 +83,7 @@ def native_downloads(text, version, assets, run_id):
     text = re.sub(r'Version \d+\.\d+\.\d+ (?:adds|provides)', 'Version ' + version + ' provides', text)
     text = re.sub(r'native-v\d+\.\d+\.\d+', 'native-v' + version, text)
     text = re.sub(r'ARISE-\d+\.\d+\.\d+-(?=windows|linux|macos)', 'ARISE-' + version + '-', text)
+    text = re.sub(r'\[Core \d+\.\d+\.\d+\](?=\([^)]*/native-v)', '[Core ' + version + ']', text)
     text = re.sub(r'Native installers — \d+\.\d+\.\d+ preview', 'ARISE Preview installers — ' + version, text)
     text = re.sub(r'ARISE Preview installers — \d+\.\d+\.\d+', 'ARISE Preview installers — ' + version, text)
     text = text.replace('ARISE Native Preview', 'ARISE Preview')
