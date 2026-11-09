@@ -30,6 +30,6 @@ class SpeechOutputTests(unittest.TestCase):
                 with wave.open(str(args[-1]),'wb') as f:
                     f.setnchannels(1);f.setsampwidth(2);f.setframerate(24000);f.writeframes(b'\0\0'*20)
             def poll(self):return 0
-        with patch('arise_app.forge_voice.edge_audio',side_effect=synth),patch('arise_app.speech_output.shutil.which',return_value='ffmpeg'),patch('arise_app.speech_output.subprocess.Popen',Process):
+        with patch.dict('sys.modules', {'miniaudio': None}), patch('arise_app.forge_voice.edge_audio',side_effect=synth),patch('arise_app.speech_output.shutil.which',return_value='ffmpeg'),patch('arise_app.speech_output.subprocess.Popen',Process):
             with self.assertRaises(RuntimeError) as caught:render_edge(voice,'Una frase. '*70,cancel)
         self.assertTrue(caught.exception.audio_started);self.assertEqual(len(spoken),1);self.assertEqual(len(calls),2)

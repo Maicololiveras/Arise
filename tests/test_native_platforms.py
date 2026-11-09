@@ -37,3 +37,19 @@ class NativePlatformTests(unittest.TestCase):
         with patch('arise_app.platforms.target',return_value='linux-arm64'):
             with self.assertRaisesRegex(RuntimeError,'another operating system'):
                 prepare(runtime,Path('/missing'),{'owned_engine':1,'target':'windows-x64'})
+
+    def test_portable_audio_decodes_without_ffmpeg(self):
+        import array
+        import threading
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from arise_app.speech_output import render_edge
+        active=threading.Event(); active.set()
+        play=Mock()
+        voice=SimpleNamespace(active=active,shutdown=threading.Event(),audio=SimpleNamespace(speaking=False,play=play,interrupt=Mock()),runtime=SimpleNamespace(storage=SimpleNamespace(config={}),orb=SimpleNamespace(update=Mock())))
+        decoder=SimpleNamespace(SampleFormat=SimpleNamespace(SIGNED16=1),decode_file=Mock(return_value=SimpleNamespace(samples=array.array('h',[1,2,3]))))
+        with patch.dict('sys.modules',{'miniaudio':decoder}), patch('arise_app.speech_output.shutil.which',return_value=None), patch('arise_app.forge_voice.edge_audio',return_value=True), patch('arise_app.speech_output.subprocess.Popen') as process:
+            self.assertTrue(render_edge(voice,'Hello.',threading.Event()))
+        process.assert_not_called()
+        play.assert_called_once_with(array.array('h',[1,2,3]).tobytes(),rate=24000)
+        decoder.decode_file.assert_called_once()

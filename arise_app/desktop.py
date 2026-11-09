@@ -159,6 +159,7 @@ class Settings(QDialog):
             notice = QLabel("Versión nativa de prueba: actualización manual; herramientas de escritorio y modelos offline no incluidos. Consulta la guía de esta distribución.")
             notice.setWordWrap(True); layout.addWidget(notice)
             native_setup.setEnabled(False)
+            quick_setup.setEnabled(False)
         tabs = QTabWidget(); layout.addWidget(tabs)
         self.fields, self.keys, self.mcp = {}, {}, {}
         config = self.runtime.storage.config
@@ -178,6 +179,7 @@ class Settings(QDialog):
         preset=QPushButton('Usar Gonzalo · Colombia · +5%');preset.clicked.connect(self.select_gonzalo);f.addRow(preset)
         f.addRow(QLabel('Gonzalo necesita Internet. La prueba de salida no activa el micrófono.'))
         self.check_field(f,'voice_windows_fallback','Usar voz de Windows si Gonzalo falla (con aviso)',config.get('voice_windows_fallback',True))
+        self.fields['voice_windows_fallback'].setEnabled(os.name == 'nt')
         self.button(f,'Probar solo la salida de voz',self.preview_voice)
         self.button(f,'Detener prueba de voz',lambda:self.controller.voice.end_session())
         self.fields["local_stt_engine"] = WheelSafeCombo(); self.fields["local_stt_engine"].addItems(["auto", "vosk", "faster-whisper", "openai-whisper"])
@@ -210,6 +212,9 @@ class Settings(QDialog):
         self.check_field(f, "local_barge_in", "Permitir interrupciones en voz local", config["local_barge_in"])
         threshold=WheelSafeSpin(); threshold.setRange(300,10000); threshold.setValue(config["voice_interrupt_threshold"]); self.fields["voice_interrupt_threshold"]=threshold; f.addRow("Umbral de interrupción local",threshold)
         self.check_field(f, "wake_enabled", "Activar ARISE con una frase de voz (escucha local)", config["wake_enabled"])
+        if not has_vosk():
+            self.fields['wake_enabled'].setEnabled(False)
+            self.fields['wake_enabled'].setToolTip('Vosk no está disponible para esta distribución. Usa una entrada de voz compatible.')
         self.check_field(f,"wake_open_panel","Abrir el panel al activar ARISE con la voz",config.get("wake_open_panel",True))
         self.text_field(f,"wake_reply","Respuesta al activar la voz local",config.get("wake_reply","Te escucho."))
         self.check_field(f,"voice_fluent","Voz fluida: preparar la siguiente frase mientras habla",config.get("voice_fluent",True))

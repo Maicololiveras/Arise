@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import os
+import plistlib
 from pathlib import Path
 import shutil
 import subprocess
@@ -72,6 +73,10 @@ def build(expected):
     report = json.loads(run(node, '-p', 'JSON.stringify({arch:process.arch,version:process.version})', capture_output=True, text=True).stdout)
     if report != {'arch': identity.split('-')[1], 'version': 'v24.21.0'}:
         raise RuntimeError(f'Unexpected Node runtime: {report}')
+    rust = run('rustc', '-vV', capture_output=True, text=True).stdout
+    cpu = 'aarch64' if identity.endswith('arm64') else 'x86_64'
+    if not any(line.startswith('host: ' + cpu + '-') for line in rust.splitlines()):
+        raise RuntimeError('Rust compiler host does not match the native target')
     marker = ROOT / 'arise_app/resources/update-channel.json'
     marker.write_text(json.dumps({'channel': 'qa', 'target': identity, 'format': 'native-preview'}))
     run('cargo', 'build', '--release', '--locked', '--manifest-path', ROOT / 'host/Cargo.toml')
@@ -116,6 +121,11 @@ def build(expected):
     (bundle / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     shutil.copy2(ROOT / 'docs/NATIVE-DISTRIBUTIONS.md', (package / 'Contents/Resources/README.txt' if mac else package / 'README.txt'))
     if mac:
+        info = package / 'Contents/Info.plist'
+        with info.open('rb') as stream: metadata = plistlib.load(stream)
+        metadata['CFBundleIdentifier'] = 'com.praxisgenai.arise'
+        metadata['NSMicrophoneUsageDescription'] = 'ARISE uses the microphone for dictation and voice features you explicitly enable.'
+        with info.open('wb') as stream: plistlib.dump(metadata, stream)
         # Added resources must be included in the final ad-hoc seal. Not notarization.
         run('codesign', '--force', '--sign', '-', application / 'ARISE-host')
         run('codesign', '--force', '--sign', '-', package)
