@@ -1,4 +1,4 @@
-"""Verified HTTPS using the Windows native certificate chain validator."""
+"""Verified HTTPS using native certificate validation on Windows and macOS."""
 import ssl
 import sys
 import urllib.error
@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 
 def tls_context():
-    if sys.platform == 'win32':
+    if sys.platform in ('win32', 'darwin'):
         import truststore
         return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     return ssl.create_default_context()
@@ -35,5 +35,5 @@ def open_https(request, timeout=30):
         return opener.open(request, timeout=timeout)
     except (urllib.error.URLError, ssl.SSLError) as error:
         if certificate_error(error):
-            raise RuntimeError('No se pudo validar el certificado HTTPS. Revisa la fecha del PC y los certificados de confianza de Windows o del proxy corporativo. Puedes descargar el instalador desde la release oficial con tu navegador. La validación TLS sigue activada.') from error
+            raise RuntimeError('No se pudo validar el certificado HTTPS. Revisa la fecha del PC y los certificados de confianza del sistema o del proxy corporativo. Puedes descargar el instalador desde la release oficial con tu navegador. La validación TLS sigue activada.') from error
         raise
