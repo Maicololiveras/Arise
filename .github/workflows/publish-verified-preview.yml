@@ -1,5 +1,5 @@
 name: Publish verified QA Preview
-# Reuse successful installers; preserve actionable publication diagnostics.
+# Reuse successful installers; tag the current publication commit after verifying source equivalence.
 on:
   push:
     branches: [qa]

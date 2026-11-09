@@ -51,7 +51,7 @@ def main(directory):
         notes = assets / 'stable-notes.md'
         notes.write_text(f'# ARISE Core {__version__} — stable\n\nSix native installers built and tested from main. Core does not bundle private desktop MCP tools or offline speech models. Updates are manual. Windows installers are unsigned; macOS packages are ad-hoc signed and not notarized. Physical microphone and desktop control require device acceptance.\n', encoding='utf-8')
     flags = [] if stable else ['--prerelease']
-    subprocess.run(['gh', 'release', 'create', tag, '--repo', repo, '--target', (__import__('os').environ.get('ARISE_RELEASE_SOURCE_SHA') or __import__('os').environ['GITHUB_SHA']), '--draft', *flags, '--title', f"{release_config['title']} {__version__}", '--notes-file', str(notes), *files], check=True)
+    subprocess.run(['gh', 'release', 'create', tag, '--repo', repo, '--target', __import__('os').environ['GITHUB_SHA'], '--draft', *flags, '--title', f"{release_config['title']} {__version__}", '--notes-file', str(notes), *files], check=True)
     subprocess.run(['gh', 'release', 'edit', tag, '--repo', repo, '--draft=false', '--prerelease=false' if stable else '--prerelease', '--latest=false'], check=True)
 
     from scripts.release_readme import publish_native_metadata
