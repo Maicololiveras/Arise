@@ -34,7 +34,7 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 ## Instalar y configurar
 
 <!-- arise-downloads:start -->
-- **Producción 0.4.12:** [instalador Windows — 400 MB](https://github.com/Maicololiveras/Arise/releases/download/v0.4.12/ARISE-Setup.exe) · [release y archivos disponibles](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.12).
+- **Producción 0.4.37:** [instalador Windows — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/v0.4.37/ARISE-Setup.exe) · [release y archivos disponibles](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37).
 - **QA 0.4.37:** [instalador Windows — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [release y archivos disponibles](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37).
 <!-- arise-downloads:end -->
 
