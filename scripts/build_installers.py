@@ -56,7 +56,7 @@ def build(identity, verify=False):
         write(package / 'DEBIAN/control', f'''Package: arise-native-preview
 Version: {__version__}
 Architecture: {cpu}
-Maintainer: PRAXISGENAI <support@praxisgenai.com>
+Maintainer: Maicol Oliveras <104401416+Maicololiveras@users.noreply.github.com>
 Section: utils
 Priority: optional
 Depends: libc6 (>= 2.39), libstdc++6, libportaudio2, libegl1, libopengl0, libxcb-cursor0, libxkbcommon-x11-0, libxcb-icccm4, libxcb-keysyms1, libxcb-shape0

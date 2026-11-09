@@ -123,7 +123,9 @@ def build(expected):
     if mac:
         info = package / 'Contents/Info.plist'
         with info.open('rb') as stream: metadata = plistlib.load(stream)
-        metadata['CFBundleIdentifier'] = 'com.praxisgenai.arise'
+        metadata['CFBundleIdentifier'] = 'com.praxisgenai.arise.preview'
+        metadata['CFBundleShortVersionString'] = __version__
+        metadata['CFBundleVersion'] = __version__
         metadata['NSMicrophoneUsageDescription'] = 'ARISE uses the microphone for dictation and voice features you explicitly enable.'
         with info.open('wb') as stream: plistlib.dump(metadata, stream)
         # Added resources must be included in the final ad-hoc seal. Not notarization.
