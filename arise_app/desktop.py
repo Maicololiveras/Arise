@@ -171,7 +171,10 @@ class Settings(QDialog):
         pause=WheelSafeSpin();pause.setRange(700,3000);pause.setSingleStep(100);pause.setSuffix(' ms');pause.setValue(config['voice_silence_ms'])
         self.fields['voice_silence_ms']=pause;f.addRow('Pausa para terminar el dictado',pause)
         preset=QPushButton('Usar Gonzalo · Colombia · +5%');preset.clicked.connect(self.select_gonzalo);f.addRow(preset)
-        f.addRow(QLabel('Gonzalo · español de Colombia. Forge/Edge necesita Internet. No cambia a Windows si falla.'))
+        f.addRow(QLabel('Gonzalo necesita Internet. La prueba de salida no activa el micrófono.'))
+        self.check_field(f,'voice_windows_fallback','Usar voz de Windows si Gonzalo falla (con aviso)',config.get('voice_windows_fallback',True))
+        self.button(f,'Probar solo la salida de voz',self.preview_voice)
+        self.button(f,'Detener prueba de voz',lambda:self.controller.voice.end_session())
         self.fields["local_stt_engine"] = WheelSafeCombo(); self.fields["local_stt_engine"].addItems(["auto", "vosk", "faster-whisper", "openai-whisper"])
         self.fields["local_stt_engine"].setCurrentText(config["local_stt_engine"]); f.addRow("Motor local", self.fields["local_stt_engine"])
         for key, label in (("voice_model", "Modelo de voz"), ("voice", "Voz de otros proveedores"), ("wake_model", "Modelo Vosk (carpeta)"), ("local_stt_model", "Modelo local (.pt o carpeta)"), ("piper_model", "Modelo Piper (.onnx)")):
@@ -201,7 +204,10 @@ class Settings(QDialog):
         self.text_field(f,'local_dialogue_model','Modelo local (vacío: detectar)',config['local_dialogue_model'])
         self.check_field(f, "local_barge_in", "Permitir interrupciones en voz local", config["local_barge_in"])
         threshold=WheelSafeSpin(); threshold.setRange(300,10000); threshold.setValue(config["voice_interrupt_threshold"]); self.fields["voice_interrupt_threshold"]=threshold; f.addRow("Umbral de interrupción local",threshold)
-        self.check_field(f, "wake_enabled", "Escuchar 'Oye Arise' localmente", config["wake_enabled"])
+        self.check_field(f, "wake_enabled", "Activar ARISE con una frase de voz (escucha local)", config["wake_enabled"])
+        self.check_field(f,"wake_open_panel","Abrir el panel al activar ARISE con la voz",config.get("wake_open_panel",True))
+        self.text_field(f,"wake_reply","Respuesta al activar la voz local",config.get("wake_reply","Te escucho."))
+        self.check_field(f,"voice_fluent","Voz fluida: preparar la siguiente frase mientras habla",config.get("voice_fluent",True))
         self.text_field(f, "wake_phrases", "Frases (separadas por coma)", ", ".join(config["wake_phrases"]))
         f.addRow(QLabel("Voz local con escucha continua e interrupciones. Usa auriculares para evitar que el micrófono capture la propia voz de ARISE."))
         self.button(f, "Elegir carpeta Vosk", lambda: self.pick("wake_model", directory=True))
@@ -233,7 +239,7 @@ class Settings(QDialog):
         self.button(f, "Elegir carpeta de trabajo", lambda: self.pick("workspace", True))
         self.button(f, "Elegir Gentle Shell", lambda: self.pick("gentle_path", True))
         self.button(f, "Conectar y listar modelos", self.models)
-        self.button(f, "Abrir Pi para /login", controller.open_pi)
+        self.button(f, "Conectar cuenta y elegir modelo", self.accounts)
         self.button(f, "Detectar Pi y Gentle Shell", self.detect_agent)
         self.text_field(f, 'engram_bin', 'Ejecutable Engram (vacío: detectar instalación oficial)', config.get('engram_bin',''))
         self.button(f, 'Actualizar / reinstalar Engram estable · QA', lambda: controller.update_dependencies(False))
@@ -277,6 +283,11 @@ class Settings(QDialog):
         ui = QWidget(); f = QFormLayout(ui); tabs.addTab(ui, "Orbe")
         size = WheelSafeSpin(); size.setRange(48, 240); size.setValue(config["orb_size"]); self.fields["orb_size"] = size
         f.addRow("Tamaño", size)
+        self.check_field(f,"desktop_auto_clear","Apartar el chat durante el control del escritorio",config.get("desktop_auto_clear",True))
+        corner=WheelSafeCombo()
+        for label,value in (("Abajo a la derecha","bottom-right"),("Abajo a la izquierda","bottom-left"),("Arriba a la derecha","top-right"),("Arriba a la izquierda","top-left")):corner.addItem(label,value)
+        corner.setCurrentIndex(max(0,corner.findData(config.get("desktop_orb_corner","bottom-right"))))
+        self.fields["desktop_orb_corner"]=corner;f.addRow("Esquina del orbe durante el control",corner)
         self.check_field(f, "pinned", "Orbe siempre visible", True); self.fields["pinned"].setEnabled(False)
         self.check_field(f, "reduced_motion", "Reducir animación", config["reduced_motion"])
         self.fields["orb_animation"] = WheelSafeCombo(); self.fields["orb_animation"].addItems(["sprite", "native"]); self.fields["orb_animation"].setCurrentText(config["orb_animation"]); f.addRow("Animación", self.fields["orb_animation"])
@@ -301,12 +312,24 @@ class Settings(QDialog):
         buttons.button(QDialogButtonBox.Save).setText("Guardar"); buttons.button(QDialogButtonBox.Close).setText("Cerrar")
         buttons.accepted.connect(self.save); buttons.rejected.connect(self.close); layout.addWidget(buttons)
 
+    def accounts(self):
+        if not self.save(): return
+        from .accounts_widget import AccountsDialog
+        self.account_window=AccountsDialog(self.runtime, self)
+        self.account_window.exec()
+        self.account_window=None
+        if getattr(self.runtime,'is_remote',False):
+            self.runtime.storage.config=self.runtime.request('config')
+        for key in ('agent_provider','agent_model'):
+            self.fields[key].setText(self.runtime.storage.config[key])
+
     def show_connections(self):
         from .connections_widget import ConnectionsDialog
         dialog=ConnectionsDialog(self.runtime,self)
         dialog.exec()
 
     def closeEvent(self,event):
+        if getattr(self,"account_window",None):self.account_window.reject()
         # Closing discards the unsaved form; storage changes only in Save.
         self.controller.settings_window=None
         event.accept();self.deleteLater()
@@ -350,7 +373,7 @@ class Settings(QDialog):
         for key, field in self.fields.items():
             if isinstance(field, QCheckBox): value = field.isChecked()
             elif isinstance(field, QSpinBox): value = field.value()
-            elif isinstance(field, QComboBox): value = field.currentData() if key.endswith("_device") or key == "engine_mode" else field.currentText()
+            elif isinstance(field, QComboBox): value = field.currentData() if key.endswith("_device") or key in ("engine_mode", "desktop_orb_corner") else field.currentText()
             else: value = field.text().strip()
             changes[key] = value
         changes["pi_command"] = json.loads(changes["pi_command"])
@@ -378,6 +401,14 @@ class Settings(QDialog):
             self.saved.emit(); return True
         except Exception as error:
             self.message.setText(str(error)); return False
+
+    def preview_voice(self):
+        if not self.save():return
+        self.message.setText('Preparando prueba de voz…')
+        def operation():
+            if getattr(self.runtime,'is_remote',False):return self.runtime.request('voice/preview',{},timeout=90)
+            return self.controller.voice.preview()
+        self.controller.background(operation,lambda result:self.message.setText('Prueba reproducida. Si no escuchaste audio, revisa la salida de Windows.' if result.get('played') else 'Prueba detenida.'),lambda error:self.message.setText(error))
 
     def test_voice(self):
         if self.save(): self.controller.wake("Saluda brevemente y confirma que escuchas.")
@@ -828,6 +859,7 @@ class Controller(QObject):
             self.menu.addAction(label, callback)
         self.tray.setContextMenu(self.menu); self.tray.activated.connect(lambda reason: self.show_panel() if reason == QSystemTrayIcon.Trigger else None)
         if QSystemTrayIcon.isSystemTrayAvailable(): self.tray.show()
+        self.layout_pending = set(); self.layout_docked = False
         self.press_point = None; self.double_click = False
         self.last_interaction = time.monotonic()
         self.idle_timer = QTimer(self); self.idle_timer.setInterval(1000); self.idle_timer.timeout.connect(self.hide_if_idle); self.idle_timer.start()
@@ -994,7 +1026,9 @@ class Controller(QObject):
     def _wake(self, initial):
         if self.dictation.active: return
         self.last_interaction = time.monotonic()
-        self.orb.show(); self.orb.raise_(); self.background(lambda:self.voice.wake(initial))
+        self.orb.show(); self.orb.raise_()
+        if self.runtime.storage.config.get("wake_open_panel",True):self.show_panel()
+        self.background(lambda:self.voice.wake(initial))
 
     def stop(self): self.stop_requested.emit()
 
@@ -1031,7 +1065,7 @@ class Controller(QObject):
         self.panel.move(x, y)
 
     def save_position(self):
-        if self.closed: return
+        if self.closed or self.layout_docked: return
         self.clamp_position()
         position = [self.orb.x(), self.orb.y()]
         self.runtime.storage.config["orb_position"] = position
@@ -1124,6 +1158,7 @@ class Controller(QObject):
                     self.menu.popup(self.press_point); return True
             elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
                 moved = self.press_point and (event.globalPosition().toPoint() - self.press_point).manhattanLength() > 6
+                if moved:self.layout_docked=False
                 self.clamp_position()
                 self.position_timer.start()
                 if self.double_click: self.double_click = False
@@ -1134,7 +1169,31 @@ class Controller(QObject):
                 event.ignore(); self.hide_panel(); return True
         return super().eventFilter(obj, event)
 
+    def desktop_layout_event(self, data):
+        identifier=data.get("id")
+        if data.get("action")=="prepare":
+            self.layout_pending.add(identifier)
+            self.hide_panel()
+            if not self.layout_docked:
+                screen=self.app.screenAt(self.orb.geometry().center()) or self.app.primaryScreen()
+                rect=screen.availableGeometry();corner=self.runtime.storage.config.get("desktop_orb_corner","bottom-right")
+                self.layout_docked=True
+                x=rect.right()-self.orb.width()-12 if corner.endswith("right") else rect.left()+12
+                y=rect.bottom()-self.orb.height()-12 if corner.startswith("bottom") else rect.top()+12
+                self.orb.move(x,y)
+            self.orb.hide()
+            def acknowledge():
+                if identifier not in self.layout_pending:return
+                if getattr(self.runtime,"is_remote",False):
+                    self.background(lambda:self.runtime.request("desktop/layout-ack",{"id":identifier}))
+                else:self.runtime.desktop_layout.acknowledge(identifier)
+            QTimer.singleShot(40,acknowledge)
+        else:
+            self.layout_pending.discard(identifier)
+            if not self.layout_pending:self.orb.show()
+
     def poll(self):
+        if not getattr(self.runtime,"is_remote",False):self.runtime.desktop_layout.heartbeat()
         try:
             result = self.runtime.events_after(self.cursor); self.cursor = result["cursor"]
         except RuntimeError:
@@ -1142,6 +1201,8 @@ class Controller(QObject):
             return
         for event in result["events"]:
             kind, data = event["kind"], event["data"]
+            if kind == "desktop_layout":
+                self.desktop_layout_event(data);continue
             if kind == 'tools_configured':
                 self.runtime.storage.config['mcp'].update(data['mcp'])
                 if self.settings_window:
@@ -1156,10 +1217,11 @@ class Controller(QObject):
             if kind == "activity":
                 self.panel.activity_view.set_activity(data)
             elif kind == "orb":
+                if data["state"]=="wake_detected" and self.runtime.storage.config.get("wake_open_panel",True):self.show_panel()
                 active = data["state"] != "idle"
                 self.orb.apply_state({"speaking": data["state"] == "speaking", "listening": data["state"] == "listening",
                     "reason": data["activity"], "state": data["state"], "privacy": data, "speaker": {"understanding": "subagent", "waiting_approval": "approval", "error": "error", "speaking": "human", "working": "working"}.get(data["state"], "orchestrator"),
-                    "visible": True})
+                    "visible": not self.layout_pending})
                 self.panel.status.setText(data["activity"])
                 self.orb.setToolTip("ARISE · "+data["activity"]+" · clic para abrir chat")
                 self.panel.send_button.setToolTip(data["activity"])
@@ -1233,18 +1295,9 @@ class Controller(QObject):
         track(dialog)
 
     def open_pi(self):
-        if os.name != "nt":
-            self.runtime.emit("notice", {"text": "Ejecuta Pi y /login en tu terminal."}); return
-        from .processes import executable_argv
-        import subprocess
-        config = self.runtime.storage.config
-        from .engram_setup import engine_environment
-        from .owned_engine import environment
-        env = environment(engine_environment(os.environ, config), config)
-        command = executable_argv(config["pi_command"])
-        if config.get('owned_engine_root') and config.get('engine_mode') == 'bundled':
-            command = [command[0], str(Path(__file__).parent/'resources/gentle-shell.mjs'), command[1]]
-        subprocess.Popen(command, env=env, cwd=config["workspace"], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        # Retained for older menu callers; authentication always stays in the panel.
+        from .accounts_widget import AccountsDialog
+        AccountsDialog(self.runtime, self.panel).exec()
 
     def open_data(self):
         if os.name == "nt": os.startfile(str(self.runtime.storage.root))

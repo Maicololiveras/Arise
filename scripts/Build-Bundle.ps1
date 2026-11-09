@@ -33,7 +33,7 @@ $manifest=@{
     pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     gentle_path=$gentle
     wake_model='@bundle/models/vosk-model-small-es-0.42'
-    versions=@{pi='1.5.0';gentle='4.7.0';gentle_ai='4.4.0';engram='3.7.0';gentle_engram='0.7.0';arise='0.4.36';vosk='small-es-0.42'}
+    versions=@{pi='1.5.0';gentle='4.7.0';gentle_ai='4.4.0';engram='3.7.0';gentle_engram='0.7.0';arise='0.4.37';vosk='small-es-0.42'}
     mcp=@{}
 }
 & python (Join-Path $PSScriptRoot 'prepare_voice_pack.py') --destination $bundle --output (Join-Path (Split-Path $Target -Parent) 'ARISE-Voice-Models-es.zip')

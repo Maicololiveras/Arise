@@ -35,6 +35,8 @@ def make_server(runtime, port=0):
             epoch = self.headers.get("X-Arise-Session")
             if epoch and epoch != str(runtime.pi_epoch):
                 self.reply({"error": "La sesión ya no está activa"}, 409); return False
+            if hmac.compare_digest(self.headers.get("X-Arise-Accounts", ""), runtime.accounts_token):
+                runtime.desktop_layout.heartbeat()
             return True
 
         def do_GET(self):
@@ -61,6 +63,8 @@ def make_server(runtime, port=0):
 
         def do_POST(self):
             if not self.authorize(): return
+            if (self.path.startswith("/api/accounts/") or self.path == "/api/desktop/layout-ack") and not hmac.compare_digest(self.headers.get("X-Arise-Accounts", ""), runtime.accounts_token):
+                self.reply({"error":"Esta operación solo está disponible en Ajustes de ARISE."},403);return
             self.connection.settimeout(10)
             if not self.headers.get("Content-Type", "").startswith("application/json"):
                 self.reply({"error": "Se requiere JSON"}, 415); return
@@ -71,7 +75,11 @@ def make_server(runtime, port=0):
                 data = json.loads(self.rfile.read(length))
                 if not isinstance(data, dict): raise ValueError("Se requiere un objeto")
                 route = urllib.parse.urlparse(self.path).path
-                if route == '/api/connections/token':
+                if route.startswith('/api/accounts/'):
+                    value=runtime.accounts.call(route.rsplit('/',1)[1],data)
+                elif route == '/api/desktop/layout-ack':
+                    value=runtime.desktop_layout.acknowledge(data.get('id'))
+                elif route == '/api/connections/token':
                     runtime.connections.save_token(data['provider'], data['token'], **data.get('options', {})); value = {'saved': True}
                 elif route == '/api/connections/disconnect':
                     runtime.connections.disconnect(data['provider']); value = {'disconnected': True}
@@ -201,7 +209,8 @@ def make_server(runtime, port=0):
                 elif route.startswith("/api/voice/"):
                     voice = runtime.voice_service
                     if not voice: raise RuntimeError("Servicio de voz no iniciado")
-                    if route.endswith("/wake"): value = {"accepted": voice.wake(data.get("text", ""))}
+                    if route.endswith("/preview"): value = voice.preview()
+                    elif route.endswith("/wake"): value = {"accepted": voice.wake(data.get("text", ""))}
                     elif route.endswith("/end"): voice.end_session(); value = {"ok": True}
                     elif route.endswith("/mute"): voice.mute(data.get("muted") is True); value = {"ok": True}
                     else: raise ValueError("Operación de voz desconocida")

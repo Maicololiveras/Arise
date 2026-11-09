@@ -107,20 +107,30 @@ def edge_bridge_command():
         bridge=Path(__file__).resolve().parents[1]/'vendor/forge-voice/bridge.mjs'
         package=bridge.parent.parent/'package.json';node=Path(shutil.which('node') or '')
     if not node.is_file() or not bridge.is_file():raise RuntimeError('Falta el puente neuronal de Forge. Instala el paquete QA completo.')
-    return [str(node), str(bridge), str(package.resolve())]
+    return [str(node), "--use-system-ca", str(bridge), str(package.resolve())]
 
 
 def edge_audio(runtime, text, output, cancel, active, shutdown):
-    """Use Forge's Edge synthesizer; never substitute a different voice engine."""
+    """Use the bundled Edge adapter independently of the Forge MCP connection."""
     import concurrent.futures
     import shutil
     import subprocess
     from .bundle import application_root
-    client=runtime.connect_mcp('forge')
-    tool=next((t for t in client.tools if t['name']=='forge_speak'),None)
-    if not tool or 'edge' not in tool.get('inputSchema',{}).get('properties',{}).get('engine',{}).get('enum',[]):
-        raise RuntimeError('Forge conectado no ofrece el motor Edge. Repara Forge; Gonzalo no se sustituirá por otra voz.')
-    process=JsonProcess(edge_bridge_command(),cwd=runtime.storage.config['workspace'])
+    import urllib.request
+    from urllib.parse import urlsplit
+    env=dict(os.environ)
+    # Node WebSockets do not automatically use Windows Internet Settings.
+    proxies=urllib.request.getproxies()
+    proxy=None if urllib.request.proxy_bypass('speech.platform.bing.com') else proxies.get('https') or proxies.get('http')
+    env.pop('ARISE_SPEECH_PROXY',None)
+    if proxy:
+        parsed=urlsplit(proxy)
+        if parsed.scheme not in ('http','https') or not parsed.hostname:
+            raise RuntimeError('El proxy de voz debe ser HTTP o HTTPS. Revisa los ajustes de red de Windows.')
+        env['ARISE_SPEECH_PROXY']=proxy
+    env['NODE_TLS_REJECT_UNAUTHORIZED']='1'
+    env.pop('NODE_OPTIONS',None)
+    process=JsonProcess(edge_bridge_command(),cwd=runtime.storage.config['workspace'],env=env)
     pool=concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
         future=pool.submit(process.request,{'type':'synthesize_edge','text':text[:10000],
@@ -131,6 +141,14 @@ def edge_audio(runtime, text, output, cancel, active, shutdown):
             shutdown.wait(.05)
         future.result();return True
     except Exception as error:
-        raise RuntimeError('Gonzalo no pudo sintetizar la respuesta con Forge. Revisa conexión y Forge; no se usó otra voz. '+str(error)[:180]) from None
+        message=str(error).lower()
+        if any(word in message for word in ('certificate','cert_','issuer','self signed')):
+            hint='Windows debe confiar en el certificado del proxy; no se desactivó TLS.'
+        elif any(word in message for word in ('401','403','407','proxy','connect error')):
+            hint='Revisa el proxy y el acceso a speech.platform.bing.com mediante HTTPS/WebSocket.'
+        elif any(word in message for word in ('timeout','timed out','tiempo')):
+            hint='La conexión de voz agotó el tiempo de espera. Revisa Internet o el proxy.'
+        else:hint='Revisa Internet y el acceso a speech.platform.bing.com.'
+        raise RuntimeError('No se pudo generar la voz Gonzalo. '+hint) from None
     finally:
         process.close();pool.shutdown(wait=False,cancel_futures=True)

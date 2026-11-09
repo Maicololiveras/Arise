@@ -1,11 +1,18 @@
 import { createRequire } from 'node:module';
-const {MsEdgeTTS,OUTPUT_FORMAT}=createRequire(new URL('../node/package.json',import.meta.url))('msedge-tts');
+import {pathToFileURL} from 'node:url';
+const require=createRequire(new URL('../node/package.json',import.meta.url));
+const {MsEdgeTTS,OUTPUT_FORMAT}=require('msedge-tts');
+const {HttpsProxyAgent}=await import(pathToFileURL(require.resolve('https-proxy-agent')));
+function synthesizer(){
+ const proxy=process.env.ARISE_SPEECH_PROXY;
+ return new MsEdgeTTS({connectionTimeoutMs:10000,synthesisTimeoutMs:25000,agent:proxy?new HttpsProxyAgent(proxy):undefined});
+}
 import { isAbsolute, dirname, extname } from 'node:path';
 import { rename, unlink } from 'node:fs/promises';
 
 // Adapted from Forge msedge-tts synthesis. ARISE owns cancellable PCM playback.
 export class EdgeSpeech {
-  constructor({create=()=>new MsEdgeTTS()}={}) {this.create=create;this.tts=null;this.generation=0;}
+  constructor({create=synthesizer}={}) {this.create=create;this.tts=null;this.generation=0;}
   async synthesize({text,voice='es-CO-GonzaloNeural',rate='+5%',output}) {
     if(typeof text!=='string'||!text.trim()||text.length>10000)throw Error('Texto inválido.');
     if(voice!=='es-CO-GonzaloNeural'||!/^[-+]\d{1,2}%$/.test(rate))throw Error('Voz o velocidad no compatible.');

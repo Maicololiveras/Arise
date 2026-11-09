@@ -39,6 +39,7 @@ def read_descriptor(root):
         data = json.loads(path.read_text())
         if not data["url"].startswith("http://127.0.0.1:"): return None
         data["token"] = decode_token(data["token"])
+        if data.get("accounts_token"):data["accounts_token"] = decode_token(data["accounts_token"])
         return data
     except (OSError, ValueError, KeyError, RuntimeError): return None
 
@@ -115,7 +116,7 @@ def main():
         voice.start(); hotkeys.start()
         runtime.emit('notice',{'text':'Ctrl+Alt+Esc: parada de manos y ojos '+('registrada por ARISE.' if hotkeys.stop_registered else 'NO disponible; usa el botón Detener manos y ojos.')})
     temporary = root / "daemon.tmp"
-    temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "pid": os.getpid(), "version": __version__}))
+    temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "accounts_token": encode_token(runtime.accounts_token), "pid": os.getpid(), "version": __version__}))
     if os.name != "nt": temporary.chmod(0o600)
     os.replace(temporary, descriptor_path(root))
     runtime.emit("notice", {"text": "Proceso residente activo. Pi y las herramientas se conectan cuando se necesitan."})

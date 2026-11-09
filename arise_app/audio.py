@@ -61,6 +61,17 @@ class Audio:
             self.close()
             raise AudioDeviceError(stage, error) from None
 
+    def open_output(self):
+        """Preview playback without opening or recording the microphone."""
+        import sounddevice as sd
+        try:
+            self.playback = sd.RawOutputStream(device=self.output_device, samplerate=self.output_rate,
+                channels=1, dtype="int16", blocksize=480, callback=self._playback)
+            self.playback.start()
+        except Exception as error:
+            self.close()
+            raise AudioDeviceError('la salida de audio (24000 Hz)',error) from None
+
     def _capture(self, data, frames, timing, status):
         if self.muted:
             return

@@ -112,7 +112,7 @@ class OrchestratorRealTests(unittest.TestCase):
                     r.switch_conversation(chat);r.connect_pi();self.assertEqual(r.pi_state['sessionId'],session)
                     self.assertTrue(r.storage.config['code_enabled']);self.assertFalse(r.desktop)
                     self.assertNotIn('QA Word',str(r.storage.messages(other)))
-                    prompt('background');self.assertTrue(child_started.wait(10))
+                    prompt('background');self.assertTrue(child_started.wait(10), str(results)[-8000:]+str(list(r.events)[-12:]))
                     parent=r.pi.process;self.assertIsNone(parent.poll(),str(list(r.events)[-10:]))
                     children=psutil.Process(parent.pid).children(recursive=True) if os.name=='nt' else []
                     if os.name=='nt':self.assertTrue(children,"No se observó el proceso del subagente Windows")

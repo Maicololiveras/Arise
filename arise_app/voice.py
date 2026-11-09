@@ -1,3 +1,4 @@
+import os
 """Realtime provider adapters and local voice pipeline. No independent agent loop."""
 import asyncio
 import base64
@@ -126,7 +127,11 @@ class VoiceSession:
         if not self.response_active and not self.user_speaking:
             self.response_active = True
             self.response_pending = False
-            await self.request_response()
+            try:
+                await self.send({"type": "response.create"})
+            except Exception:
+                self.response_active = False
+                raise
         else:
             self.response_pending = True
 
@@ -327,9 +332,9 @@ class VoiceSession:
 
 
 class VoiceService:
-    def __init__(self, runtime, audio_factory=Audio, session_factory=VoiceSession):
+    def __init__(self, runtime, audio_factory=Audio, session_factory=VoiceSession, *, register=True):
         self.runtime = runtime
-        self.runtime.voice_service = self
+        if register:self.runtime.voice_service = self
         self.audio_factory, self.session_factory = audio_factory, session_factory
         self.active = threading.Event()
         self.shutdown = threading.Event()
@@ -342,6 +347,7 @@ class VoiceService:
         self.whisper = None
         self.whisper_name = None
         self.reload = threading.Event()
+        self.preview_voice = None; self.preview_lock = threading.Lock()
         self.local_bridge = None; self.local_speaking = threading.Event()
 
     def start(self):
@@ -352,6 +358,7 @@ class VoiceService:
         self.thread.start()
 
     def wake(self, initial_text=""):
+        if self.preview_voice is not None:return False
         if self.muted:
             self.runtime.emit("notice", {"text": "El micrófono está silenciado. Actívalo desde la bandeja."})
             return False
@@ -366,6 +373,9 @@ class VoiceService:
         self.reload.set()
 
     def end_session(self):
+        if self.preview_voice:
+            self.preview_voice.active.clear()
+            if self.preview_voice.audio:self.preview_voice.audio.interrupt()
         self.active.clear()
         if self.local_bridge: self.local_bridge.interrupt()
         if self.audio:
@@ -498,7 +508,7 @@ class VoiceService:
                 except Exception as error: self.runtime.emit("error", {"text":str(error)[:300]})
         worker=threading.Thread(target=transcriber,daemon=True,name="arise-local-stt");worker.start()
         if initial: bridge.submit(initial)
-        else: bridge.speak("Te escucho.")
+        else: bridge.speak(c.get("wake_reply") or "Te escucho.")
         from .turn_detection import TurnDetector
         detector=TurnDetector(c.get("voice_silence_ms",1400))
         deadline=time.monotonic()+int(c["voice_timeout"])
@@ -536,6 +546,20 @@ class VoiceService:
     def _local_task(self, text):
         if self.local_bridge: self.local_bridge.submit(text)
 
+    def preview(self):
+        if self.active.is_set() or not self.preview_lock.acquire(blocking=False):
+            raise RuntimeError('Detén la conversación o la prueba de voz actual antes de probar la salida.')
+        preview=VoiceService(self.runtime,register=False);self.preview_voice=preview;preview.preview_only=True
+        preview.audio=Audio(output_device=self.runtime.storage.config.get('output_device'))
+        preview.active.set()
+        try:
+            preview.audio.open_output()
+            preview._render_local('Hola. Soy ARISE. Esta es una prueba de mi voz.',threading.Event())
+            return {'played':preview.active.is_set()}
+        finally:
+            preview.active.clear();preview.audio.close();self.preview_voice=None;self.preview_lock.release()
+            self.runtime.orb.update('idle',microphone=False)
+
     def _speak_local(self, reply, cancel):
         self.local_speaking.set()
         try: self._render_local(reply,cancel)
@@ -546,25 +570,15 @@ class VoiceService:
     def _render_local(self, reply, cancel):
         if cancel.is_set() or not self.active.is_set(): return
         if self.runtime.storage.config.get('local_tts','forge')=='forge' and not self.runtime.storage.config.get('piper_model'):
-            from .forge_voice import edge_audio
-            from .bundle import application_root
-            import shutil
-            with tempfile.TemporaryDirectory() as temporary:
-                mp3=Path(temporary)/'reply.mp3';wavfile=Path(temporary)/'reply.wav'
-                self.runtime.orb.update('synthesizing',microphone=True)
-                if not edge_audio(self.runtime,reply,mp3,cancel,self.active,self.shutdown):return
-                ffmpeg=application_root()/'bundle/media/ffmpeg.exe'
-                executable=str(ffmpeg) if ffmpeg.is_file() else shutil.which('ffmpeg')
-                if not executable:raise RuntimeError('Falta FFmpeg para reproducir Gonzalo. Repara ARISE; no se usó otra voz.')
-                process=subprocess.Popen([executable,'-y','-i',str(mp3),'-ac','1','-ar','24000',str(wavfile)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-                try:process.wait(timeout=30)
-                except subprocess.TimeoutExpired:process.kill();process.wait();raise RuntimeError('No se pudo preparar el audio de Gonzalo.')
-                if process.returncode:raise RuntimeError('El audio de Forge no se pudo convertir.')
-                if cancel.is_set() or not self.active.is_set():return
-                with wave.open(str(wavfile)) as wav:self.audio.play(wav.readframes(wav.getnframes()),rate=wav.getframerate())
-                self.runtime.orb.update('speaking',microphone=True)
-                while self.audio.speaking and self.active.is_set() and not cancel.is_set() and not self.shutdown.is_set():self.shutdown.wait(.05)
-                if cancel.is_set() or not self.active.is_set():self.audio.interrupt()
+            from .speech_output import render_edge
+            self.runtime.orb.update('synthesizing',microphone=not getattr(self,'preview_only',False))
+            try:
+                render_edge(self,reply,cancel)
+            except RuntimeError as error:
+                if cancel.is_set() or not self.active.is_set() or self.shutdown.is_set():return
+                if getattr(error,'audio_started',False) or os.name != 'nt' or not self.runtime.storage.config.get('voice_windows_fallback',False):raise
+                self.runtime.emit('notice',{'text':'Gonzalo no está disponible. Uso la voz de Windows como respaldo, en su salida predeterminada. Puedes desactivarlo en Ajustes > Voz.'})
+                self._sapi(reply,cancel)
             return
         model = self.runtime.storage.config["piper_model"]
         if not model and __import__("os").name == "nt":
@@ -597,11 +611,11 @@ class VoiceService:
                 if wav.getnchannels() != 1 or wav.getsampwidth() != 2:
                     raise RuntimeError("Piper debe generar PCM mono de 16 bits.")
                 self.audio.play(wav.readframes(wav.getnframes()), rate=wav.getframerate())
-            self.runtime.orb.update("speaking", microphone=True)
+            self.runtime.orb.update("speaking", microphone=not getattr(self,"preview_only",False))
             while self.audio.speaking and self.active.is_set() and not self.shutdown.is_set() and not cancel.is_set():
                 self.shutdown.wait(.05)
             if cancel.is_set(): self.audio.interrupt()
-            self.runtime.orb.update("listening", microphone=True)
+            self.runtime.orb.update("listening", microphone=not getattr(self,"preview_only",False))
 
     def _sapi(self, text, cancel):
         import pythoncom
@@ -612,12 +626,12 @@ class VoiceService:
             selected = self.runtime.storage.config["voice"].lower()
             for token in speech.GetVoices():
                 if selected in token.GetDescription().lower(): speech.Voice = token; break
-            self.runtime.orb.update("speaking", microphone=True)
+            self.runtime.orb.update("speaking", microphone=not getattr(self,"preview_only",False))
             speech.Speak(text[:10000], 1)
             while speech.Status.RunningState == 2 and self.active.is_set() and not self.shutdown.is_set() and not cancel.is_set():
                 self.shutdown.wait(.05)
             if not self.active.is_set() or self.shutdown.is_set() or cancel.is_set(): speech.Speak("", 3)
-            self.runtime.orb.update("listening", microphone=True)
+            self.runtime.orb.update("listening", microphone=not getattr(self,"preview_only",False))
         finally: pythoncom.CoUninitialize()
 
     def close(self):

@@ -99,4 +99,4 @@ class ToolSetupTests(unittest.TestCase):
                 path=root/'bundle'/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('fixture')
             with patch('arise_app.bundle.application_root',return_value=root):
                 command=edge_bridge_command()
-            self.assertEqual(command,[str(root/'bundle/node/node.exe'),str(root/'bundle/forge-voice/bridge.mjs'),str((root/'bundle/node/package.json').resolve())])
+            self.assertEqual(command,[str(root/'bundle/node/node.exe'),'--use-system-ca',str(root/'bundle/forge-voice/bridge.mjs'),str((root/'bundle/node/package.json').resolve())])

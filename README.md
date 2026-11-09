@@ -111,6 +111,12 @@ Consulta [REMOTE.md](docs/REMOTE.md). El gateway ofrece conversación por texto 
 
 Renderer y fuente del orbe reutilizados de [praxisgenai-harness](https://github.com/Maicololiveras/praxisgenai-harness/blob/main/docs/ARISE-ORB.md). JetBrains Mono conserva su licencia OFL. Pi, Gentle Shell y los MCP conservan sus respectivas licencias.
 
+### Accounts, voice and desktop layout (QA 0.4.37)
+
+Connect provider accounts directly in Settings, choose a chat model, test speaker
+output, customize wake phrases and move the orb out of desktop operations.
+See [setup, validation and limitations](docs/accounts-voice-desktop-qa.md).
+
 ### Integrated engine (QA 0.4.36)
 
 Gentle Shell 4.7.0 now runs from ARISE’s own bundle and private configuration.

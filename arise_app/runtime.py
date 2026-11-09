@@ -55,6 +55,11 @@ class Runtime:
     def __init__(self, data_dir):
         self.storage = Storage(data_dir)
         self.token = secrets.token_urlsafe(32)
+        self.accounts_token = secrets.token_urlsafe(32)
+        from .provider_auth import ProviderAccounts
+        self.accounts = ProviderAccounts(self)
+        from .desktop_layout import DesktopLayout
+        self.desktop_layout = DesktopLayout(self)
         self.url = ""
         self.events = deque(maxlen=4000)
         from .activity import PublicActivity
@@ -128,6 +133,8 @@ class Runtime:
                 "enabled": spec.get("enabled", False)} for name, spec in config["mcp"].items()]}
 
     def settings(self, changes):
+        if self.accounts.active:
+            raise RuntimeError("Termina o cancela el inicio de sesión antes de cambiar los ajustes.")
         if self.busy:
             raise RuntimeError("Detén el trabajo antes de cambiar la configuración.")
         config = json.loads(json.dumps(self.storage.config))
@@ -178,6 +185,8 @@ class Runtime:
                ("local_server_command", "local_dialogue_url", "local_dialogue_model")):
             self.model_service.close()
         self.pi_retry_after = 0.0
+        if any(config.get(k)!=self.storage.config.get(k) for k in ('pi_command','gentle_path','gentle_agent_home','engine_mode')):
+            self.accounts.close()
         self.storage.save_config(config)
         self.sessions.save_preferences(self.conversation)
         if "workspace" in changes and config["workspace"] != self.sessions.get(self.conversation)["workspace"]:
@@ -204,7 +213,11 @@ class Runtime:
             return client
 
     def connect_pi(self):
+        if self.accounts.active:
+            raise RuntimeError("Termina o cancela el inicio de sesión en Ajustes > Cuentas.")
         with self.transition_lock, self.connect_lock:
+            if self.accounts.active:
+                raise RuntimeError("Termina o cancela el inicio de sesión en Ajustes > Cuentas.")
             if self.pi and self.pi.process.poll() is None:
                 return self.pi_state
             if time.monotonic() < self.pi_retry_after:
@@ -561,6 +574,7 @@ class Runtime:
         with self.transition_lock:
             if identity == self.conversation: return {"id": identity, "messages": self.storage.messages(identity)}
             if identity and not self.sessions.get(identity): raise ValueError("Conversación desconocida.")
+            self.accounts.close()
             self.suspend_chat()
             if not identity:
                 project = next(p for p in self.sessions.projects() if p["id"] == self.sessions.get(self.conversation)["project"])
@@ -693,7 +707,11 @@ class Runtime:
                 raise RuntimeError("Activa Control del PC desde la interfaz antes de actuar.")
             if service == "forge" and tool not in ("forge_speak", "forge_capture_frame", "forge_get_state", "forge_get_snapshot", "forge_list_sessions", "forge_list_skills", "forge_get_skill", "forge_get_templates", "forge_get_observation_status") and not self.desktop:
                 raise RuntimeError("Esta operación de Forge requiere activar Control del PC.")
-            result = self.mcp[service].call(tool, arguments)
+            generation = getattr(self, "stop_generation", 0)
+            with self.desktop_layout.clear(service, tool):
+                if generation != getattr(self, "stop_generation", 0):
+                    raise RuntimeError("Operación cancelada por la parada de emergencia.")
+                result = self.mcp[service].call(tool, arguments)
             self.emit("tool", {"name": name, "status": "error" if result.get("isError") else "done"})
             return result
         else:
@@ -722,6 +740,7 @@ class Runtime:
         self.mcp.clear()
 
     def close(self):
+        self.accounts.close()
         self.stop()
         self.suspend_chat()
         self.model_service.close()

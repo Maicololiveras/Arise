@@ -63,6 +63,20 @@ class VoiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(records[1]["toolResponse"]["functionResponses"][0]["response"]["stopped"])
         self.assertEqual(len(self.audio.played),1)
 
+    async def test_requested_response_is_sent_once_and_pending_reply_is_released(self):
+        session=VoiceSession(self.r,self.audio,self.active)
+        class Socket:
+            def __init__(self):self.sent=[]
+            async def send(self,value):self.sent.append(json.loads(value))
+        session.ws=Socket()
+        await session.request_response()
+        self.assertEqual(session.ws.sent,[{"type":"response.create"}])
+        await session.request_response()
+        self.assertEqual(len(session.ws.sent),1)
+        await session.openai_event({"type":"response.done"})
+        self.assertEqual(len(session.ws.sent),2)
+        self.assertFalse(session.response_pending)
+
     async def test_duplicate_tool_call_executes_once(self):
         session=VoiceSession(self.r,self.audio,self.active)
         class Socket:

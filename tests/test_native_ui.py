@@ -179,11 +179,24 @@ class NativeTests(unittest.TestCase):
         self.r.orb.update('idle'); self.c.poll()
         self.assertTrue(self.orb.isVisible())
 
-    def test_voice_wake_does_not_open_chat(self):
+    def test_voice_wake_does_not_open_chat_when_disabled(self):
+        self.r.storage.config["wake_open_panel"]=False
         with patch.object(self.c.voice,'wake',return_value=True) as wake:
             self.c.wake('hola');QTest.qWait(50)
             self.assertFalse(self.c.panel.isVisible());self.assertTrue(self.orb.isVisible())
             wake.assert_called_once_with('hola')
+
+    def test_voice_wake_opens_panel_and_desktop_tools_clear_overlays(self):
+        with patch.object(self.c.voice,'wake',return_value=True):
+            self.c.wake('hola');QTest.qWait(50)
+            self.assertTrue(self.c.panel.isVisible())
+        before=self.r.storage.config.get('orb_position')
+        self.c.desktop_layout_event({'action':'prepare','id':'test'})
+        self.assertFalse(self.c.panel.isVisible());self.assertFalse(self.orb.isVisible())
+        self.c.desktop_layout_event({'action':'done','id':'test'})
+        self.assertTrue(self.orb.isVisible())
+        self.c.save_position()
+        self.assertEqual(self.r.storage.config.get('orb_position'),before)
 
     def test_activity_small_window_expansion_focus_and_chat_isolation(self):
         panel=self.c.panel;panel.resize(340,480);panel.show();QTest.qWait(40)

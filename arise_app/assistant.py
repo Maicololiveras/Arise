@@ -289,9 +289,13 @@ class Assistant(Runtime):
             raise ValueError('Motor de voz local no compatible.')
         if changes.get("thinking", self.storage.config["thinking"]) not in ("off", "minimal", "low", "medium", "high", "xhigh"):
             raise ValueError("Esfuerzo inválido.")
-        for key in ("wake_enabled", "pinned", "reduced_motion", "onboarding_complete", "local_barge_in", "local_dialogue_enabled"):
+        for key in ("wake_enabled", "pinned", "reduced_motion", "onboarding_complete", "local_barge_in", "local_dialogue_enabled", "voice_windows_fallback", "voice_fluent", "wake_open_panel", "desktop_auto_clear"):
             if key in changes and not isinstance(changes[key], bool):
                 raise ValueError(f"{key} debe ser booleano")
+        if 'wake_phrases' in changes and (not isinstance(changes['wake_phrases'],list) or not 1<=len(changes['wake_phrases'])<=10 or not all(isinstance(p,str) and 2<=len(p.strip())<=80 for p in changes['wake_phrases'])):
+            raise ValueError('Define entre una y diez frases de activación, de 2 a 80 caracteres.')
+        if 'wake_reply' in changes and (not isinstance(changes['wake_reply'],str) or len(changes['wake_reply'])>200):raise ValueError('La respuesta de activación admite hasta 200 caracteres.')
+        if changes.get('desktop_orb_corner','bottom-right') not in ('bottom-right','bottom-left','top-right','top-left'):raise ValueError('Esquina del orbe inválida.')
         if "orb_size" in changes and (type(changes["orb_size"]) is not int or not 48 <= changes["orb_size"] <= 240):
             raise ValueError("Tamaño entre 48 y 240.")
         if 'voice_interrupt_threshold' in changes and (type(changes['voice_interrupt_threshold']) is not int or not 300<=changes['voice_interrupt_threshold']<=10000): raise ValueError('Umbral de interrupción entre 300 y 10000.')

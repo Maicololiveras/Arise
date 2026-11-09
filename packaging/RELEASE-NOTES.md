@@ -1,3 +1,13 @@
+# ARISE 0.4.37 QA
+
+- Connect provider accounts and select chat models inside Settings using the native Pi/Gentle SDK; no terminal login is required.
+- Isolate account operations behind a private renderer capability and keep credentials out of agent/chat events.
+- Update the Gonzalo synthesis adapter, support system trust and explicit proxies, and provide an output-only voice test and optional Windows voice fallback.
+- Prepare speech one phrase ahead for earlier playback and interruptible, ordered audio without repeating partially spoken replies.
+- Configure wake phrases, the spoken acknowledgement and automatic chat opening.
+- Clear chat/orb overlays before desktop tools execute, dock in a configurable corner and preserve manual orb dragging.
+- Add account, voice and desktop-layout regression coverage. Physical Windows audio, real provider OAuth and hotword QA remain required.
+
 # ARISE 0.4.36 QA
 
 - Bundle Gentle Shell 4.7.0, Pi 1.5.0, pinned native Gentle AI 4.4.0 and Engram 3.7.0. No separate Gentle installation is required.
