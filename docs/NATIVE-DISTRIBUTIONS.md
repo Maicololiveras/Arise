@@ -1,6 +1,6 @@
 # Native distribution previews
 
-Windows x64 0.4.37 is the user-validated desktop baseline. Version 0.4.38 adds
+Windows x64 0.4.37 is the user-validated desktop baseline. Version 0.4.39 provides
 six published native core preview installers, each tested on its own OS and CPU.
 Production Windows installation remains documented in [INSTALL-WINDOWS.md](INSTALL-WINDOWS.md).
 
@@ -19,8 +19,8 @@ before packaging. Bundled manifests reject adoption on a different target.
 
 All six installers passed installation, installed engine/UI startup, same-version
 reinstallation, removal and user-data preservation in
-[run 42655321028](https://github.com/Maicololiveras/Arise/actions/runs/42655321028).
-Download the permanent [0.4.38 native prerelease assets](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.38),
+[run 42655321028](https://github.com/Maicololiveras/Arise/actions/runs/42663055949).
+Download the permanent [0.4.38 native prerelease assets](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39),
 including checksums and per-target JSON evidence. Portable archives and offscreen
 screenshots remain available as Actions artifacts with 14-day retention.
 
@@ -47,22 +47,22 @@ Windows system-voice fallback is Windows-only.
 
 ## Install and run
 
-The [native prerelease](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.38)
+The [native prerelease](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39)
 contains all six verified installers. Future releases remain blocked until
 every native installer job passes.
 Download the installer matching both your OS and CPU and its `.sha256` sidecar.
 Verify using `Get-FileHash` on Windows, `sha256sum` on Linux or `shasum -a 256`
 on macOS before opening it.
 
-- Windows: open `ARISE-0.4.38-windows-<arch>-Setup.exe`. It installs per user at
+- Windows: open `ARISE-0.4.39-windows-<arch>-Setup.exe`. It installs per user at
   `%LOCALAPPDATA%\Programs\ARISE-Native-Preview` and adds Start menu shortcuts.
   Remove it through Windows Installed apps. Administrator rights are not required.
-- Ubuntu 24.04: run `sudo apt install ./ARISE-0.4.38-linux-<arch>.deb`.
-  APT installs required system libraries. Open **ARISE Native Preview** from the
+- Ubuntu 24.04: run `sudo apt install ./ARISE-0.4.39-linux-<arch>.deb`.
+  APT installs required system libraries. Open **ARISE Preview** from the
   application menu or run `arise-preview`. The app resides in
   `/opt/arise-native-preview`. Remove with `sudo apt remove arise-native-preview`.
   These DEBs are not certified for older Ubuntu, Alpine, Fedora or other distros.
-- macOS 15: open `ARISE-0.4.38-macos-<arch>.pkg` and follow Installer. It installs
+- macOS 15: open `ARISE-0.4.39-macos-<arch>.pkg` and follow Installer. It installs
   `/Applications/ARISE Preview.app` and requires administrator authorization.
   Close ARISE and move that application to Trash to uninstall. Optionally remove
   its receipt with `sudo pkgutil --forget com.praxisgenai.arise.preview`.

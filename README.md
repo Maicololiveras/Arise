@@ -19,7 +19,7 @@ macOS on x64 and ARM64. Read their capability limits before choosing a preview.
 - **ARISE Preview 0.4.37:** [Windows installer — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [release and available assets](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37).
 <!-- arise-downloads:end -->
 
-### Native installers — 0.4.38 preview
+### ARISE Preview installers — 0.4.39
 
 Choose the installer that matches your operating system and CPU. Each includes
 ARISE's own Gentle Shell 4.7.0, Pi, Node, Gentle AI and Engram; no separate
@@ -29,15 +29,15 @@ Gentle installation is required. Sizes below are approximate decimal MB.
 
 | Architecture | Installer | Size | Integrity |
 | --- | --- | --- | --- |
-| x64 (Intel / AMD) | [Download EXE](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-windows-x64-Setup.exe) | 178 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-windows-x64-Setup.exe.sha256) |
-| ARM64 | [Download EXE](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-windows-arm64-Setup.exe) | 145 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-windows-arm64-Setup.exe.sha256) |
+| x64 (Intel / AMD) | [Download EXE](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-x64-Setup.exe) | 178 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-x64-Setup.exe.sha256) |
+| ARM64 | [Download EXE](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-arm64-Setup.exe) | 145 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-arm64-Setup.exe.sha256) |
 
 1. Open **Settings > System > About** and check **System type**. Choose x64 for Intel/AMD x64, or ARM64 for an ARM-based processor.
 2. Download the matching EXE from the table. Close ARISE before upgrading and back up the profile folder listed below.
 3. Open the EXE and follow Setup. Keep the default folder unless you need another location. Administrator rights are not required.
-4. Open **ARISE Native Preview** from the Start menu. Its default application folder is `%LOCALAPPDATA%\Programs\ARISE-Native-Preview`.
+4. Open **ARISE Preview** from the Start menu. Its default application folder is `%LOCALAPPDATA%\Programs\ARISE-Native-Preview`.
 5. Follow **Connect your account and test ARISE** below. No separate Pi, Node or Gentle installation is needed.
-6. To update, close ARISE and run the newer matching EXE. To uninstall, use **Settings > Apps > Installed apps > ARISE Native Preview > Uninstall**. The user profile is preserved.
+6. To update, close ARISE and run the newer matching EXE. To uninstall, use **Settings > Apps > Installed apps > ARISE Preview > Uninstall**. The user profile is preserved.
 
 The preview EXE is unsigned. Verify its source and checksum if Windows blocks it; do not disable system protection.
 
@@ -45,8 +45,8 @@ The preview EXE is unsigned. Verify its source and checksum if Windows blocks it
 
 | Architecture | Installer | Size | Integrity |
 | --- | --- | --- | --- |
-| x64 (amd64) | [Download DEB](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-linux-x64.deb) | 199 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-linux-x64.deb.sha256) |
-| ARM64 (aarch64) | [Download DEB](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-linux-arm64.deb) | 173 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-linux-arm64.deb.sha256) |
+| x64 (amd64) | [Download DEB](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-x64.deb) | 199 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-x64.deb.sha256) |
+| ARM64 (aarch64) | [Download DEB](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb) | 173 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb.sha256) |
 
 1. Use **Ubuntu 24.04** with a graphical desktop. Run `uname -m` in Terminal: `x86_64` means x64; `aarch64` means ARM64.
 2. Download the matching DEB. Close ARISE and back up its profile before upgrading.
@@ -55,15 +55,15 @@ The preview EXE is unsigned. Verify its source and checksum if Windows blocks it
 
    **x64:**
    ```bash
-   sudo apt install ./ARISE-0.4.38-linux-x64.deb
+   sudo apt install ./ARISE-0.4.39-linux-x64.deb
    ```
 
    **ARM64:**
    ```bash
-   sudo apt install ./ARISE-0.4.38-linux-arm64.deb
+   sudo apt install ./ARISE-0.4.39-linux-arm64.deb
    ```
 
-5. Open **ARISE Native Preview** from the application menu, or run `arise-preview`. Follow the account connection steps below.
+5. Open **ARISE Preview** from the application menu, or run `arise-preview`. Follow the account connection steps below.
 6. To update, close ARISE and run `sudo apt install ./<new-installer>.deb`, replacing the placeholder with the new filename. To uninstall:
 
    ```bash
@@ -78,8 +78,8 @@ These DEBs require Ubuntu 24.04 (glibc 2.39). Other Linux distributions are not 
 
 | Architecture | Installer | Size | Integrity |
 | --- | --- | --- | --- |
-| x64 (Intel) | [Download PKG](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-macos-x64.pkg) | 169 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-macos-x64.pkg.sha256) |
-| ARM64 (Apple Silicon) | [Download PKG](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-macos-arm64.pkg) | 160 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-macos-arm64.pkg.sha256) |
+| x64 (Intel) | [Download PKG](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg) | 169 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg.sha256) |
+| ARM64 (Apple Silicon) | [Download PKG](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg) | 160 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg.sha256) |
 
 1. Open **Apple menu > About This Mac**. A **Chip** naming Apple silicon means ARM64; an Intel **Processor** means x64. These packages target macOS 15.
 2. Download the matching PKG. Quit ARISE and back up its profile before upgrading.
@@ -92,8 +92,8 @@ The PKG is unsigned and the app is ad-hoc signed, not notarized. Gatekeeper or e
 
 All six installers passed native installation, engine/UI startup, same-version
 reinstallation, removal and profile-preservation checks. See the
-[release and reports](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.38)
-and [successful native CI run](https://github.com/Maicololiveras/Arise/actions/runs/42655321028).
+[release and reports](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39)
+and [successful native CI run](https://github.com/Maicololiveras/Arise/actions/runs/42663055949).
 
 **Preview limits:** private desktop MCP servers and offline speech models are
 not bundled; physical microphone, speakers and desktop control still need device
