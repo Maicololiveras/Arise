@@ -1,4 +1,5 @@
 name: Publish verified QA Preview
+# Reuse successful installers; preserve actionable publication diagnostics.
 on:
   push:
     branches: [qa]

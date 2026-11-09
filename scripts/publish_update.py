@@ -20,7 +20,10 @@ notes = '# ARISE ' + __version__ + (' Preview' if channel == 'qa' else '') + '\n
 Path('packaging/RELEASE-NOTES.md').write_text(notes, encoding='utf-8')
 digest=hashlib.sha256(setup.read_bytes()).hexdigest()
 checksum=setup.with_suffix('.exe.sha256');checksum.write_text(digest+'  ARISE-Setup.exe\n')
-def gh(*args):return subprocess.run(['gh',*args],check=True,text=True,capture_output=True).stdout
+def gh(*args):
+    result = subprocess.run(['gh', *args], text=True, stdout=subprocess.PIPE)
+    result.check_returncode()
+    return result.stdout
 # A version is immutable: bump it instead of replacing an already-published asset.
 existing=subprocess.run(['gh','release','view',tag,'--repo',REPO],capture_output=True,text=True)
 if existing.returncode==0:
