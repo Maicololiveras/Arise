@@ -43,6 +43,27 @@ validation ran 303 tests: 296 passed and seven explicit Windows-only skips.
 physical platform acceptance. Later documentation-only commits do not change
 the tested runtime.
 
+## Native installer release: 0.4.38
+
+[Run 42655321028](https://github.com/Maicololiveras/Arise/actions/runs/42655321028)
+passed all six installer jobs and publication for runtime commit
+`4491bf817a7c6daa97d41d2300a235f0c19b99f9`. The
+[native prerelease](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.38)
+contains six installers, six SHA-256 sidecars and twelve per-target reports.
+
+Each runner installed its EXE/DEB/PKG, launched the installed frozen engine and
+Qt interface, reinstalled the same version, removed the application and checked
+that a user-profile sentinel survived unchanged. This does not establish every
+historical database migration or physical-device behavior.
+
+The gate initially caught Gentle AI's private cache permissions after root-owned
+installation. Only public packaged files are normalized before signing; symlinks
+are skipped and binary contents/hashes are retained. A regression test verifies
+that linked private data keeps its permissions. The Windows suite ran 307 tests
+with no test failures and one expected POSIX-only omission; the strict skip policy
+was updated to recognize that specific test while rejecting unrelated omissions.
+Docker validation also passed. No installer bytes changed after publication.
+
 ## Run checks
 
 ```bash

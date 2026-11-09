@@ -11,13 +11,17 @@ do not need to install Pi, Gentle Shell, Node or Go separately.
 ## Install and connect
 
 Use the published Windows installer for the established desktop experience.
-The six native core previews are documented separately; their availability
-depends on successful native build and acceptance checks.
+Six native core preview installers are also available for Windows, Ubuntu and
+macOS on x64 and ARM64. Read their capability limits before choosing a preview.
 
 <!-- arise-downloads:start -->
 - **Production 0.4.37:** [Windows installer — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/v0.4.37/ARISE-Setup.exe) · [release and available assets](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37).
 - **QA 0.4.37:** [Windows installer — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [release and available assets](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37).
 <!-- arise-downloads:end -->
+
+**Native preview 0.4.38:** [Download all six installers and checksums](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.38).
+Windows uses EXE, Ubuntu 24.04 uses DEB, and macOS 15 uses PKG.
+[Installation and removal instructions](docs/NATIVE-DISTRIBUTIONS.md).
 
 1. Install `ARISE-Setup.exe`, or extract the complete Windows ZIP and run
    `Configurar ARISE.cmd` to prepare its optional offline model pack.
@@ -76,8 +80,8 @@ an external installation. See [owned runtime](docs/owned-gentle-runtime.md).
 ## Distribution and safety boundaries
 
 The stable Windows x64 installer and native core previews have different
-capabilities. Preview archives do not include private desktop MCP servers or
-offline model packs, and currently update by manual replacement. macOS previews
+capabilities. Preview installers do not include private desktop MCP servers or
+offline model packs, and currently update by manually running the matching installer. macOS previews
 are not notarized. Consult the platform guide before downloading.
 
 Production follows `main`; Windows QA follows `qa`. Each installer accepts only

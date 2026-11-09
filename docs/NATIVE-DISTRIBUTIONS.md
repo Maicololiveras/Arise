@@ -1,8 +1,7 @@
 # Native distribution previews
 
 Windows x64 0.4.37 is the user-validated desktop baseline. Version 0.4.38 adds
-build recipes for six native core previews. A recipe is not a published or
-validated download: use an artifact only after its native CI job succeeds.
+six published native core preview installers, each tested on its own OS and CPU.
 Production Windows installation remains documented in [INSTALL-WINDOWS.md](INSTALL-WINDOWS.md).
 
 | Target | Native build runner | Artifact | Minimum baseline |
@@ -18,10 +17,12 @@ The target must match the computer. ARM64 packages are compiled on ARM64 runners
 not x64 packages relabeled for emulation. Node and Python architecture are checked
 before packaging. Bundled manifests reject adoption on a different target.
 
-All six targets passed the final native matrix in
-[run 42639847104](https://github.com/Maicololiveras/Arise/actions/runs/42639847104).
-Download the matching preview artifact from that run; Actions artifacts expire
-after 14 days. These are test distributions, not permanent production release assets.
+All six installers passed installation, installed engine/UI startup, same-version
+reinstallation, removal and user-data preservation in
+[run 42655321028](https://github.com/Maicololiveras/Arise/actions/runs/42655321028).
+Download the permanent [0.4.38 native prerelease assets](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.38),
+including checksums and per-target JSON evidence. Portable archives and offscreen
+screenshots remain available as Actions artifacts with 14-day retention.
 
 ## Included and excluded
 
@@ -47,8 +48,8 @@ Windows system-voice fallback is Windows-only.
 ## Install and run
 
 The [native prerelease](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.38)
-is published only after all six installer jobs pass. If it is not present yet,
-check the Native distribution previews workflow; a failed job blocks publication.
+contains all six verified installers. Future releases remain blocked until
+every native installer job passes.
 Download the installer matching both your OS and CPU and its `.sha256` sidecar.
 Verify using `Get-FileHash` on Windows, `sha256sum` on Linux or `shasum -a 256`
 on macOS before opening it.
