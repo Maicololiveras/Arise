@@ -1,30 +1,51 @@
-# Release channels and promotion
+# Release channels and source synchronization
 
-| Stream | Purpose | Publication |
-| --- | --- | --- |
-| main | User-accepted production baseline | Windows `vX.Y.Z`, production feed |
-| qa | Windows integration and acceptance | `qa-vX.Y.Z` prerelease, QA feed |
-| feat/platform-distributions | Native core portability work | Successful native CI artifacts |
-| herramientas | Managed desktop-tool manifests | Component-owned releases |
-| distribution/parakeet-v3 | Pinned dictation mirror | Immutable model/runtime assets |
+**Main is the single source for installers, release workflows, download links and
+update manifests.** The `qa` branch is a fast-forward mirror of `main`, not an
+independent publication source. The public prerelease name is **ARISE Preview**.
 
-Production promotion is explicit after review and acceptance. The user-validated
-0.4.37 revision was promoted to main, preserving the old production feed until
-the new main-channel executable passes publication gates. QA binaries are not
-relabelled as production. Main and QA publication rebuild and verify their own
-embedded channel. Subsequent binary changes require a new version.
+| Distribution | Source branch | Release tag | Update index on main |
+| --- | --- | --- | --- |
+| ARISE stable, complete Windows x64 | main | `vX.Y.Z` | `updates/windows.json` |
+| ARISE Preview, complete Windows x64 | main | `qa-vX.Y.Z` (compatibility identifier) | `updates/windows-preview.json` |
+| ARISE Preview, six native core installers | main | `native-vX.Y.Z` | Manual per-target installation |
 
-Windows checks Docker, native tests, frozen engine/renderer, installation over a
-running instance and offline model inference before publishing. `ARISE-Setup.exe`
-and the complete ZIP have different contents; consult the release inventory.
-Successful publication updates the originating feed and both README download
-sections atomically per branch, with conflict checks and no forced ref updates.
+The internal Windows preview channel remains `qa` to retain channel validation;
+it is displayed as ARISE Preview. The updater always reads `ref=main`, choosing
+the channel-specific filename. Stable and preview installers are never exchanged
+silently. Release URLs, channel, version, asset ID, size and SHA-256 remain checked.
 
-Each Windows installation follows its embedded channel. Switching channels is an
-explicit installer action; it is independent of external Gentle stable/main.
-Native previews embed target identity and do not use the Windows x64 feed.
-Their manual replacement, signing limits and separate physical acceptance are
-explained in [NATIVE-DISTRIBUTIONS.md](NATIVE-DISTRIBUTIONS.md).
+## Publishing
 
-Never publish a failed target or infer ARM64 acceptance from x64. Android and
-component release workflows are separate. VPS/Coolify remains deferred.
+- Native previews build and publish from main only after all six target gates
+  pass. The published release title and installer display name are ARISE Preview.
+- Main pushes build and verify the complete Windows ARISE Preview package; a new
+  version publishes after every gate passes. Existing versions are never replaced.
+- To promote stable, run **ARISE verification** on **main** with
+  `release_channel: stable`. Manual `preview` also publishes Preview; manual `none`
+  only verifies. A push never publishes a stable release.
+- Both channels build their own embedded channel and pass the complete Windows
+  gates. Published versions and asset hashes are immutable; changes need a version
+  bump. Never relabel an old preview executable as stable.
+- Metadata publication updates the selected index and README atomically on main,
+  then fast-forwards QA to that exact commit. The mirror workflow also follows
+  ordinary main pushes. Divergent QA commits cause a failure, never a forced reset.
+
+## Existing installations
+
+Already published 0.4.37 and native 0.4.38 assets remain unchanged. Their origin
+commits are preserved in main's merged history; new binaries are built from main.
+Native 0.4.38 previews remain manual-update installations.
+
+Old complete Windows QA clients read `updates/windows.json` from the QA branch.
+After QA becomes an exact mirror, that historical endpoint is no longer a QA feed.
+Their channel validation rejects a stable manifest rather than installing it.
+Install the next complete **ARISE Preview** Windows package manually once to move
+to the new preview index on main. This does not authorize deleting the user profile.
+Do not use a reduced native core preview as an automatic replacement for the
+complete Windows distribution.
+
+Core previews still exclude private desktop MCP servers and offline models.
+Signing/notarization and physical-device acceptance remain separate gates.
+Component/model repositories and Android remain separate distribution systems;
+VPS/Coolify is deferred.

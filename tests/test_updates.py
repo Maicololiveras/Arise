@@ -28,7 +28,8 @@ class UpdateTests(unittest.TestCase):
         calls=[]
         def opener(request,timeout):calls.append(request.full_url);return Response(json.dumps(qa).encode())
         self.assertEqual(check_update(opener=opener,channel='qa'),qa)
-        self.assertIn('ref=qa',calls[0])
+        self.assertIn('updates/windows-preview.json?ref=main',calls[0])
+        self.assertNotIn('ref=qa',calls[0])
         with self.assertRaises(ValueError):validate_manifest(qa,channel='main')
         with self.assertRaises(ValueError):validate_manifest(MANIFEST,channel='qa')
         with tempfile.TemporaryDirectory() as tmp:

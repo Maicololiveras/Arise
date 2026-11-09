@@ -418,6 +418,8 @@ class VoiceService:
         if not path or not is_vosk(path):
             raise RuntimeError("Falta un modelo Vosk válido para 'Oye Arise'. Instala el paquete de voz o selecciona su carpeta en Ajustes. El atajo sigue disponible.")
         if path != self.recognizer_path:
+            from .platforms import has_vosk
+            if not has_vosk():raise RuntimeError("La activación Vosk no está disponible en este paquete. Usa el botón Hablar o el dictado compatible.")
             from vosk import Model, KaldiRecognizer, SetLogLevel
             SetLogLevel(-1)
             self.recognizer = KaldiRecognizer(Model(path), 16000)

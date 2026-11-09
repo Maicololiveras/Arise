@@ -1,0 +1,26 @@
+name: Mirror main to QA
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: arise-release-metadata
+  cancel-in-progress: false
+jobs:
+  sync:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fast-forward QA without discarding independent commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          head=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq .object.sha)
+          gh api --method PATCH "repos/$GH_REPO/git/refs/heads/qa" -f sha="$head" -F force=false
+          actual=$(gh api "repos/$GH_REPO/git/ref/heads/qa" --jq .object.sha)
+          test "$actual" = "$head"

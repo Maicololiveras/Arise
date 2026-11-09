@@ -31,7 +31,10 @@ unexpected_skips = [test for test, reason in result.skipped
              and reason == 'Windows PowerShell required')
     and not (os.name != 'nt'
              and test.id() == 'test_https.HTTPSTests.test_native_windows_context_keeps_validation_enabled'
-             and reason == 'Native Windows certificate store')]
+             and reason == 'Native Windows certificate store')
+    and not (os.name == 'nt'
+             and test.id() == 'test_native_installers.BundlePermissionsTests.test_public_code_is_readable_without_changing_linked_private_data'
+             and reason == 'POSIX package permissions')]
 if unexpected_skips:
     print('Unexpected skipped tests: '+', '.join(test.id() for test in unexpected_skips),file=sys.stderr)
 raise SystemExit(0 if result.wasSuccessful() and not unexpected_skips else 1)

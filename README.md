@@ -16,7 +16,7 @@ macOS on x64 and ARM64. Read their capability limits before choosing a preview.
 
 <!-- arise-downloads:start -->
 - **Production 0.4.37:** [Windows installer — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/v0.4.37/ARISE-Setup.exe) · [release and available assets](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37).
-- **QA 0.4.37:** [Windows installer — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [release and available assets](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37).
+- **ARISE Preview 0.4.37:** [Windows installer — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [release and available assets](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37).
 <!-- arise-downloads:end -->
 
 ### Native installers — 0.4.38 preview
@@ -107,7 +107,7 @@ profile; back it up and never run both against that profile simultaneously.
 Uninstalling preserves settings, accounts and memory. The complete Windows x64
 production release above remains the established desktop option.
 
-[Detailed native installation guide](https://github.com/Maicololiveras/Arise/blob/feat/platform-distributions/docs/NATIVE-DISTRIBUTIONS.md)
+[Detailed native installation guide](https://github.com/Maicololiveras/Arise/blob/main/docs/NATIVE-DISTRIBUTIONS.md)
 
 ### Connect your account and test ARISE
 
@@ -191,12 +191,17 @@ an external installation. See [owned runtime](docs/owned-gentle-runtime.md).
 
 ## Distribution and safety boundaries
 
+Stable and Preview share one source branch, `main`, with separate update indexes.
+See [release channels and legacy QA migration](docs/release-channels.md).
+
+
 The stable Windows x64 installer and native core previews have different
 capabilities. Preview installers do not include private desktop MCP servers or
 offline model packs, and currently update by manually running the matching installer. macOS previews
 are not notarized. Consult the platform guide before downloading.
 
-Production follows `main`; Windows QA follows `qa`. Each installer accepts only
+All installers are published from `main`. The `qa` branch mirrors `main`;
+prerelease distributions are named **ARISE Preview**. Each installer accepts only
 its channel's version, release URL, size and SHA-256. Tool distributions have
 separate manifests. TLS verification remains enabled, including behind proxies.
 A checksum is not an independent code-signing identity.

@@ -1,4 +1,20 @@
-# ARISE 0.4.37 Production
+# ARISE 0.4.39 Preview
+
+- Publish stable and Preview installers from main only; keep QA as a fast-forward mirror.
+- Read both Windows update channels from separate, validated manifests on main.
+- Identify preview installers and the application as ARISE Preview.
+- Preserve immutable historical releases and user profiles. Old complete Windows QA clients require one manual Preview reinstall to migrate their legacy branch feed.
+- Native core previews retain their documented platform limitations and manual updates.
+
+# ARISE 0.4.38 Native previews
+
+Six native core build targets: Windows, Linux and macOS on x64 and ARM64.
+Private desktop MCP servers and offline models are not bundled in these previews.
+Native artifacts require their own CI and physical acceptance before promotion.
+Preview updates are manual; the Windows x64 feed is disabled in preview archives.
+See docs/NATIVE-DISTRIBUTIONS.md for capabilities, requirements and validation.
+
+# ARISE 0.4.37 QA
 
 - Connect provider accounts and select chat models inside Settings using the native Pi/Gentle SDK; no terminal login is required.
 - Isolate account operations behind a private renderer capability and keep credentials out of agent/chat events.

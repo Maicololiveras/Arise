@@ -44,8 +44,10 @@ class ReleaseReadmeTests(unittest.TestCase):
             if payload is not None:
                 writes.append((endpoint, payload, method))
                 return {'sha': 'created'}
+            if '/contents/updates/windows-preview.json' in endpoint:
+                return encoded(json.dumps(self.feeds['qa']))
             if '/contents/updates/windows.json' in endpoint:
-                return encoded(json.dumps(self.feeds[endpoint.split('ref=')[1]]))
+                return encoded(json.dumps(self.feeds['main']))
             if '/git/ref/heads/' in endpoint: return {'object': {'sha': 'head'}}
             if '/git/commits/' in endpoint: return {'tree': {'sha': 'base'}}
             if '/contents/README.md' in endpoint: return encoded(self.readme)
@@ -56,8 +58,8 @@ class ReleaseReadmeTests(unittest.TestCase):
         writes = []
         publish_metadata(self.fake_api(writes), 'main', manifest('main', '0.4.10'))
         trees = [p for e, p, m in writes if e.endswith('/git/trees')]
-        self.assertEqual([entry['path'] for entry in trees[0]['tree']], ['README.md', 'updates/windows.json'])
-        self.assertEqual([entry['path'] for entry in trees[1]['tree']], ['README.md'])
+        self.assertEqual(len(trees), 1)
+        self.assertEqual([entry['path'] for entry in trees[0]['tree']], ['updates/windows.json', 'README.md'])
         refs = [(e, p, m) for e, p, m in writes if '/git/refs/heads/' in e]
         self.assertEqual(len(refs), 2)
         self.assertTrue(all(p['force'] is False and m == 'PATCH' for e, p, m in refs))
@@ -67,3 +69,23 @@ class ReleaseReadmeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             publish_metadata(self.fake_api(writes), 'qa', manifest('qa', '0.4.9'))
         self.assertEqual(writes, [])
+
+    def test_preview_publishes_on_main_and_mirrors_the_same_commit(self):
+        writes = []
+        publish_metadata(self.fake_api(writes), 'qa', manifest('qa', '0.4.11'))
+        trees = [p for e, p, m in writes if e.endswith('/git/trees')]
+        self.assertEqual(trees[0]['tree'][0]['path'], 'updates/windows-preview.json')
+        self.assertNotIn('updates/windows.json', [x['path'] for x in trees[0]['tree']])
+        refs = [(e, p) for e, p, m in writes if '/git/refs/heads/' in e]
+        self.assertTrue(refs[0][0].endswith('/main'))
+        self.assertTrue(refs[1][0].endswith('/qa'))
+        self.assertEqual(refs[0][1]['sha'], refs[1][1]['sha'])
+
+    def test_native_links_refresh_without_changing_stable_downloads(self):
+        from scripts.release_readme import native_downloads
+        source = "Native installers — 0.4.38 preview\n| ARM64 | [Download PKG](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.38/ARISE-0.4.38-macos-arm64.pkg) | 160 MB | hash |\nhttps://github.com/Maicololiveras/Arise/releases/download/v0.4.37/ARISE-Setup.exe"
+        result = native_downloads(source, '0.4.39', [{'name':'ARISE-0.4.39-macos-arm64.pkg','size':170000000}], '123')
+        self.assertIn('ARISE Preview installers — 0.4.39', result)
+        self.assertIn('170 MB', result)
+        self.assertNotIn('native-v0.4.38', result)
+        self.assertIn('/v0.4.37/ARISE-Setup.exe', result)

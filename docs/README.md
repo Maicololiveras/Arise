@@ -7,7 +7,8 @@ previews with explicit capability and validation limits. VPS/Coolify is deferred
 ## Current guides
 
 - [Install ARISE on Windows](INSTALL-WINDOWS.md)
-- [Native distribution previews](NATIVE-DISTRIBUTIONS.md)
+- [Native installer previews](NATIVE-DISTRIBUTIONS.md)
+- [Native installer 0.4.38 release notes](NATIVE-RELEASE-NOTES.md)
 - [ARISE-owned Gentle runtime (introduced in 0.4.36)](owned-gentle-runtime.md)
 - [Native accounts, fluent voice and desktop layout (introduced in 0.4.37)](accounts-voice-desktop-qa.md)
 - [Gentle commands in ARISE](GENTLE-COMMANDS.md)

@@ -1,14 +1,14 @@
 # Application and component updates
 
-Production Windows follows `main/updates/windows.json`; QA Windows follows the
-same path on `qa`. The embedded build channel controls selection, independently
+Stable Windows reads `main/updates/windows.json`; ARISE Preview Windows reads
+`main/updates/windows-preview.json`. Both are published from main; QA mirrors main. The embedded build channel controls selection, independently
 of any external Gentle channel. A QA installer never accepts a production feed
 or vice versa. Native core previews currently require manual replacement and
 never consult the Windows x64 installer feed.
 
 The publisher waits for Docker, native Windows tests, frozen runtime, installer
 replacement and offline model checks. It publishes an immutable versioned
-release, then updates the originating feed and download links. A subsequent
+release, then updates its channel index and download links on main and fast-forwards QA. A subsequent
 binary requires a new version. The production promotion of user-validated
 0.4.37 rebuilds on main instead of relabeling a QA executable.
 
@@ -23,6 +23,12 @@ Managed code and libraries are replaced; chats, settings, credentials, memory
 and data-directory tool installs are preserved. Back up the data directory with
 ARISE closed before a manual migration. Versions before the updater require a
 manual installer upgrade.
+
+Old complete Windows QA clients used a branch-specific endpoint. Install the
+next complete ARISE Preview package manually once to migrate to the index on main.
+Old clients reject the stable manifest rather than crossing channels. Existing
+native core previews still update manually; they are not replacements for the
+complete Windows package. See [channel migration](release-channels.md).
 
 ## Credentials and proxies
 

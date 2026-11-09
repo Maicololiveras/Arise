@@ -14,6 +14,12 @@ class HTTPSTests(unittest.TestCase):
             self.assertIs(tls_context(),factory.return_value)
         factory.assert_called_once_with(ssl.PROTOCOL_TLS_CLIENT)
 
+    def test_macos_uses_system_trust_without_a_python_framework_ca_path(self):
+        factory=Mock(return_value=object())
+        with patch('arise_app.https.sys.platform','darwin'), patch.dict('sys.modules',{'truststore':SimpleNamespace(SSLContext=factory)}):
+            self.assertIs(tls_context(),factory.return_value)
+        factory.assert_called_once_with(ssl.PROTOCOL_TLS_CLIENT)
+
     def test_other_platforms_keep_certificate_and_hostname_validation(self):
         with patch('arise_app.https.sys.platform','linux'):
             context=tls_context()

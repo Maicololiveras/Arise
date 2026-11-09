@@ -1,12 +1,20 @@
-#define AppVersion "0.4.37"
+#define AppVersion "0.4.39"
+#ifndef PreviewBuild
+  #define PreviewBuild "0"
+#endif
+#if PreviewBuild == "1"
+  #define ProductName "ARISE Preview"
+#else
+  #define ProductName "ARISE"
+#endif
 [Setup]
 AppId={{E99B270E-3F4F-421C-9D9F-705E523F3ED6}
-AppName=ARISE
+AppName={#ProductName}
 AppVersion={#AppVersion}
 AppPublisher=PRAXISGENAI
 AppPublisherURL=https://github.com/Maicololiveras/Arise
 DefaultDirName={localappdata}\Programs\ARISE
-DefaultGroupName=ARISE
+DefaultGroupName={#ProductName}
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -30,9 +38,9 @@ Source: "..\dist\ARISE\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Type: filesandordirs; Name: "{app}\_internal"
 Type: filesandordirs; Name: "{app}\bundle\node"
 [Icons]
-Name: "{group}\ARISE"; Filename: "{app}\ARISE.exe"; IconFilename: "{app}\arise-{#AppVersion}.ico"; AppUserModelID: "PRAXISGENAI.ARISE"
+Name: "{group}\{#ProductName}"; Filename: "{app}\ARISE.exe"; IconFilename: "{app}\arise-{#AppVersion}.ico"; AppUserModelID: "PRAXISGENAI.ARISE"
 Name: "{group}\Configurar ARISE"; Filename: "{app}\ARISE.exe"; Parameters: "--settings"; IconFilename: "{app}\arise-{#AppVersion}.ico"
-Name: "{autodesktop}\ARISE"; Filename: "{app}\ARISE.exe"; IconFilename: "{app}\arise-{#AppVersion}.ico"; AppUserModelID: "PRAXISGENAI.ARISE"; Tasks: desktopicon
+Name: "{autodesktop}\{#ProductName}"; Filename: "{app}\ARISE.exe"; IconFilename: "{app}\arise-{#AppVersion}.ico"; AppUserModelID: "PRAXISGENAI.ARISE"; Tasks: desktopicon
 [Tasks]
 Name: desktopicon; Description: "Crear acceso directo en el escritorio"; Flags: unchecked
 [Run]

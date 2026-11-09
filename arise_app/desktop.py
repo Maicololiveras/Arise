@@ -1,5 +1,6 @@
 """Native ARISE orb, setup, conversation panel and tray. No embedded browser."""
 from __future__ import annotations
+from .updates import application_name
 import argparse
 import base64
 import html
@@ -9,7 +10,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from PySide6.QtCore import Qt, QTimer, QObject, Signal, QEvent, QPoint, QSize, QBuffer, QIODevice
+from PySide6.QtCore import Qt, QTimer, QObject, Signal, QEvent, QPoint, QSize, QBuffer, QIODevice, QUrl
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QImage, QDesktopServices, QShortcut, QKeySequence
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import (QPlainTextEdit, QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
@@ -154,6 +155,12 @@ class Settings(QDialog):
         native_setup.clicked.connect(controller.install_gentle_native);layout.addWidget(native_setup)
         connections=QPushButton('Conexiones, celular y recordatorios · QA')
         connections.clicked.connect(self.show_connections);layout.addWidget(connections)
+        from .platforms import native_preview, has_vosk
+        if native_preview():
+            notice = QLabel("Versión nativa de prueba: actualización manual; herramientas de escritorio y modelos offline no incluidos. Consulta la guía de esta distribución.")
+            notice.setWordWrap(True); layout.addWidget(notice)
+            native_setup.setEnabled(False)
+            quick_setup.setEnabled(False)
         tabs = QTabWidget(); layout.addWidget(tabs)
         self.fields, self.keys, self.mcp = {}, {}, {}
         config = self.runtime.storage.config
@@ -173,6 +180,7 @@ class Settings(QDialog):
         preset=QPushButton('Usar Gonzalo · Colombia · +5%');preset.clicked.connect(self.select_gonzalo);f.addRow(preset)
         f.addRow(QLabel('Gonzalo necesita Internet. La prueba de salida no activa el micrófono.'))
         self.check_field(f,'voice_windows_fallback','Usar voz de Windows si Gonzalo falla (con aviso)',config.get('voice_windows_fallback',True))
+        self.fields['voice_windows_fallback'].setEnabled(os.name == 'nt')
         self.button(f,'Probar solo la salida de voz',self.preview_voice)
         self.button(f,'Detener prueba de voz',lambda:self.controller.voice.end_session())
         self.fields["local_stt_engine"] = WheelSafeCombo(); self.fields["local_stt_engine"].addItems(["auto", "vosk", "faster-whisper", "openai-whisper"])
@@ -205,6 +213,9 @@ class Settings(QDialog):
         self.check_field(f, "local_barge_in", "Permitir interrupciones en voz local", config["local_barge_in"])
         threshold=WheelSafeSpin(); threshold.setRange(300,10000); threshold.setValue(config["voice_interrupt_threshold"]); self.fields["voice_interrupt_threshold"]=threshold; f.addRow("Umbral de interrupción local",threshold)
         self.check_field(f, "wake_enabled", "Activar ARISE con una frase de voz (escucha local)", config["wake_enabled"])
+        if not has_vosk():
+            self.fields['wake_enabled'].setEnabled(False)
+            self.fields['wake_enabled'].setToolTip('Vosk no está disponible para esta distribución. Usa una entrada de voz compatible.')
         self.check_field(f,"wake_open_panel","Abrir el panel al activar ARISE con la voz",config.get("wake_open_panel",True))
         self.text_field(f,"wake_reply","Respuesta al activar la voz local",config.get("wake_reply","Te escucho."))
         self.check_field(f,"voice_fluent","Voz fluida: preparar la siguiente frase mientras habla",config.get("voice_fluent",True))
@@ -572,10 +583,10 @@ class Settings(QDialog):
 class Panel(QWidget):
     def __init__(self, controller):
         super().__init__(); self.controller = controller; self.runtime = controller.runtime
-        self.setWindowTitle("ARISE Assistant"); self.setWindowIcon(icon()); self.resize(420, 680); self.setMinimumSize(320, 400); self.setMaximumWidth(900); self.setStyleSheet(STYLE)
+        self.setWindowTitle(application_name()); self.setWindowIcon(icon()); self.resize(420, 680); self.setMinimumSize(320, 400); self.setMaximumWidth(900); self.setStyleSheet(STYLE)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 12, 14, 10); layout.setSpacing(7)
-        title = QLabel("ARISE Assistant"); title.setObjectName("chatTitle"); title.hide()
+        title = QLabel(application_name()); title.setObjectName("chatTitle"); title.hide()
         self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); self.status.hide()
         self.privacy = QLabel("Micrófono apagado · Pantalla apagada · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); self.privacy.hide()
         from .chat_content import ChatHistory
@@ -1116,7 +1127,7 @@ class Controller(QObject):
             self.close_dialogs()
             self.background(self.runtime.shutdown if getattr(self.runtime, "is_remote", False) else self.runtime.close, lambda _:self.quit(), lambda _:self.quit())
         def failed(message):
-            self.update_busy = False; self.tray.setToolTip("ARISE Assistant")
+            self.update_busy = False; self.tray.setToolTip(application_name())
             self.update_progress.close()
             box = QMessageBox(self.orb); box.setWindowTitle("ARISE · Actualización")
             box.setTextFormat(Qt.PlainText); box.setText("No se pudo completar la descarga. Puedes reintentarlo desde Ajustes.\n\n"+message); self.update_dialog = box; box.open()
@@ -1300,7 +1311,7 @@ class Controller(QObject):
         AccountsDialog(self.runtime, self.panel).exec()
 
     def open_data(self):
-        if os.name == "nt": os.startfile(str(self.runtime.storage.root))
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.runtime.storage.root)))
 
     def restart(self):
         if not getattr(self.runtime, "is_remote", False):
@@ -1345,8 +1356,9 @@ def main():
         sys.argv.remove("--daemon")
         from .daemon import main as daemon_main
         return daemon_main()
-    parser = argparse.ArgumentParser(description="ARISE · Orbe Windows")
-    parser.add_argument("--data-dir", default=str(Path(os.getenv("LOCALAPPDATA", Path.home() / ".local" / "share")) / "ARISE-Orb"))
+    parser = argparse.ArgumentParser(description="ARISE · Desktop assistant")
+    from .platforms import data_directory
+    parser.add_argument("--data-dir", default=str(data_directory()))
     parser.add_argument("--shutdown", action="store_true", help="Cerrar interfaz, daemon y sus procesos para actualizar")
     parser.add_argument("--background", action="store_true")
     parser.add_argument("--settings", action="store_true")
@@ -1366,7 +1378,7 @@ def main():
     if os.name == 'nt':
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('PRAXISGENAI.ARISE')
-    app = QApplication.instance() or QApplication(sys.argv); app.setApplicationName("ARISE"); app.setWindowIcon(icon()); app.setQuitOnLastWindowClosed(False)
+    app = QApplication.instance() or QApplication(sys.argv); app.setApplicationName(application_name()); app.setWindowIcon(icon()); app.setQuitOnLastWindowClosed(False)
     import hashlib
     address = "ARISE-" + hashlib.sha256(str(Path(args.data_dir).resolve()).encode()).hexdigest()[:20]
     client = QLocalSocket(); client.connectToServer(address)

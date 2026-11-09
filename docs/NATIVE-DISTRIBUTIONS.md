@@ -1,27 +1,28 @@
 # Native distribution previews
 
 Windows x64 0.4.37 is the user-validated desktop baseline. Version 0.4.38 adds
-build recipes for six native core previews. A recipe is not a published or
-validated download: use an artifact only after its native CI job succeeds.
+six published native core preview installers, each tested on its own OS and CPU.
 Production Windows installation remains documented in [INSTALL-WINDOWS.md](INSTALL-WINDOWS.md).
 
 | Target | Native build runner | Artifact | Minimum baseline |
 | --- | --- | --- | --- |
-| Windows x64 | windows-latest | Portable ZIP | Windows 11 x64 |
-| Windows ARM64 | windows-11-arm | Portable ZIP | Windows 11 ARM64 |
-| Linux x64 | ubuntu-24.04 | tar.gz | Ubuntu 24.04, glibc 2.39 |
-| Linux ARM64 | ubuntu-24.04-arm | tar.gz | Ubuntu 24.04, glibc 2.39 |
-| macOS x64 | macos-15-intel | ZIP containing ARISE.app | macOS 15 |
-| macOS ARM64 | macos-15 | ZIP containing ARISE.app | macOS 15 |
+| Windows x64 | windows-latest | EXE installer + portable ZIP | Windows 11 x64 |
+| Windows ARM64 | windows-11-arm | EXE installer + portable ZIP | Windows 11 ARM64 |
+| Linux x64 | ubuntu-24.04 | DEB installer + tar.gz | Ubuntu 24.04, glibc 2.39 |
+| Linux ARM64 | ubuntu-24.04-arm | DEB installer + tar.gz | Ubuntu 24.04, glibc 2.39 |
+| macOS x64 | macos-15-intel | PKG installer + app ZIP | macOS 15 |
+| macOS ARM64 | macos-15 | PKG installer + app ZIP | macOS 15 |
 
 The target must match the computer. ARM64 packages are compiled on ARM64 runners,
 not x64 packages relabeled for emulation. Node and Python architecture are checked
 before packaging. Bundled manifests reject adoption on a different target.
 
-All six targets passed the final native matrix in
-[run 42639847104](https://github.com/Maicololiveras/Arise/actions/runs/42639847104).
-Download the matching preview artifact from that run; Actions artifacts expire
-after 14 days. These are test distributions, not permanent production release assets.
+All six installers passed installation, installed engine/UI startup, same-version
+reinstallation, removal and user-data preservation in
+[run 42655321028](https://github.com/Maicololiveras/Arise/actions/runs/42655321028).
+Download the permanent [0.4.38 native prerelease assets](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.38),
+including checksums and per-target JSON evidence. Portable archives and offscreen
+screenshots remain available as Actions artifacts with 14-day retention.
 
 ## Included and excluded
 
@@ -46,19 +47,34 @@ Windows system-voice fallback is Windows-only.
 
 ## Install and run
 
-Download the artifact from the successful **Native distribution previews** job
-for your target. Extract the outer Actions artifact, verify the included SHA-256
-against the application archive, then extract the entire application archive.
-Keep the executable, internal libraries and bundle together.
+The [native prerelease](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.38)
+contains all six verified installers. Future releases remain blocked until
+every native installer job passes.
+Download the installer matching both your OS and CPU and its `.sha256` sidecar.
+Verify using `Get-FileHash` on Windows, `sha256sum` on Linux or `shasum -a 256`
+on macOS before opening it.
 
-- Windows: run `ARISE/ARISE.exe`.
-- Linux: install `libportaudio2`, `libegl1`, `libopengl0`, `libxcb-cursor0` and
-  `libxkbcommon-x11-0`, `libxcb-icccm4`, `libxcb-keysyms1` and
-  `libxcb-shape0` using your distribution's package manager, then run
-  `./ARISE/ARISE` in a graphical session.
-- macOS: extract the ZIP and open `ARISE.app`. Preview apps are ad-hoc signed,
-  not Developer ID signed or notarized. Enterprise policy or Gatekeeper may
-  block them. Do not disable system security globally to run a preview.
+- Windows: open `ARISE-0.4.38-windows-<arch>-Setup.exe`. It installs per user at
+  `%LOCALAPPDATA%\Programs\ARISE-Native-Preview` and adds Start menu shortcuts.
+  Remove it through Windows Installed apps. Administrator rights are not required.
+- Ubuntu 24.04: run `sudo apt install ./ARISE-0.4.38-linux-<arch>.deb`.
+  APT installs required system libraries. Open **ARISE Native Preview** from the
+  application menu or run `arise-preview`. The app resides in
+  `/opt/arise-native-preview`. Remove with `sudo apt remove arise-native-preview`.
+  These DEBs are not certified for older Ubuntu, Alpine, Fedora or other distros.
+- macOS 15: open `ARISE-0.4.38-macos-<arch>.pkg` and follow Installer. It installs
+  `/Applications/ARISE Preview.app` and requires administrator authorization.
+  Close ARISE and move that application to Trash to uninstall. Optionally remove
+  its receipt with `sudo pkgutil --forget com.praxisgenai.arise.preview`.
+
+Windows installers are unsigned. macOS apps are ad-hoc signed, and the PKG is
+unsigned and not notarized. Enterprise policy or Gatekeeper may block them.
+Do not disable system security globally. Developer signing is still required
+before a frictionless production release.
+
+Portable archives remain available as workflow artifacts. Extract the whole
+archive, keeping internal libraries and bundle together. Run `ARISE/ARISE.exe`,
+`./ARISE/ARISE` or the macOS application as appropriate.
 
 Connect a provider in **Settings > Agent > Connect account and choose model**.
 No Pi terminal is required. Account credentials belong to the private SDK store;
@@ -77,7 +93,7 @@ Use `--data-dir` for an isolated test profile. Close ARISE before backing up or
 replacing an installation. Preserve the data directory; do not copy credentials
 between users or operating systems.
 
-Preview archives currently require manual replacement. Their embedded marker
+Preview updates require manually running the matching installer again (or replacing a portable archive). The preview uses a separate application location but shares the standard user profile; never run stable and preview concurrently against that profile. Uninstallers preserve user data. Their embedded marker
 disables the Windows installer update feed, preventing a Linux, macOS or ARM64
 preview from downloading the production x64 installer. Automatic per-target
 updates and signed/notarized installers remain release gates, not completed features.
@@ -86,7 +102,7 @@ updates and signed/notarized installers remain release gates, not completed feat
 
 Run `python -m pip install '.[build,portable]'`, then
 `python scripts/build_native.py --target <target>` on a matching native machine
-with Node 24.21.0, Go 1.25.14 and Rust 1.90.0. The workflow supplies these tools.
+with Node 24.21.0, Go 1.25.14 and Rust 1.90.0. The workflow supplies these tools. Run `python scripts/build_installers.py --target <target>` afterward to create the installer. Inno Setup is required on Windows; Linux uses dpkg-deb and macOS uses pkgbuild/productbuild. The `--verify-install` option is for disposable CI runners: it installs, tests, reinstalls and uninstalls the package and checks a profile sentinel. It refuses to overwrite an existing installation. This tests same-version replacement, not every migration from older releases.
 The official Gentle installer verifies native binary provenance; Engram archives
 are pinned by SHA-256. TLS checks remain enabled.
 

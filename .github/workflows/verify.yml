@@ -1,9 +1,15 @@
 name: ARISE verification
 on:
   push:
-    branches: [main, qa, qa-connections-companion]
+    branches: [main, qa-connections-companion]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_channel:
+        description: 'Publish from main after verification (preview = ARISE Preview)'
+        type: choice
+        options: [none, preview, stable]
+        default: none
 permissions:
   contents: read
 concurrency:
@@ -75,7 +81,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 60
     env:
-      ARISE_BUILD_CHANNEL: ${{ github.ref == 'refs/heads/main' && 'main' || 'qa' }}
+      ARISE_BUILD_CHANNEL: ${{ inputs.release_channel == 'stable' && 'main' || 'qa' }}
       COMPONENTS_AVAILABLE: ${{ secrets.ARISE_COMPONENTS_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
@@ -239,7 +245,7 @@ jobs:
     concurrency:
       group: arise-release-metadata
       cancel-in-progress: false
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/qa' || github.ref == 'refs/heads/main')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_channel != 'none'))
     needs: [parakeet-mirror, docker, prerequisites, windows, windows-tests, offline-models, windows-offline]
     runs-on: ubuntu-latest
     permissions:
@@ -260,4 +266,5 @@ jobs:
       - name: Publish tested Windows release and channel manifest
         env:
           GH_TOKEN: ${{ github.token }}
+          ARISE_RELEASE_CHANNEL: ${{ inputs.release_channel == 'stable' && 'main' || 'qa' }}
         run: python scripts/publish_update.py

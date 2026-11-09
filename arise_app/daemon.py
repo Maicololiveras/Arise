@@ -59,8 +59,9 @@ def ensure_daemon(root, timeout=25):
     root = Path(root); root.mkdir(parents=True, exist_ok=True)
     frozen = getattr(sys, "frozen", False)
     command = [sys.executable, "--daemon", "--data-dir", str(root)] if frozen else [sys.executable, "-m", "arise_app.daemon", "--data-dir", str(root)]
-    supervisor = application_root() / "ARISE-host.exe"
-    if os.name == "nt" and supervisor.is_file():
+    from .platforms import bundled_executable
+    supervisor = bundled_executable(application_root(), "ARISE-host")
+    if supervisor.is_file():
         command = [str(supervisor), "--engine", sys.executable, "--data-dir", str(root)]
         if not frozen: command += ["--python-module", "arise_app.daemon"]
     env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1]) + os.pathsep + os.environ.get("PYTHONPATH", "")}
@@ -100,7 +101,7 @@ def main():
     root = Path(args.data_dir); root.mkdir(parents=True, exist_ok=True)
     lock = InstanceLock(root)
     if not lock.acquire(): lock.close(); return 0
-    if getattr(sys, "frozen", False): os.environ.setdefault("ARISE_CHAT_ROOT", str(application_root() / "chat"))
+    if getattr(sys, "frozen", False): os.environ.setdefault("ARISE_CHAT_ROOT", str(root / "chat"))
     runtime = Assistant(root)
     configure_bundle(runtime)
     if not runtime.storage.config.get('owned_engine_root') or runtime.storage.config.get('engine_mode') == 'external':

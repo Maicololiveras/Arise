@@ -23,5 +23,5 @@ if (-not $compiler) {
     $candidate = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
     if (Test-Path -LiteralPath $candidate) { $compiler = @{ Source = $candidate } }
 }
-if ($compiler) { & $compiler.Source /Qp "packaging\ARISE.iss"; Check-Exit 'Instalador' }
+if ($compiler) { $preview = if ($channel -eq 'qa') { '1' } else { '0' }; & $compiler.Source /Qp "/DPreviewBuild=$preview" "packaging\ARISE.iss"; Check-Exit 'Instalador' }
 else { Write-Host 'Build portable listo. Para generar ARISE-Setup.exe instala Inno Setup 6 y compila packaging/ARISE.iss.' }
