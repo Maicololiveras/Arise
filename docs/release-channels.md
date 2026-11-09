@@ -47,5 +47,7 @@ complete Windows distribution.
 
 Core previews still exclude private desktop MCP servers and offline models.
 Signing/notarization and physical-device acceptance remain separate gates.
-Component/model repositories and Android remain separate distribution systems;
+Android Preview also builds and publishes from main, retaining its legacy APK identifiers.
+Existing APK versions are immutable and are not republished during branch synchronization.
+Component/model repositories retain their separate distribution systems;
 VPS/Coolify is deferred.
