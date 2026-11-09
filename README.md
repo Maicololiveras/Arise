@@ -35,7 +35,7 @@ Un orbe para conversar y trabajar con tu agente en Windows. Identidad ARISE, pan
 
 <!-- arise-downloads:start -->
 - **Producción 0.4.12:** [instalador Windows — 400 MB](https://github.com/Maicololiveras/Arise/releases/download/v0.4.12/ARISE-Setup.exe) · [release y archivos disponibles](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.12).
-- **QA 0.4.12:** [instalador Windows — 400 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.12/ARISE-Setup.exe) · [release y archivos disponibles](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.12).
+- **QA 0.4.37:** [instalador Windows — 413 MB](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [release y archivos disponibles](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37).
 <!-- arise-downloads:end -->
 
 Para actualizar una instalación existente, ejecuta `ARISE-Setup.exe` y selecciona la misma carpeta donde está ARISE; se conservan los datos. El ZIP completo con modelos es opcional para esta actualización: si lo eliges, extráelo y ejecuta `Configurar ARISE.cmd`.
@@ -110,3 +110,14 @@ Consulta [REMOTE.md](docs/REMOTE.md). El gateway ofrece conversación por texto 
 [Arquitectura](docs/ARCHITECTURE.md) · [Identidad](assets/identity.json) · [Validación](docs/VALIDATION.md) · [Checklist Windows](docs/WINDOWS-CHECK.md).
 
 Renderer y fuente del orbe reutilizados de [praxisgenai-harness](https://github.com/Maicololiveras/praxisgenai-harness/blob/main/docs/ARISE-ORB.md). JetBrains Mono conserva su licencia OFL. Pi, Gentle Shell y los MCP conservan sus respectivas licencias.
+
+### Accounts, voice and desktop layout (QA 0.4.37)
+
+Connect provider accounts directly in Settings, choose a chat model, test speaker
+output, customize wake phrases and move the orb out of desktop operations.
+See [setup, validation and limitations](docs/accounts-voice-desktop-qa.md).
+
+### Integrated engine (QA 0.4.36)
+
+Gentle Shell 4.7.0 now runs from ARISE’s own bundle and private configuration.
+See [owned runtime setup, upgrades and external-mode recovery](docs/owned-gentle-runtime.md).

@@ -52,12 +52,15 @@ class RemoteAssistant:
     is_remote = True
     def __init__(self, descriptor, root):
         self.url, self.token = descriptor["url"], descriptor["token"]
+        self.accounts_token = descriptor.get("accounts_token", "")
         self.storage = RemoteStorage(self, root)
         self.credentials = RemoteCredentials(self); self.gmail = RemoteGmail(self); self.pi = RemotePi(self)
         self.voice_service = RemoteVoice(self); self.orb = RemoteState(self)
         self.local_events = []; self.local_seq = 0
+    def provider_account(self, action, data): return self.request("accounts/"+action,data)
     def request(self, path, body=None, timeout=40):
         headers = {"Authorization": "Bearer " + self.token, "Content-Type": "application/json"}
+        headers["X-Arise-Accounts"] = self.accounts_token
         data = None if body is None else json.dumps(body, ensure_ascii=False).encode()
         request = urllib.request.Request(self.url + "/api/" + path, data=data, headers=headers)
         try:
@@ -87,6 +90,7 @@ class RemoteAssistant:
     def project_catalog(self): return self.request("projects")
     def select_project(self, path):
         result = self.request("project", {"path": path}); self.storage.config = self.request("config"); return result
+    def suspend_chat(self): return self.request("session/close", {})
     def session_command(self, command): return self.request("session/command", {"command": command})
     def answer_dialog(self, data): return self.request("dialog", data)
     def approve(self, identity, approved): return self.request("approval", {"id": identity, "approved": approved})

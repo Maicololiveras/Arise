@@ -39,6 +39,7 @@ def read_descriptor(root):
         data = json.loads(path.read_text())
         if not data["url"].startswith("http://127.0.0.1:"): return None
         data["token"] = decode_token(data["token"])
+        if data.get("accounts_token"):data["accounts_token"] = decode_token(data["accounts_token"])
         return data
     except (OSError, ValueError, KeyError, RuntimeError): return None
 
@@ -101,19 +102,21 @@ def main():
     if not lock.acquire(): lock.close(); return 0
     if getattr(sys, "frozen", False): os.environ.setdefault("ARISE_CHAT_ROOT", str(application_root() / "chat"))
     runtime = Assistant(root)
-    found = detect(runtime.storage.config)
-    changes = {key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel") if found.get(key)}
-    if changes and not runtime.storage.config.get("gentle_agent_home"): runtime.settings(changes)
-    # Run after discovery so stale global paths never overwrite the offline fallback.
     configure_bundle(runtime)
+    if not runtime.storage.config.get('owned_engine_root') or runtime.storage.config.get('engine_mode') == 'external':
+        found = detect(runtime.storage.config)
+        changes = {key: found[key] for key in ("pi_command", "gentle_path", "gentle_agent_home", "gentle_channel") if found.get(key)}
+        if changes and not runtime.storage.config.get("gentle_agent_home"): runtime.settings(changes)
+        configure_bundle(runtime)
     server = make_server(runtime)
     voice = VoiceService(runtime)
     runtime.voice_service = voice
     hotkeys = Hotkeys(voice.wake, lambda: (voice.end_session(), threading.Thread(target=runtime.stop, daemon=True).start()))
     if not args.no_audio:
         voice.start(); hotkeys.start()
+        runtime.emit('notice',{'text':'Ctrl+Alt+Esc: parada de manos y ojos '+('registrada por ARISE.' if hotkeys.stop_registered else 'NO disponible; usa el botón Detener manos y ojos.')})
     temporary = root / "daemon.tmp"
-    temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "pid": os.getpid(), "version": __version__}))
+    temporary.write_text(json.dumps({"url": runtime.url, "token": encode_token(runtime.token), "accounts_token": encode_token(runtime.accounts_token), "pid": os.getpid(), "version": __version__}))
     if os.name != "nt": temporary.chmod(0o600)
     os.replace(temporary, descriptor_path(root))
     runtime.emit("notice", {"text": "Proceso residente activo. Pi y las herramientas se conectan cuando se necesitan."})
@@ -129,6 +132,7 @@ def main():
             except Exception as error:
                 runtime.emit('notice', {'text': str(error)[:300]})
         threading.Thread(target=warm_local_model, daemon=True).start()
+    runtime.reminders.start()
     try: server.serve_forever(poll_interval=.1)
     except KeyboardInterrupt: pass
     finally:

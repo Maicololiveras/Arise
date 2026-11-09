@@ -15,10 +15,12 @@ COPY arise_app/ arise_app/
 COPY assets/ assets/
 RUN pip install --no-cache-dir .
 COPY vendor/package*.json vendor/
+COPY vendor/forge-voice/ vendor/forge-voice/
 RUN npm ci --prefix vendor --ignore-scripts --no-audit --no-fund
 COPY web/ web/
 COPY tests/ tests/
 COPY scripts/ scripts/
+COPY packaging/ packaging/
 COPY --from=host /src/target/release/arise-host /app/ARISE-host
 ENV QT_QPA_PLATFORM=offscreen PI_OFFLINE=1 PI_TELEMETRY=0 ARISE_TEST_REPORT=/results/test-results.json
 CMD ["python", "scripts/test.py"]

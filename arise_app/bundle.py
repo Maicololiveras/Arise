@@ -17,11 +17,12 @@ def configure_bundle(runtime):
         return {"bundled": False}
     data = json.loads(manifest.read_text(encoding="utf-8-sig"))
     config = runtime.storage.config
-    changes = {}
+    from .owned_engine import prepare
+    changes = prepare(runtime, bundle, data)
     # An adopted official installation owns Pi and its home; never replace it
     # with the fallback bundle, including when a user moves/deletes its files.
-    official = bool(config.get("gentle_agent_home"))
-    if official and (not command_available(config.get("pi_command")) or not gentle_valid(config.get("gentle_path") or "")):
+    official = bool(config.get("gentle_agent_home")) or data.get("owned_engine") == 1 and config.get("engine_mode", "bundled") == "bundled"
+    if official and not changes and (not command_available(config.get("pi_command")) or not gentle_valid(config.get("gentle_path") or "")):
         runtime.emit("notice", {"text": "La instalación de Gentle cambió o está incompleta. Abre Configurar Gentle para repararla con su propio Pi."})
     def expand(value):
         return str(bundle / value[8:]) if value.startswith("@bundle/") else value

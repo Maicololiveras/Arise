@@ -78,7 +78,7 @@ def _install_private_into(runtime,tools,transcription_only=False):
                 raise RuntimeError('Requisitos de compilación inválidos en el repositorio de herramientas.')
             build_requirements.update(requirements)
             packages.append(str(roots[0])+('[local]' if name=='transcripcion' else '[windows]')); records[name]={'repo':repo,'commit':commit,'entry':entry}
-        command=[str(python/'python.exe'),'-m','pip','install','--disable-pip-version-check','--no-warn-script-location','--no-build-isolation',*packages]
+        command=[str(python/'python.exe'),'-m','pip','install','--disable-pip-version-check','--no-warn-script-location','--no-build-isolation','mcp>=1,<2',*packages]
         env={key:value for key,value in os.environ.items() if key not in ('GITHUB_TOKEN','GH_TOKEN','OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY')}
         env['PYTHONPATH']=''
         # Embedded Python's _pth ignores pip's isolated-build PYTHONPATH. Install
@@ -86,8 +86,11 @@ def _install_private_into(runtime,tools,transcription_only=False):
         if build_requirements:
             checked_run([str(python/'python.exe'),'-m','pip','install','--disable-pip-version-check',*sorted(build_requirements)], 'Preparación de compilación de herramientas', env=env, timeout=480, creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         checked_run(command, 'Instalación de manos y ojos', env=env, timeout=480, creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    probe=subprocess.run([str(python/'python.exe'),'-c','import transcripcion_mcp.server' if transcription_only else 'import screenview_mcp.server, inputcontrol_mcp.server, transcripcion_mcp.server'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    if probe.returncode: raise RuntimeError('Las herramientas descargadas no pudieron cargarse; no se cambió la configuración.')
+    checked_run([str(python/'python.exe'), '-c',
+                 'import transcripcion_mcp.server' if transcription_only else
+                 'import screenview_mcp.server, inputcontrol_mcp.server, transcripcion_mcp.server'],
+                'Carga de transcripción' if transcription_only else 'Carga de herramientas Python',
+                env=env, timeout=30, creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     if transcription_only:
         return {name:{'command':[str(python/'python.exe'),str(launcher),record['entry']],'enabled':True} for name,record in records.items()},records
     forge_spec,forge_record=install_forge(bundle,tools,opener)
@@ -147,23 +150,57 @@ def install_forge(bundle, tools, opener):
         raise
 
 
+def installed_record(runtime, name):
+    """Trust only metadata next to the currently selected ARISE-owned runtime."""
+    command = runtime.storage.config['mcp'].get(name, {}).get('command', [])
+    if not command: return None
+    parent = (runtime.storage.root/'tools').resolve()
+    executable = Path(command[0]).resolve()
+    if not executable.is_relative_to(parent): return None
+    relative = executable.relative_to(parent)
+    if len(relative.parts) < 3 or not relative.parts[0].startswith('runtime-'): return None
+    marker = parent/relative.parts[0]/'installed.json'
+    if marker.stat().st_size > 65536: raise RuntimeError('Registro de herramientas demasiado grande.')
+    records = json.loads(marker.read_text(encoding='utf-8'))
+    record = records.get(name)
+    return record if isinstance(record, dict) else None
+
+
+def tool_update_available(runtime, name):
+    record = installed_record(runtime, name)
+    if record is None: return False  # Never replace user-supplied MCP commands.
+    if name == 'transcripcion':
+        token = github_token(runtime.credentials)
+        if not token: return False
+        opener = github_opener(token)
+        base = 'https://api.github.com/repos/Maicololiveras/transcripcion-ia'
+        branch = github_json(base, opener)['default_branch']
+        return github_json(base+'/commits/'+branch, opener)['sha'] != record.get('commit')
+    from .public_tools import fetch_manifest
+    latest = fetch_manifest(name)
+    return (latest['tag'], latest['sha256']) != (record.get('tag'), record.get('sha256'))
+
+
 def auto_setup(runtime):
-    if os.name!='nt': return
-    # A previous marker is not proof that dependencies still exist.
-    missing=[name for name in (*COMPONENTS,'forge')
-             if runtime.storage.config['mcp'].get(name,{}).get('enabled',True)
-             and not command_available(runtime.storage.config['mcp'].get(name,{}).get('command'))]
-    if not missing:return
-    if 'transcripcion' in missing and not github_token(runtime.credentials):
-        missing.remove('transcripcion')
-    if not missing:
-        runtime.emit('notice',{'text':'Transcripción es opcional y requiere acceso al repositorio privado. Configúrala desde Ajustes.'});return
-    try:
-        with runtime.transition_lock:
-            if runtime.busy:return
-            runtime.emit('notice',{'text':'Instalando herramientas y dependencias que faltan…'})
-            setup_desktop_tools(runtime, missing)
-    except Exception as error:runtime.emit('notice',{'text':str(error)[:300]})
+    """Repair missing tools and refresh managed versions when the application starts."""
+    if os.name != 'nt': return
+    with runtime.transition_lock:
+        voice = getattr(runtime, 'voice_service', None)
+        if runtime.busy or getattr(runtime, 'desktop', False) or (voice and voice.active.is_set()):
+            runtime.emit('notice', {'text':'Actualización de herramientas aplazada: hay una tarea o control de pantalla activo. Se comprobará al reiniciar ARISE.'})
+            return
+        for name in (*COMPONENTS, 'forge'):
+            spec = runtime.storage.config['mcp'].get(name, {})
+            if not spec.get('enabled', True): continue
+            if name == 'transcripcion' and not github_token(runtime.credentials): continue
+            try:
+                missing = not command_available(spec.get('command'))
+                if not missing and not tool_update_available(runtime, name): continue
+                runtime.emit('notice', {'text':f'{name}: '+('instalando herramienta que falta…' if missing else 'actualizando la versión publicada…')})
+                setup_desktop_tools(runtime, [name])
+                runtime.emit('notice', {'text':f'{name}: instalado y catálogo MCP verificado.'})
+            except Exception as error:
+                runtime.emit('notice', {'text':f'{name}: {str(error)[:200]} Se conserva la configuración anterior.'})
 
 
 def _install_into(runtime, tools, selected=None):
@@ -179,10 +216,16 @@ def _install_into(runtime, tools, selected=None):
             specs[name], records[name] = install_public_tool(name, tools, lambda text:runtime.emit('notice', {'text':text}))
         specs[name]['enabled'] = previous.get(name, {}).get('enabled', True)
     if 'forge' in specs:
-        from .forge_voice import voice_command
+        from .forge_voice import edge_bridge_command, voice_command
+        # Retain existing SAPI/Piper bridge without treating its absence as an
+        # Edge failure: public Forge's executable does not use that old bridge.
         try: specs['forge']['voice_command'] = voice_command(runtime)
+        except RuntimeError: pass
+        try: edge_bridge_command()
         except RuntimeError:
-            runtime.emit('notice', {'text':'Forge público instala herramientas MCP. Su puente de voz todavía no está incluido; puedes usar la voz local del sistema.'})
+            runtime.emit('notice', {'text':'Falta el adaptador Edge de Gonzalo. Repara ARISE; el catálogo MCP de Forge se instala por separado y la voz no se sustituye automáticamente.'})
+    # Persist provenance before activation; future checks must follow the active runtime.
+    (tools/'installed.json').write_text(json.dumps(records, indent=2), encoding='utf-8')
     try:
         for name in specs:
             old = runtime.mcp.pop(name, None)

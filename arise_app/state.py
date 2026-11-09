@@ -2,8 +2,8 @@
 from dataclasses import dataclass, asdict
 import threading
 
-STATES = {"idle", "wake_detected", "connecting", "listening", "understanding", "working", "waiting_approval", "speaking", "offline", "error", "privacy_blocked"}
-LABELS = {"idle": "OYE ARISE", "wake_detected": "AQUÍ ESTOY", "connecting": "CONECTANDO", "listening": "TE ESCUCHO", "understanding": "PROCESANDO", "working": "TRABAJANDO", "waiting_approval": "TU DECISIÓN", "speaking": "ARISE", "offline": "SIN CONEXIÓN", "error": "REVISAR AVISO", "privacy_blocked": "SILENCIADO"}
+STATES = {"transcribing", "synthesizing", "idle", "wake_detected", "connecting", "listening", "understanding", "working", "waiting_approval", "speaking", "offline", "error", "privacy_blocked"}
+LABELS = {"transcribing":"TRANSCRIBIENDO", "synthesizing":"PREPARANDO VOZ", "idle": "OYE ARISE", "wake_detected": "AQUÍ ESTOY", "connecting": "CONECTANDO", "listening": "TE ESCUCHO", "understanding": "PENSANDO", "working": "TRABAJANDO", "waiting_approval": "TU DECISIÓN", "speaking": "ARISE", "offline": "SIN CONEXIÓN", "error": "REVISAR AVISO", "privacy_blocked": "SILENCIADO"}
 
 @dataclass
 class OrbState:

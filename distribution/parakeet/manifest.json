@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "tag": "voice-parakeet-v3-2bda32ec70b0",
+  "source": "Gentleman-Programming/gentle-shell v4.5.1",
+  "modelRevision": "2bda32ec70b097a55adaa07d9a7173915b43cc78",
+  "files": [
+    {
+      "name": "encoder.int8.onnx",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/encoder.int8.onnx",
+      "size": 652184281,
+      "algorithm": "sha256",
+      "digest": "acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247"
+    },
+    {
+      "name": "decoder.int8.onnx",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/decoder.int8.onnx",
+      "size": 11845275,
+      "algorithm": "sha256",
+      "digest": "179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e"
+    },
+    {
+      "name": "joiner.int8.onnx",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/joiner.int8.onnx",
+      "size": 6355277,
+      "algorithm": "sha256",
+      "digest": "3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3"
+    },
+    {
+      "name": "tokens.txt",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/tokens.txt",
+      "size": 93939,
+      "algorithm": "sha256",
+      "digest": "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d"
+    },
+    {
+      "name": "sherpa-onnx-node-1.13.8.tgz",
+      "url": "https://registry.npmjs.org/sherpa-onnx-node/-/sherpa-onnx-node-1.13.8.tgz",
+      "size": 11954,
+      "algorithm": "sha512",
+      "digest": "sha512-MsDMBdhLFTZ1GwvcGSSQhnS7g/EA8OMH6IYysCVUOM7j8Icty9KRc0E6YT1A5fWBsZwRfKOeh88QC95aRvS8ag=="
+    },
+    {
+      "name": "sherpa-onnx-darwin-x64-1.13.8.tgz",
+      "url": "https://registry.npmjs.org/sherpa-onnx-darwin-x64/-/sherpa-onnx-darwin-x64-1.13.8.tgz",
+      "size": 11191481,
+      "algorithm": "sha512",
+      "digest": "sha512-7BLRpjM6w4f9W46/nmkmq8lEKUayhebvcpslCVQ+6QN2uReYlZEMDZlSpXMjme+hUFrPfRz8P3UNq8ep/4d19g=="
+    },
+    {
+      "name": "node-cpal-1.0.0.tgz",
+      "url": "https://registry.npmjs.org/node-cpal/-/node-cpal-1.0.0.tgz",
+      "size": 7723259,
+      "algorithm": "sha512",
+      "digest": "sha512-d71jIzKDjw1HepqaJQMPd+/k3ZLqYZWhLAv6a8aafIGnYoA1QWlShA5iB5CgijIJtQxq9PdQAk99JQKspqlnTA=="
+    },
+    {
+      "name": "sherpa-onnx-darwin-arm64-1.13.8.tgz",
+      "url": "https://registry.npmjs.org/sherpa-onnx-darwin-arm64/-/sherpa-onnx-darwin-arm64-1.13.8.tgz",
+      "size": 10047754,
+      "algorithm": "sha512",
+      "digest": "sha512-FPNgJMgnWVl/KhRTIhG3KL3A4Om63Rn4YKXc9/uHY7SzLcvqLJLc/h7UBWJwduXvv7K18t5NpxHR6XgXn4sjWw=="
+    },
+    {
+      "name": "sherpa-onnx-linux-x64-1.13.8.tgz",
+      "url": "https://registry.npmjs.org/sherpa-onnx-linux-x64/-/sherpa-onnx-linux-x64-1.13.8.tgz",
+      "size": 11089653,
+      "algorithm": "sha512",
+      "digest": "sha512-6plnhjagsSeTntCgnlag86hWbs/uZE9Crms1LgOb68/1nKsIQjMd+WG519m+aPwT6TrsBOiEMzrx41t8sL5L5g=="
+    },
+    {
+      "name": "sherpa-onnx-linux-arm64-1.13.8.tgz",
+      "url": "https://registry.npmjs.org/sherpa-onnx-linux-arm64/-/sherpa-onnx-linux-arm64-1.13.8.tgz",
+      "size": 13910679,
+      "algorithm": "sha512",
+      "digest": "sha512-Tlg7a70b/Wge3OF8IgTHF9jhSVCsLyKQKhwc4BsJ5A+dL/SrFtGBjzuHp4XeLhiiOT7afCxX5PdSn/D4c8Lnuw=="
+    },
+    {
+      "name": "sherpa-onnx-win-x64-1.13.8.tgz",
+      "url": "https://registry.npmjs.org/sherpa-onnx-win-x64/-/sherpa-onnx-win-x64-1.13.8.tgz",
+      "size": 8894875,
+      "algorithm": "sha512",
+      "digest": "sha512-oZF1c9VPOKtMwn83Bboc5XSWL+76BRoyB3eUuVnCknBKxwSULZU2Foia9VHWzU+n4I12rPsP6z6H9Rp1hD9o8g=="
+    }
+  ]
+}

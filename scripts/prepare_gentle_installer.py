@@ -1,6 +1,8 @@
 """Bundle the pinned official Windows wizard, with a result-only ARISE adapter."""
 import argparse
 import hashlib
+import json
+import re
 import shutil
 import tempfile
 import urllib.request
@@ -9,8 +11,8 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from arise_app.downloads import safe_extract
 
-URL='https://github.com/Gentleman-Programming/gentle-shell/releases/download/v4.2.0/gentle-shell-installer-windows.zip'
-SHA256='352bf1971c00beb555a97279d59c2ea2946e6b261c446d9b3fe787bd6689a1bb'
+URL='https://github.com/Gentleman-Programming/gentle-shell/releases/download/v4.5.0/gentle-shell-installer-windows.zip'
+SHA256='46b3008e3cac37d317b6c17ec663bfa002023ac12a4d147c53e189098b1dfa5e'
 
 def adapt_bootstrap(entry):
     """Use ARISE's private staging parent; retain every upstream ACL check."""
@@ -36,6 +38,43 @@ def adapt(entry):
     entry.write_text(source,encoding='utf-8')
 
 
+def adapt_windows_storage(entry):
+    """Extend only the known pnpm junction layout; keep fail-closed ACL checks."""
+    source = entry.read_text(encoding='utf-8')
+    pattern = r'const aclCheck = String.raw`.*?`;'
+    matches = list(re.finditer(pattern, source, re.S))
+    if len(matches) != 1:
+        raise RuntimeError('Cambió el contrato de validación Windows de Gentle.')
+    script = (Path(__file__).resolve().parents[1] /
+              'arise_app/resources/pnpm-storage-check.ps1').read_text(encoding='utf-8')
+    match = matches[0]
+    source = source[:match.start()] + 'const aclCheck = ' + json.dumps(script) + ';' + source[match.end():]
+    # Encode source rather than passing multiline comments/quotes through -Command.
+    transport = '"-Command", script'
+    if source.count(transport) != 1:
+        raise RuntimeError('Cambió el transporte PowerShell del instalador.')
+    source = source.replace(transport, '"-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")')
+    checks = 'const storageChecks = /^(?:policy|(?:target|parent|ancestor)-(?:reparse|owner|acl-mask))$/;'
+    if source.count(checks) != 1:
+        raise RuntimeError('Cambió el contrato de errores de almacenamiento.')
+    source = source.replace(checks, checks.replace('reparse|owner|acl-mask', 'reparse|owner|acl-mask|io|access-denied|path-too-long|not-found|process-timeout|process-start|process-exit'))
+    failure = 'if (result.error || result.status !== 0) throw new Error("Windows prerequisite process failed");'
+    cause = ', { cause: prerequisiteProcessCause(result) }'
+    if failure not in source:
+        failure = failure.replace('failed");', 'failed"'+cause+');')
+    if source.count(failure) != 1:
+        raise RuntimeError('Cambió el contrato del proceso de validación Windows.')
+    replacement = '''if (result.error || result.status !== 0) {
+        const error = new Error("Windows prerequisite process failed");
+        if (args.includes("-EncodedCommand")) error.check = result.error?.code === "ETIMEDOUT" ? "target-process-timeout" : result.error ? "target-process-start" : "target-process-exit";
+        throw error;
+    }'''
+    if 'prerequisiteProcessCause(result)' in failure:
+        replacement = replacement.replace('new Error("Windows prerequisite process failed")', 'new Error("Windows prerequisite process failed"'+cause+')')
+    source = source.replace(failure, replacement)
+    entry.write_text(source, encoding='utf-8')
+
+
 def prepare(destination):
     destination=Path(destination)
     with tempfile.TemporaryDirectory() as temporary:
@@ -50,6 +89,7 @@ def prepare(destination):
         source=extracted/'Gentle Shell Installer/installer'
         if not (source/'scripts/bootstrap.cmd').is_file():raise RuntimeError('ZIP oficial incompleto.')
         adapt(source/'bin/gentle-shell-install.mjs')
+        adapt_windows_storage(source/'scripts/installer-windows.mjs')
         # Keep upstream's ACL checks, SYSTEM-owner support and profile fallback intact.
         shutil.copy2(Path(__file__).resolve().parents[1]/'arise_app/resources/arise-result.mjs',source/'bin/arise-result.mjs')
         shutil.copytree(source,destination,dirs_exist_ok=True)

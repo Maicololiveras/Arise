@@ -1,6 +1,9 @@
 {
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "1.2.0",
-    "gentle-pi": "4.2.0"
+    "@earendil-works/pi-coding-agent": "1.5.0",
+    "gentle-engram": "0.7.0",
+    "gentle-pi": "4.7.0",
+    "https-proxy-agent": "9.1.0",
+    "msedge-tts": "2.1.1"
   }
 }

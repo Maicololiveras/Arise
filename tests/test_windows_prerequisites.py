@@ -102,7 +102,7 @@ class WindowsPrerequisitesTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'Gentle Shell no se inició'):
                 p.install_native('Go',self.env,self.data,lambda _:None)
         source=self.bundle/'gentle-installer/scripts/bootstrap.cmd';source.parent.mkdir(parents=True);source.touch()
-        runtime=SimpleNamespace(transition_lock=threading.RLock(),busy=False,voice_service=None,disconnect=Mock(),storage=SimpleNamespace(root=self.data),emit=Mock())
+        runtime=SimpleNamespace(transition_lock=threading.RLock(),busy=False,voice_service=None,disconnect=Mock(),storage=SimpleNamespace(root=self.data,config={}),emit=Mock())
         with patch('arise_app.gentle_setup.os', SimpleNamespace(name='nt',environ=self.env)), patch('arise_app.gentle_setup.application_root',return_value=self.root), patch.object(p,'prepare_shell_prerequisites',side_effect=RuntimeError('requisitos pendientes')), patch('arise_app.gentle_setup.subprocess.Popen') as launch:
             with self.assertRaisesRegex(RuntimeError,'requisitos pendientes'):install_gentle(runtime)
         launch.assert_not_called()

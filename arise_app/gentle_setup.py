@@ -79,12 +79,29 @@ def wait_for_installer(process, result_file, log_file, timeout):
                     tail=stream.read().decode('utf-8',errors='replace')
             except OSError:pass
             reason=' Los permisos de la carpeta temporal fueron rechazados (acl-mask).' if 'acl-mask' in tail else ''
+            if 'process-failed (entry-storage)' in tail:
+                reason = (' Falló la comprobación del archivo de entrada del pnpm existente '
+                          '(entry-storage), antes del asistente. El registro no distingue '
+                          'archivo ausente, permisos o política de PowerShell; no se modificó pnpm.')
+            for diagnostic_code, detail in {
+                'target-io': 'PowerShell no pudo leer los metadatos del almacenamiento.',
+                'target-access-denied': 'Windows denegó la lectura del almacenamiento.',
+                'target-path-too-long': 'La ruta excede el límite admitido por la comprobación de Windows.',
+                'target-not-found': 'La comprobación no encontró el archivo o una carpeta de su ruta.',
+                'target-process-timeout': 'La validación de PowerShell superó los 15 segundos.',
+                'target-process-start': 'No se pudo iniciar el proceso de validación de PowerShell.',
+                'target-process-exit': 'PowerShell terminó con error antes de devolver evidencia válida.',
+            }.items():
+                if 'Reason: ' + diagnostic_code + ' (' in tail:
+                    reason = ' ' + detail
+                    break
             raise RuntimeError(f'El instalador de Gentle terminó (código {code}) sin confirmar la instalación.{reason} Diagnóstico: {log_file}')
         if time.monotonic()>=deadline:
             raise RuntimeError(f'El instalador sigue abierto sin confirmar. Revisa su ventana antes de reintentar. Diagnóstico: {log_file}')
         time.sleep(.5)
 
 def validate_result(result, node):
+    if not isinstance(result,dict): raise ValueError('Resultado del detector de Gentle inválido.')
     if result.get('status')!='ready':
         if result.get('reason')=='install-shell-main':
             raise RuntimeError('Gentle superó la preparación, pero falló al instalar Shell desde main. Revisa el instalador web; puedes reintentar main o elegir estable explícitamente. ARISE no adoptó una instalación incompleta.')
@@ -122,7 +139,18 @@ def adopt_gentle(runtime, changes):
             raise
 
 
-def install_gentle(runtime, timeout=3600):
+def install_gentle(runtime, timeout=3600, force_update=False):
+    from .owned_engine import enabled
+    from .bundle import configure_bundle
+    manifest = application_root()/'bundle/manifest.json'
+    if enabled(runtime.storage.config) and manifest.is_file() and json.loads(manifest.read_text(encoding='utf-8-sig')).get('owned_engine') == 1:
+        with runtime.transition_lock:
+            if runtime.busy or runtime.pi_has_children:
+                raise RuntimeError('Detén las tareas antes de reparar el motor integrado.')
+            result = configure_bundle(runtime)
+            runtime.connect_pi()
+            runtime.emit('notice', {'text':'Gentle integrado configurado y conectado. Sus actualizaciones llegan con ARISE.'})
+            return result
     if os.name!='nt':raise RuntimeError('Este instalador de Gentle requiere Windows.')
     if not LOCK.acquire(blocking=False):raise RuntimeError('El instalador de Gentle ya está abierto.')
     try:
@@ -132,7 +160,7 @@ def install_gentle(runtime, timeout=3600):
         from .windows_prerequisites import refresh_path
         from .discovery import detect_gentle_installation
         env=refresh_path(os.environ)
-        existing=detect_gentle_installation(env)
+        existing=None if force_update else detect_gentle_installation(env, prefix=runtime.storage.config.get("gentle_bundle_root"))
         if existing:
             os.environ['PATH']=env['PATH']
             runtime.emit('notice',{'text':'Gentle existente detectado: '+existing['gentle_path']+'. Verificando su motor y comandos.'})

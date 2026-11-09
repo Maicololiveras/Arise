@@ -1,0 +1,21 @@
+ARISE Parakeet distribution mirror — byte-identical upstream downloads.
+
+Parakeet TDT 0.6B v3 by NVIDIA, CC-BY-4.0:
+https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
+License: https://creativecommons.org/licenses/by/4.0/
+ONNX int8 export by csukuangfj (ARISE makes no further model modifications):
+https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8
+Revision: 2bda32ec70b097a55adaa07d9a7173915b43cc78
+
+Runtime archives are mirrored without repackaging or executing install scripts:
+sherpa-onnx 1.13.8, Apache-2.0: https://github.com/k2-fsa/sherpa-onnx
+Bundled ONNX Runtime, MIT: https://github.com/microsoft/onnxruntime
+node-cpal 1.0.0, ISC: https://github.com/saeta-eth/node-cpal
+Original sizes and digests from Gentleman-Programming/gentle-shell v4.5.1:
+https://github.com/Gentleman-Programming/gentle-shell/blob/v4.5.1/lib/voice-artifacts.ts
+That upstream manifest documents missing license/notice texts in some npm
+archives. This mirror retains those archives verbatim and records that gap;
+it does not claim to resolve all upstream redistribution notices.
+
+SOURCE.json records each upstream URL, exact length and original SHA digest.
+SHA256SUMS additionally records SHA-256 for every mirrored binary artifact.

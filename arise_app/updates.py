@@ -12,6 +12,7 @@ import time
 import urllib.request
 from pathlib import Path
 from . import __version__
+from .https import open_https
 
 MANIFEST_URL = 'https://api.github.com/repos/Maicololiveras/Arise/contents/updates/windows.json?ref=main'
 RELEASE_ROOT = 'https://github.com/Maicololiveras/Arise/releases/download/'
@@ -43,7 +44,7 @@ def validate_manifest(data, current=__version__, channel=None):
     if type(data.get('asset_id')) is not int or data['asset_id']<=0: raise ValueError('Identificador de instalador inválido.')
     return data
 
-def check_update(current=__version__, opener=urllib.request.urlopen, channel=None):
+def check_update(current=__version__, opener=open_https, channel=None):
     channel = channel or build_channel()
     if channel not in ('main', 'qa'): raise ValueError('Canal inválido.')
     url = MANIFEST_URL.replace('ref=main', 'ref=' + channel)
@@ -53,7 +54,7 @@ def check_update(current=__version__, opener=urllib.request.urlopen, channel=Non
     if len(raw) > 128*1024: raise ValueError('Manifiesto demasiado grande.')
     return validate_manifest(json.loads(raw), current, channel)
 
-def download_update(manifest, root, opener=urllib.request.urlopen, channel=None, progress=None):
+def download_update(manifest, root, opener=open_https, channel=None, progress=None):
     manifest = validate_manifest(manifest, channel=channel)
     if not manifest: raise ValueError('La versión ya está instalada.')
     folder = Path(root) / 'updates' / manifest['version']; folder.mkdir(parents=True, exist_ok=True)

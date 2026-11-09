@@ -32,6 +32,11 @@ def make_server(runtime, port=0):
             chat = self.headers.get("X-Arise-Conversation")
             if chat and chat != runtime.conversation:
                 self.reply({"error": "El chat ya no está activo"}, 409); return False
+            epoch = self.headers.get("X-Arise-Session")
+            if epoch and epoch != str(runtime.pi_epoch):
+                self.reply({"error": "La sesión ya no está activa"}, 409); return False
+            if hmac.compare_digest(self.headers.get("X-Arise-Accounts", ""), runtime.accounts_token):
+                runtime.desktop_layout.heartbeat()
             return True
 
         def do_GET(self):
@@ -39,6 +44,9 @@ def make_server(runtime, port=0):
             parsed = urllib.parse.urlparse(self.path)
             try:
                 if parsed.path == "/api/status": value = runtime.status()
+                elif parsed.path == '/api/connections': value = {'connections': runtime.connections.status()}
+                elif parsed.path == '/api/reminders': value = {'reminders': runtime.reminders.list(runtime.conversation)}
+                elif parsed.path == '/api/mobile/devices': value = {'devices': runtime.devices.list(runtime.conversation)}
                 elif parsed.path == "/api/tools": value = runtime.tool_catalog()
                 elif parsed.path == "/api/config": value = runtime.storage.config
                 elif parsed.path == "/api/conversations": value = {"conversations": runtime.storage.conversations()}
@@ -55,6 +63,8 @@ def make_server(runtime, port=0):
 
         def do_POST(self):
             if not self.authorize(): return
+            if (self.path.startswith("/api/accounts/") or self.path == "/api/desktop/layout-ack") and not hmac.compare_digest(self.headers.get("X-Arise-Accounts", ""), runtime.accounts_token):
+                self.reply({"error":"Esta operación solo está disponible en Ajustes de ARISE."},403);return
             self.connection.settimeout(10)
             if not self.headers.get("Content-Type", "").startswith("application/json"):
                 self.reply({"error": "Se requiere JSON"}, 415); return
@@ -65,7 +75,41 @@ def make_server(runtime, port=0):
                 data = json.loads(self.rfile.read(length))
                 if not isinstance(data, dict): raise ValueError("Se requiere un objeto")
                 route = urllib.parse.urlparse(self.path).path
-                if route == "/api/tools/call": value = runtime.call_tool(data.get("name", ""), data.get("arguments", {}))
+                if route.startswith('/api/accounts/'):
+                    value=runtime.accounts.call(route.rsplit('/',1)[1],data)
+                elif route == '/api/desktop/layout-ack':
+                    value=runtime.desktop_layout.acknowledge(data.get('id'))
+                elif route == '/api/connections/token':
+                    runtime.connections.save_token(data['provider'], data['token'], **data.get('options', {})); value = {'saved': True}
+                elif route == '/api/connections/disconnect':
+                    runtime.connections.disconnect(data['provider']); value = {'disconnected': True}
+                elif route == '/api/connections/oauth/start': value = runtime.connections.oauth_start(data['provider'], data['client_id'])
+                elif route == '/api/connections/oauth/poll': value = runtime.connections.oauth_poll(data['provider'])
+                elif route == '/api/mobile/prepare':
+                    from .mobile_setup import prepare
+                    value = prepare(runtime)
+                elif route == '/api/mobile/link':
+                    from .mobile_setup import invite
+                    value = invite(runtime)
+                elif route == '/api/mobile/security/begin': value = runtime.mobile_security.begin()
+                elif route == '/api/mobile/security/confirm': value = runtime.mobile_security.confirm(data.get('code'))
+                elif route == '/api/mobile/start': value = runtime.start_mobile(data['origin'])
+                elif route == '/api/mobile/stop': value = runtime.stop_mobile()
+                elif route == '/api/mobile/invite': value = runtime.devices.invite(runtime.conversation)
+                elif route == '/api/mobile/revoke':
+                    runtime.devices.revoke(runtime.conversation, data['id']); value = {'revoked': True}
+                elif route == '/api/reminders/cancel': value = runtime.reminders.cancel(runtime.conversation, data['id'])
+                elif route == "/api/tools/call":
+                    # Recheck after reading the body. Scoped file/document calls
+                    # finish in their originating workspace before a chat switch.
+                    name=data.get("name", "")
+                    if name.startswith(("files.","documents.")):
+                        with runtime.transition_lock:
+                            if not self.authorize(): return
+                            value=runtime.call_tool(name, data.get("arguments", {}))
+                    else:
+                        if not self.authorize(): return
+                        value=runtime.call_tool(name, data.get("arguments", {}))
                 elif route == "/api/prompt": value = runtime.steer(data.get("text", ""), data.get("images"))
                 elif route == "/api/stop": value = runtime.stop()
                 elif route == "/api/config":
@@ -103,6 +147,15 @@ def make_server(runtime, port=0):
                 elif route == '/api/tools/setup-desktop':
                     from .tool_setup import setup_desktop_tools
                     value=setup_desktop_tools(runtime,data.get("components"))
+                elif route == '/api/engram/update':
+                    from .engram_setup import update_engram
+                    value=update_engram(runtime)
+                elif route == '/api/gentle/update':
+                    from .gentle_setup import install_gentle
+                    value=install_gentle(runtime, force_update=True)
+                elif route == '/api/gentle/install-native':
+                    from .gentle_native_setup import install_native_tui
+                    value=install_native_tui(runtime, data.get('binary'))
                 elif route == '/api/gentle/install':
                     from .gentle_setup import install_gentle
                     value=install_gentle(runtime)
@@ -121,6 +174,26 @@ def make_server(runtime, port=0):
                 elif route == "/api/project":
                     if runtime.voice_service: runtime.voice_service.end_session()
                     value = runtime.select_project(data["path"])
+                elif route == "/api/session/capabilities":
+                    with runtime.lock:
+                        if (self.headers.get("X-Arise-Conversation") != runtime.conversation or
+                                self.headers.get("X-Arise-Session") != str(runtime.pi_epoch)):
+                            raise ValueError("El chat ya no está activo")
+                        if not isinstance(data.get("tools"), list) or not all(isinstance(t,str) for t in data["tools"]):
+                            raise ValueError("Catálogo inválido")
+                        runtime.pi_tools = data["tools"][:1000]
+                    value = {"ok": True}
+                elif route == "/api/session/activity":
+                    with runtime.lock:
+                        if (self.headers.get("X-Arise-Conversation") != runtime.conversation or
+                                self.headers.get("X-Arise-Session") != str(runtime.pi_epoch)):
+                            raise ValueError("La sesión ya no está activa")
+                        if data.get("type") != "subagent_status": raise ValueError("Evento no admitido")
+                        runtime.publish_activity(data)
+                    value = {"ok": True}
+                elif route == "/api/session/close":
+                    with runtime.transition_lock: runtime.suspend_chat()
+                    value = {"ok": True}
                 elif route == "/api/session/command": value = runtime.session_command(data["command"])
                 elif route == "/api/dialog": value = runtime.answer_dialog(data)
                 elif route == "/api/approval": runtime.approve(data["id"], data.get("approved")); value = {"ok": True}
@@ -136,13 +209,21 @@ def make_server(runtime, port=0):
                 elif route.startswith("/api/voice/"):
                     voice = runtime.voice_service
                     if not voice: raise RuntimeError("Servicio de voz no iniciado")
-                    if route.endswith("/wake"): value = {"accepted": voice.wake(data.get("text", ""))}
+                    if route.endswith("/preview"): value = voice.preview()
+                    elif route.endswith("/wake"): value = {"accepted": voice.wake(data.get("text", ""))}
                     elif route.endswith("/end"): voice.end_session(); value = {"ok": True}
                     elif route.endswith("/mute"): voice.mute(data.get("muted") is True); value = {"ok": True}
                     else: raise ValueError("Operación de voz desconocida")
                 elif route == "/api/shutdown":
-                    runtime.stop(); value = {"ok": True}
-                    threading.Thread(target=self.server.shutdown, daemon=True).start()
+                    runtime.stop()
+                    # A daemon worker can be killed as soon as serve_forever exits.
+                    # Send the acknowledgement before allowing the main thread to exit.
+                    try:
+                        self.reply({"ok": True})
+                        self.wfile.flush()
+                    finally:
+                        threading.Thread(target=self.server.shutdown, daemon=True).start()
+                    return
                 else: self.reply({"error": "Ruta desconocida"}, 404); return
                 self.reply(value)
             except (BrokenPipeError, ConnectionResetError): pass

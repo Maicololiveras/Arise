@@ -20,6 +20,15 @@ class Assistant(Runtime):
         self.action_lock = threading.RLock()
         self.stop_generation = 0
         self.voice_service = None
+        from .connections import Connections
+        from .companion import Devices
+        from .reminders import Reminders
+        self.connections = Connections(self.storage.root)
+        self.devices = Devices(self.storage)
+        from .mobile_security import MobileSecurity
+        self.mobile_security = MobileSecurity(self.storage)
+        self.reminders = Reminders(self)
+        self.mobile_server = None
         with self.storage.lock, self.storage.db:
             for row in self.storage.db.execute("SELECT id,payload FROM tasks ORDER BY created DESC LIMIT 100"):
                 task = json.loads(row["payload"])
@@ -27,6 +36,38 @@ class Assistant(Runtime):
                     task.update(status="error", error="El proceso residente se interrumpió. Verifica el resultado externo antes de repetir la acción.")
                 self.tasks[row["id"]] = task
             for task in self.tasks.values(): self.persist_task(task)
+        try:
+            from .mobile_setup import resume
+            resume(self)
+        except Exception as error:
+            self.emit('notice', {'text':'Acceso móvil no restaurado: '+str(error)})
+
+    def start_mobile(self, origin, port=0):
+        from .companion import make_mobile_server
+        with self.transition_lock:
+            if self.mobile_server:
+                raise ValueError('El acceso móvil ya está activo; deténlo antes de cambiarlo.')
+            self.mobile_server = make_mobile_server(self, origin, port=port)
+            self.mobile_origin = origin
+            threading.Thread(target=self.mobile_server.serve_forever, daemon=True).start()
+            return {'origin': origin, 'port': self.mobile_server.server_port,
+                    'command': f'tailscale serve --bg http://127.0.0.1:{self.mobile_server.server_port}'}
+
+    def stop_mobile(self, persist=True):
+        with self.transition_lock:
+            if self.mobile_server:
+                self.mobile_server.shutdown()
+                self.mobile_server.server_close()
+                self.mobile_server = None
+        if persist:
+            from .mobile_setup import save_settings
+            save_settings(self, {'enabled':False})
+        return {'stopped': True}
+
+    def close(self):
+        self.reminders.close()
+        self.stop_mobile(persist=False)
+        super().close()
 
     def persist_task(self, task):
         with self.storage.lock, self.storage.db:
@@ -64,6 +105,10 @@ class Assistant(Runtime):
             raise
 
     def steer(self, text, images=None):
+        with self.transition_lock:
+            return self._steer_owned(text, images)
+
+    def _steer_owned(self, text, images=None):
         from .attachments import validate_images
         images=validate_images(images)
         if images and not str(text).strip(): text="Describe estas imágenes."
@@ -92,21 +137,25 @@ class Assistant(Runtime):
             return self.stop()
         # Reconnect after settings/chat changes; permission alone used to leave
         # an empty catalog even when the desktop dependencies were installed.
+        generation=self.stop_generation
+        self.desktop_halted=False
         for name in ("screenview", "inputcontrol"):
             if self.storage.config["mcp"].get(name, {}).get("enabled"):
                 try:
                     self.connect_mcp(name)
                 except Exception as error:
                     self.emit("error", {"text": f"{name}: no se pudo conectar. {str(error)[:300]}"})
+        if generation!=self.stop_generation:raise RuntimeError('Activación cancelada por la parada de emergencia.')
         self.desktop = True
         self.orb.update(control=True)
         return self.status()
 
     def ask_approval(self, action, preview, timeout=120):
         identity = uuid.uuid4().hex
-        pending = {"event": threading.Event(), "approved": False, "generation": self.stop_generation}
+        pending = {"event": threading.Event(), "approved": False, "generation": self.stop_generation, "chat": self.conversation, "action": action, "preview": preview}
         with self.lock:
             self.approvals[identity] = pending
+        self.publish_activity({"type":"waiting"})
         self.orb.update("waiting_approval")
         self.emit("approval", {"id": identity, "action": action, "preview": preview})
         try:
@@ -127,17 +176,26 @@ class Assistant(Runtime):
             pending["event"].set()
 
     def stop(self):
-        self.stop_generation += 1
+        interrupted = self.current_task if self.busy else None
+        with self.lock:
+            self.stop_generation += 1
         self.desktop = False  # revoke before waiting for the agent to abort
         for pending in list(getattr(self, "approvals", {}).values()):
             pending["event"].set()
         result = super().stop()
+        if interrupted and interrupted in self.tasks: self.persist_task(self.tasks[interrupted])
         if hasattr(self, "orb"):
             self.orb.update(control=False, screen=False)
         return result
 
     def tool_catalog(self):
         catalog = super().tool_catalog()
+        from .documents import TOOLS
+        catalog["tools"].extend(TOOLS)
+        from .terminal_tasks import TOOLS as TERMINAL_TOOLS
+        catalog["tools"].extend(TERMINAL_TOOLS)
+        from .reminders import TOOLS as REMINDER_TOOLS
+        catalog["tools"].extend(REMINDER_TOOLS)
         catalog["tools"].extend([
             {"name": "files.write", "description": "Escribe UTF-8 dentro del workspace.", "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}, "text": {"type": "string"}}, "required": ["path", "text"]}},
             {"name": "gmail.send_draft", "description": "Solicita confirmación visible para enviar un borrador existente. Nunca repetir un envío ambiguo.", "inputSchema": {"type": "object", "properties": {"draft_id": {"type": "string"}}, "required": ["draft_id"]}},
@@ -150,6 +208,28 @@ class Assistant(Runtime):
     def call_tool(self, name, arguments):
         if not isinstance(arguments, dict):
             raise ValueError("arguments debe ser un objeto.")
+        if name.startswith('reminders.'):
+            chat = self.conversation
+            if name == 'reminders.create': return self.wrap(self.reminders.create(chat, arguments))
+            if name == 'reminders.list': return self.wrap({'reminders': self.reminders.list(chat)})
+            if name == 'reminders.cancel': return self.wrap(self.reminders.cancel(chat, arguments.get('id')))
+            raise ValueError('Herramienta de recordatorio desconocida.')
+        if name.startswith('terminal.'):
+            if name=='terminal.delegate':return self.wrap(self.terminals.delegate(arguments.get('task')))
+            with self.transition_lock:
+                if name=='terminal.send':return self.wrap(self.terminals.send(arguments.get('id'),arguments.get('text'),self.conversation))
+                if name=='terminal.list':return self.wrap({'terminals':self.terminals.list(self.conversation)})
+                if name=='terminal.cancel':return self.wrap(self.terminals.cancel(arguments.get('id'),self.conversation))
+            raise ValueError('Herramienta de terminal desconocida.')
+        if name.startswith("documents."):
+            from .documents import create_docx, read_docx
+            with self.action_lock:
+                if name == "documents.create_docx":
+                    result=create_docx(self, arguments)
+                    self.publish_activity({"type":"document_verified", "paragraphs":result["paragraphs_added"]})
+                    return self.wrap(result)
+                if name == "documents.read_docx": return self.wrap(read_docx(self.scoped_path(arguments["path"])))
+            raise ValueError("Herramienta de documentos desconocida.")
         if name == "files.write":
             path = self.scoped_path(arguments["path"])
             text = arguments["text"]
@@ -183,6 +263,7 @@ class Assistant(Runtime):
             with self.action_lock:
                 return super().call_tool(name, arguments)
         if name.startswith("screenview."):
+            if self.desktop_halted:raise RuntimeError("Observación detenida. Reactívala expresamente desde el chat.")
             self.orb.update(screen=True)
             try:
                 return super().call_tool(name, arguments)
@@ -208,10 +289,17 @@ class Assistant(Runtime):
             raise ValueError('Motor de voz local no compatible.')
         if changes.get("thinking", self.storage.config["thinking"]) not in ("off", "minimal", "low", "medium", "high", "xhigh"):
             raise ValueError("Esfuerzo inválido.")
-        for key in ("wake_enabled", "pinned", "reduced_motion", "onboarding_complete", "local_barge_in", "local_dialogue_enabled"):
+        for key in ("wake_enabled", "pinned", "reduced_motion", "onboarding_complete", "local_barge_in", "local_dialogue_enabled", "voice_windows_fallback", "voice_fluent", "wake_open_panel", "desktop_auto_clear"):
             if key in changes and not isinstance(changes[key], bool):
                 raise ValueError(f"{key} debe ser booleano")
+        if 'wake_phrases' in changes and (not isinstance(changes['wake_phrases'],list) or not 1<=len(changes['wake_phrases'])<=10 or not all(isinstance(p,str) and 2<=len(p.strip())<=80 for p in changes['wake_phrases'])):
+            raise ValueError('Define entre una y diez frases de activación, de 2 a 80 caracteres.')
+        if 'wake_reply' in changes and (not isinstance(changes['wake_reply'],str) or len(changes['wake_reply'])>200):raise ValueError('La respuesta de activación admite hasta 200 caracteres.')
+        if changes.get('desktop_orb_corner','bottom-right') not in ('bottom-right','bottom-left','top-right','top-left'):raise ValueError('Esquina del orbe inválida.')
         if "orb_size" in changes and (type(changes["orb_size"]) is not int or not 48 <= changes["orb_size"] <= 240):
             raise ValueError("Tamaño entre 48 y 240.")
         if 'voice_interrupt_threshold' in changes and (type(changes['voice_interrupt_threshold']) is not int or not 300<=changes['voice_interrupt_threshold']<=10000): raise ValueError('Umbral de interrupción entre 300 y 10000.')
+        if 'voice_silence_ms' in changes and (type(changes['voice_silence_ms']) is not int or not 700<=changes['voice_silence_ms']<=3000):raise ValueError('Pausa de voz entre 700 y 3000 ms.')
+        if 'forge_voice' in changes and changes['forge_voice']!='es-CO-GonzaloNeural':raise ValueError('Selecciona la voz Gonzalo disponible en este paquete.')
+        if 'forge_rate' in changes and not __import__('re').fullmatch(r'[+-]\d{1,2}%',changes['forge_rate']):raise ValueError('Velocidad en formato +5%.')
         return super().settings(changes)

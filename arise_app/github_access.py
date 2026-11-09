@@ -8,6 +8,7 @@ import urllib.request
 import urllib.error
 import urllib.response
 from urllib.parse import urlparse
+from .https import tls_context
 
 class PrivateRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, request, fp, code, message, headers, new_url):
@@ -32,7 +33,7 @@ def github_token(credentials):
     return ''
 
 def github_opener(token='', stream=False):
-    opener=urllib.request.build_opener(PrivateRedirect())
+    opener=urllib.request.build_opener(urllib.request.HTTPSHandler(context=tls_context()), PrivateRedirect())
     def open_request(request,timeout=30):
         if isinstance(request,str): request=urllib.request.Request(request)
         url=urlparse(request.full_url)

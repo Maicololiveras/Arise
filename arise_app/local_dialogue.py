@@ -7,7 +7,9 @@ class LocalRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,request,fp,code,message,headers,new_url):
         if urlparse(new_url).hostname not in ("localhost","127.0.0.1","::1"):raise ValueError("El servidor local no puede redirigir a un proveedor externo.")
         return super().redirect_request(request,fp,code,message,headers,new_url)
-from .voice import INSTRUCTIONS
+# Local dialogue retains its existing queued dispatch contract; realtime task IDs
+# are a separate contract until local request aliases are persisted.
+INSTRUCTIONS = "Eres ARISE. Habla español de forma natural y breve. Gentle Shell ejecuta las tareas con los permisos actuales. Nunca inventes acciones completadas ni reveles razonamiento privado."
 
 STATUS_TOOL={'type':'function','function':{'name':'task_status','description':'Consulta el estado real de las tareas de Gentle Shell sin detenerlas.','parameters':{'type':'object','properties':{}}}}
 LOCAL_SYSTEM=INSTRUCTIONS+'''\nEres la voz conversacional local de ARISE, separada del motor de trabajo.
@@ -34,7 +36,7 @@ class LocalDialogue:
             raise ValueError('El modelo conversacional debe usar un servidor local en localhost/127.0.0.1.')
         self.model=config.get('local_dialogue_model','');self.conversation=runtime.conversation
         self.history=runtime.storage.voice_history(self.conversation)
-        self.tools=[{'type':'function','function':tool} for tool in TOOLS]+[STATUS_TOOL]
+        self.tools=[{'type':'function','function':tool} for tool in TOOLS if tool['name'] in ('delegate_task','stop_task')]+[STATUS_TOOL]
         self.seen={}
         from .hardware import server_command, local_profile
         self.light=local_profile(config)=='light'

@@ -51,3 +51,7 @@ Cierra y abre PowerShell después de esa instalación; usa `gh auth login --host
 La autenticación GitHub permite descargar las herramientas; no autentica el modelo del agente. Gmail solo requiere configuración si vas a utilizar esa integración.
 
 Referencias: [autenticación de GitHub CLI](https://cli.github.com/manual/gh_auth_login) y [instalación en Windows](https://github.com/cli/cli/blob/trunk/docs/install_windows.md).
+
+## Alternative npm installation and recovery
+
+See [Gentle Shell npm recovery](GENTLE-NPM-RECOVERY.md) for requirements, separate installation/launcher/RPC checks, and validation limits.

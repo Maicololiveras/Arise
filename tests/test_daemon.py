@@ -1,4 +1,7 @@
 import json
+import io
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 import os
 import subprocess
 import sys
@@ -36,6 +39,35 @@ class DaemonTests(unittest.TestCase):
             finally:
                 if process.poll() is None: process.terminate(); process.wait(5)
                 process.stderr.close()
+
+    def test_shutdown_acknowledges_and_flushes_before_server_can_exit(self):
+        from arise_app.server import make_server
+        for disconnected in (False, True):
+            with self.subTest(disconnected=disconnected):
+                order=[]
+                runtime=SimpleNamespace(stop=lambda:order.append('stop'))
+                server=make_server(runtime)
+                try:
+                    handler=object.__new__(server.RequestHandlerClass)
+                    handler.server=server
+                    handler.authorize=lambda:True
+                    handler.headers={'Content-Type':'application/json','Content-Length':'2'}
+                    handler.connection=Mock()
+                    handler.path='/api/shutdown'
+                    handler.rfile=io.BytesIO(b'{}')
+                    handler.wfile=Mock()
+                    handler.wfile.flush.side_effect=lambda:order.append('flush')
+                    def reply(value):
+                        self.assertEqual(value,{'ok':True})
+                        order.append('reply')
+                        if disconnected: raise BrokenPipeError()
+                    handler.reply=reply
+                    server.shutdown=lambda:order.append('shutdown')
+                    # Force the worst scheduling: shutdown runs immediately on start.
+                    with patch('arise_app.server.threading.Thread',side_effect=lambda target,daemon:SimpleNamespace(start=target)):
+                        handler.do_POST()
+                    self.assertEqual(order,['stop','reply','shutdown'] if disconnected else ['stop','reply','flush','shutdown'])
+                finally: server.server_close()
 
     def test_incomplete_tasks_are_not_replayed_after_restart(self):
         with tempfile.TemporaryDirectory() as root:

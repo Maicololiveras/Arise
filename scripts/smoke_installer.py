@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-',ignore_cleanup_errors=T
     root=Path(temporary); install=root/'Installed ARISE'; data=root/'data'; data.mkdir()
     config={**DEFAULTS,'onboarding_complete':True,'wake_enabled':False,'workspace':str(root/'Workspace'),'pi_command':[str(install/'bundle/node/node.exe'),str(install/'bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/cli.js')],'gentle_path':str(install/'bundle/node/node_modules/gentle-pi')}
     (data/'settings.json').write_text(json.dumps(config),encoding='utf-8')
-    agent=root/'agent';agent.mkdir()
+    agent=data/'engine/agent';agent.mkdir(parents=True)
     (agent/'settings.json').write_text(json.dumps({'packages':[],'telemetry':False}),encoding='utf-8')
     (agent/'models.json').write_text(json.dumps({'providers':{'arise-smoke':{'baseUrl':'http://127.0.0.1:1/v1','api':'openai-completions','apiKey':'fixture-only','models':[{'id':'fixture','input':['text'],'contextWindow':32000,'maxTokens':1000}]}}}),encoding='utf-8')
     env={**os.environ,'PI_CODING_AGENT_DIR':str(agent),'PI_OFFLINE':'1','QT_QPA_PLATFORM':'offscreen','ARISE_SKIP_NETWORK_SETUP':'1'}
@@ -52,6 +52,11 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-',ignore_cleanup_errors=T
             raise
         finally:
             if log.exists():print(log.read_text(errors='replace')[-6000:],flush=True)
+            stop_log=data/'installer-stop.log'
+            if stop_log.exists():
+                text=stop_log.read_text(errors='replace')
+                (diagnostics/f'stop-{setup_attempt}.log').write_text(text,encoding='utf-8')
+                print(text[-6000:],flush=True)
         if code:raise RuntimeError('Installer failed: '+str(code))
         print(f'Installer attempt {setup_attempt}: completed',flush=True)
     def ready(previous_pid=None):
@@ -78,6 +83,8 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-',ignore_cleanup_errors=T
         remote.settings({'agent_provider':'arise-smoke','agent_model':'fixture','thinking':'off','pi_extra_args':['--offline','--no-extensions','--no-skills','--no-context-files']})
         if not remote.connect_pi().get('gentleVerified'):raise RuntimeError('Installed Pi/Gentle unavailable')
         remote.call_tool('memory.save',{'text':'Survives installer replacement'})
+        word=json.loads(remote.call_tool('documents.create_docx',{'path':'installer-smoke.docx','title':'QA Word','paragraphs':['DOCX created by the installed frozen runtime.']})['content'][0]['text'])
+        if not word.get('content_verified'):raise RuntimeError('Installed DOCX generation was not verified')
         old_daemon=psutil.Process(descriptor['pid']);old_children=old_daemon.children(recursive=True)
         old_ui=[p for p in psutil.process_iter(['exe']) if p.info['exe'] and Path(p.info['exe']).name.lower()=='arise.exe' and os.path.samefile(p.info['exe'],install/'ARISE.exe') and p.pid!=descriptor['pid']]
         if not old_ui:raise RuntimeError('Installed UI was not captured for replacement validation')
@@ -87,10 +94,12 @@ with tempfile.TemporaryDirectory(prefix='arise-upgrade-',ignore_cleanup_errors=T
         for process in [old_daemon,*old_children,*old_ui]:
             if process.is_running():raise RuntimeError('Old owned process survived replacement: '+str(process.pid))
         if chat.read_text()!='do not delete' or obsolete.exists():raise RuntimeError('Installer data preservation/managed cleanup failed')
+        word_read=json.loads(new_remote.call_tool('documents.read_docx',{'path':'installer-smoke.docx'})['content'][0]['text'])
+        if 'DOCX created by the installed frozen runtime.' not in word_read['text']:raise RuntimeError('DOCX content did not survive installer replacement')
         notes=json.loads(new_remote.call_tool('memory.search',{'query':'Survives'})['content'][0]['text'])['notes']
         if not notes or new_remote.status()['version']!=__version__:raise RuntimeError('Version or persisted memory incorrect')
         if not (install/'bundle/python/python.exe').is_file():raise RuntimeError('Missing runtime for private tools')
-        report={'versioned_shortcut_icon':'passed','fresh_install':'passed','replace_running_ui_daemon_pi':'passed','owned_children_closed':len(old_children),'user_chat_preserved':'passed','memory_preserved':'passed','stale_managed_file_removed':'passed','restarted_version':__version__}
+        report={'installed_docx_generation_and_preservation':'passed','versioned_shortcut_icon':'passed','fresh_install':'passed','replace_running_ui_daemon_pi':'passed','owned_children_closed':len(old_children),'user_chat_preserved':'passed','memory_preserved':'passed','stale_managed_file_removed':'passed','restarted_version':__version__}
     except Exception as error:
         report['error']=str(error)
         Path('artifacts/installer-upgrade.json').write_text(json.dumps(report,indent=2),encoding='utf-8')

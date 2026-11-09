@@ -58,6 +58,8 @@ class RealPiTests(unittest.TestCase):
                 result = runtime.tasks[task]
                 self.assertEqual(result["status"], "done", result)
                 self.assertTrue(runtime.pi_state.get("gentleVerified"), "Gentle Shell no cargó sus comandos reales")
+                commands = runtime.pi.request({"type":"get_commands"}).get("data", {}).get("commands", [])
+                self.assertIn("gentle:scratch", [c["name"] for c in commands])
                 self.assertIn("Nota guardada", result["output"])
                 notes = json.loads(runtime.memory_path.read_text())
                 self.assertEqual(notes[0]["text"], "Nota desde Pi real")
@@ -81,7 +83,7 @@ class RealPiTests(unittest.TestCase):
                 self.assertEqual(runtime.tasks[result["task_id"]]["status"], "done")
                 self.assertEqual(len(requests), 2, "El comando se envió al modelo en lugar de Gentle")
 
-                for command, choice, title in (("/gentle:profiles", "Cerrar", "Perfiles de Gentle"), ("/gentle:models", "Cancelar", "Modelos de Gentle")):
+                for command, choice, title in (("/gentle:profiles", "Cerrar", "Perfiles y modelos de Gentle"),):
                     task = runtime.session_command(command)
                     deadline = time.monotonic() + 10
                     while not runtime.dialogs and time.monotonic() < deadline: time.sleep(.01)
@@ -111,15 +113,15 @@ class RealPiTests(unittest.TestCase):
                 profile_files = list((Path(root)/"gentle-config").rglob("*profiles*.json"))
                 self.assertTrue(any("arise-fixture" in p.read_text() for p in profile_files), "El perfil no se guardó")
                 task = runtime.session_command("/gentle:profiles")
-                answer_next("Aplicar perfil"); answer_next("arise-fixture"); answer_next("Cerrar")
+                answer_next("Elegir perfil"); answer_next("arise-fixture"); answer_next("Usar en esta sesión"); answer_next("Cerrar")
                 self.assertTrue(runtime.settled.wait(10))
 
-                task = runtime.session_command("/gentle:models")
-                answer_next("Todos los agentes"); answer_next("Modelo personalizado"); answer_next("arise-test/arise-test")
-                answer_next("low"); answer_next("Guardar")
+                task = runtime.session_command("/gentle:profiles")
+                answer_next("Editar modelos"); answer_next("Todos los agentes"); answer_next("Modelo personalizado"); answer_next("arise-test/arise-test")
+                answer_next("off"); answer_next("Guardar"); answer_next("Cerrar")
                 self.assertTrue(runtime.settled.wait(10), "El modelo por agente no se guardó")
-                model_files = list((Path(root)/"gentle-config").rglob("*models*.json"))
-                self.assertTrue(any('arise-test/arise-test' in p.read_text() and 'low' in p.read_text() for p in model_files))
+                model_files = list((Path(root)/"gentle-config").rglob("*profiles*.json"))
+                self.assertTrue(any('arise-test/arise-test' in p.read_text() and '"off"' in p.read_text() for p in model_files))
 
                 for command, choices in (("/gentle:commands", ["Cerrar"]), ("/gentle:agents", ["Cerrar"]),
                                          ("/gentle:stats", ["7d", "project"]), ("/gentle:vim", ["status"]),
@@ -135,6 +137,28 @@ class RealPiTests(unittest.TestCase):
                 self.assertEqual(len(requests), 2, "Un comando local consumió el modelo")
                 with self.assertRaises(ValueError): runtime.session_command("/gentle:inexistente")
                 self.assertEqual(len(requests), 2)
+
+
+                # Reproduce the old failure: follow_up acknowledges but leaves an idle Pi idle.
+                runtime.pi.request({'type':'follow_up','message':'Aviso de prueba en cola'})
+                state=runtime.pi.request({'type':'get_state'}).get('data',{})
+                self.assertFalse(state.get('isStreaming'));self.assertEqual(len(requests),2)
+                runtime.pi.request({'type':'clear_queue'})
+                # A real terminal completion now wakes the same RPC session without user input.
+                from unittest.mock import Mock
+                runtime.storage.config['code_enabled']=True
+                identity='real-completion'
+                directory=runtime.terminals.folder(runtime.conversation)/identity;directory.mkdir(parents=True)
+                (directory/'result.json').write_text(json.dumps({'status':'completed','text':'Documento de prueba disponible'}))
+                job=dict(id=identity,chat=runtime.conversation,status='running',task='fixture',result='',error='',
+                         epoch=runtime.pi_epoch,generation=runtime.stop_generation,
+                         process=Mock(wait=Mock(return_value=0),poll=Mock(return_value=0)))
+                runtime.terminals.watch(job)
+                self.assertTrue(runtime.settled.wait(20),'Completion did not wake idle Pi')
+                self.assertGreater(len(requests),2)
+                count=len(requests);runtime.terminals.watch(job)
+                self.assertEqual(len(requests),count)
+                self.assertIn('Nota guardada',str(runtime.storage.messages(runtime.conversation)[-1]))
 
             finally:
                 runtime.close(); runtime.storage.db.close(); bridge.shutdown(); bridge.server_close()

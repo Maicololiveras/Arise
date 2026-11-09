@@ -31,7 +31,7 @@ def update_readme(text, manifests):
     return text[:start] + block + '\n\n' + text[end:]
 
 
-def publish_metadata(api, channel, manifest):
+def publish_metadata(api, channel, manifest, sync_other=True):
     """Atomically update feed + README, then sync the other README.
 
     Each ref update is a fast-forward against a freshly read head. Concurrent
@@ -49,7 +49,8 @@ def publish_metadata(api, channel, manifest):
     if new < old:
         raise ValueError('Refusing to replace a newer published version')
     manifests[channel] = manifest
-    for branch in (channel, 'qa' if channel == 'main' else 'main'):
+    branches=(channel, 'qa' if channel == 'main' else 'main') if sync_other else (channel,)
+    for branch in branches:
         head = api(f'{repo}/git/ref/heads/{branch}')['object']['sha']
         commit = api(f'{repo}/git/commits/{head}')
         source = api(f'{repo}/contents/README.md?ref={head}')
