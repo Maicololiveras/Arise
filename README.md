@@ -19,12 +19,12 @@ Choose your system and channel. Desktop downloads point to published installers.
 
 | Operating system | Architecture | Stable | ARISE Preview | Installation |
 | --- | --- | --- | --- | --- |
-| Windows 11 | x64 | <!-- arise-windows-stable -->[Complete 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/v0.4.40/ARISE-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/v0.4.40/ARISE-Setup.exe.sha256)<!-- /arise-windows-stable --><br>[Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-windows-x64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-windows-x64-Setup.exe.sha256) | <!-- arise-windows-preview -->[Complete 0.4.37](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe.sha256)<!-- /arise-windows-preview --><br>[Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-x64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-x64-Setup.exe.sha256) | [Install →](#install-windows) |
-| Windows 11 | ARM64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-windows-arm64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-windows-arm64-Setup.exe.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-arm64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-arm64-Setup.exe.sha256) | [Install →](#install-windows) |
-| Linux · Ubuntu 24.04 | x64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-x64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-x64.deb.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-x64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-x64.deb.sha256) | [Install →](#install-linux) |
-| Linux · Ubuntu 24.04 | ARM64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-arm64.deb.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb.sha256) | [Install →](#install-linux) |
-| macOS 15 | Intel x64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-x64.pkg.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg.sha256) | [Install →](#install-macos) |
-| macOS 15 | Apple Silicon ARM64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-arm64.pkg.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg.sha256) | [Install →](#install-macos) |
+| Windows 11 | x64 | <!-- arise-windows-stable -->[Complete 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/v0.4.40/ARISE-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/v0.4.40/ARISE-Setup.exe.sha256)<!-- /arise-windows-stable --><br>[Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-windows-x64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-windows-x64-Setup.exe.sha256) | <!-- arise-windows-preview -->[Complete 0.4.37](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.37/ARISE-Setup.exe.sha256)<!-- /arise-windows-preview --><br>[Core 0.4.41](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-windows-x64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-windows-x64-Setup.exe.sha256) | [Install →](#install-windows) |
+| Windows 11 | ARM64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-windows-arm64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-windows-arm64-Setup.exe.sha256) | [Core 0.4.41](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-windows-arm64-Setup.exe) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-windows-arm64-Setup.exe.sha256) | [Install →](#install-windows) |
+| Linux · Ubuntu 24.04 | x64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-x64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-x64.deb.sha256) | [Core 0.4.41](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-linux-x64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-linux-x64.deb.sha256) | [Install →](#install-linux) |
+| Linux · Ubuntu 24.04 | ARM64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-arm64.deb.sha256) | [Core 0.4.41](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-linux-arm64.deb.sha256) | [Install →](#install-linux) |
+| macOS 15 | Intel x64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-x64.pkg.sha256) | [Core 0.4.41](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-macos-x64.pkg.sha256) | [Install →](#install-macos) |
+| macOS 15 | Apple Silicon ARM64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-arm64.pkg.sha256) | [Core 0.4.41](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-macos-arm64.pkg.sha256) | [Install →](#install-macos) |
 | Android | Installable web app | Web app requires PC 0.4.41+ (pending publication) | Web app requires PC 0.4.41+ (pending publication) | [Install →](#install-android) |
 | iOS / iPadOS | Installable web app | Web app requires PC 0.4.41+ (pending publication) | Web app requires PC 0.4.41+ (pending publication) | [Install →](#install-ios) |
 
@@ -66,8 +66,8 @@ Choose Core Stable or Core Preview in the download table. Stable installs **ARIS
 
 | Architecture | Installer | Size | Integrity |
 | --- | --- | --- | --- |
-| x64 (Intel / AMD) | [Download EXE](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-x64-Setup.exe) | 178 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-x64-Setup.exe.sha256) |
-| ARM64 | [Download EXE](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-arm64-Setup.exe) | 145 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-windows-arm64-Setup.exe.sha256) |
+| x64 (Intel / AMD) | [Download EXE](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-windows-x64-Setup.exe) | 178 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-windows-x64-Setup.exe.sha256) |
+| ARM64 | [Download EXE](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-windows-arm64-Setup.exe) | 145 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-windows-arm64-Setup.exe.sha256) |
 
 1. Open **Settings > System > About** and check **System type**. Choose x64 for Intel/AMD x64, or ARM64 for an ARM-based processor.
 2. Download the matching EXE from the table. Close ARISE before upgrading and back up the profile folder listed below.
@@ -89,8 +89,8 @@ These packages target **Ubuntu 24.04**. Select your CPU architecture and channel
 
 | Architecture | Installer | Size | Integrity |
 | --- | --- | --- | --- |
-| x64 (amd64) | [Download DEB](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-x64.deb) | 199 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-x64.deb.sha256) |
-| ARM64 (aarch64) | [Download DEB](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb) | 173 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb.sha256) |
+| x64 (amd64) | [Download DEB](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-linux-x64.deb) | 199 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-linux-x64.deb.sha256) |
+| ARM64 (aarch64) | [Download DEB](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-linux-arm64.deb) | 173 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-linux-arm64.deb.sha256) |
 
 1. Use **Ubuntu 24.04** with a graphical desktop. Run `uname -m` in Terminal: `x86_64` means x64; `aarch64` means ARM64.
 2. Download the matching DEB. Close ARISE and back up its profile before upgrading.
@@ -99,12 +99,12 @@ These packages target **Ubuntu 24.04**. Select your CPU architecture and channel
 
    **x64:**
    ```bash
-   sudo apt install ./ARISE-0.4.39-linux-x64.deb
+   sudo apt install ./ARISE-0.4.41-linux-x64.deb
    ```
 
    **ARM64:**
    ```bash
-   sudo apt install ./ARISE-0.4.39-linux-arm64.deb
+   sudo apt install ./ARISE-0.4.41-linux-arm64.deb
    ```
 
 5. Open **ARISE Preview** from the application menu, or run `arise-preview`. Follow the account connection steps below.
@@ -129,8 +129,8 @@ These packages target **macOS 15**, with separate Intel and Apple Silicon instal
 
 | Architecture | Installer | Size | Integrity |
 | --- | --- | --- | --- |
-| x64 (Intel) | [Download PKG](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg) | 169 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg.sha256) |
-| ARM64 (Apple Silicon) | [Download PKG](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg) | 160 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg.sha256) |
+| x64 (Intel) | [Download PKG](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-macos-x64.pkg) | 169 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-macos-x64.pkg.sha256) |
+| ARM64 (Apple Silicon) | [Download PKG](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-macos-arm64.pkg) | 160 MB | [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.41/ARISE-0.4.41-macos-arm64.pkg.sha256) |
 
 1. Open **Apple menu > About This Mac**. A **Chip** naming Apple silicon means ARM64; an Intel **Processor** means x64. These packages target macOS 15.
 2. Download the matching PKG. Quit ARISE and back up its profile before upgrading.
@@ -143,8 +143,8 @@ The PKG is unsigned and the app is ad-hoc signed, not notarized. Gatekeeper or e
 
 All six installers passed native installation, engine/UI startup, same-version
 reinstallation, removal and profile-preservation checks. See the
-[release and reports](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39)
-and [successful native CI run](https://github.com/Maicololiveras/Arise/actions/runs/42663055949).
+[release and reports](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.41)
+and [successful native CI run](https://github.com/Maicololiveras/Arise/actions/runs/42679956334).
 
 **Preview limits:** private desktop MCP servers and offline speech models are
 not bundled; physical microphone, speakers and desktop control still need device
