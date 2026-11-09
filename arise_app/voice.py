@@ -70,6 +70,8 @@ class VoiceSession:
         self.response_pending = False
         self.user_speaking = False
         self.input_quiet_after = 0.0
+        self.suppress_response = False
+        self.input_transcript = ""
 
     async def send(self, record):
         await self.ws.send(json.dumps(record, ensure_ascii=False))
@@ -186,8 +188,23 @@ class VoiceSession:
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
 
+    async def control_transcript(self, text):
+        from .voice_controls import dispatch
+        def end():
+            self.active.clear()
+            voice = getattr(self.runtime, 'voice_service', None)
+            if voice: voice.mute(True)
+        handled = await asyncio.to_thread(dispatch, self.runtime, text, self.conversation,
+                                          self.chat_generation, self.audio.interrupt, end)
+        if handled:
+            self.suppress_response = True
+            self.response_pending = False
+            if self.config['voice_provider'] == 'openai' and self.response_active:
+                await self.send({'type': 'response.cancel'})
+        return handled
+
     async def openai_event(self, event):
-        if not self.same_chat(): return
+        if not self.same_chat() or not self.active.is_set(): return
         kind = event.get("type", "")
         if kind == "response.created":
             self.response_active = True
@@ -201,24 +218,29 @@ class VoiceSession:
             raise RuntimeError("El proveedor rechazó la sesión o un evento. Revisa el modelo, la voz y la cuenta.")
         if kind == "input_audio_buffer.speech_started":
             self.user_speaking = True
+            self.suppress_response = False
             played = self.audio.interrupt()
             if played["item_id"]:
                 await self.send({"type": "conversation.item.truncate", "item_id": played["item_id"],
                     "content_index": 0, "audio_end_ms": played["audio_end_ms"]})
             self.runtime.orb.update("listening", microphone=True)
         elif kind == "response.output_audio.delta":
+            if self.suppress_response: return
             self.audio.play(base64.b64decode(event["delta"]), item_id=event.get("item_id"))
             self.runtime.orb.update("speaking", microphone=True)
             self.playback_seen = True
         elif kind == "response.function_call_arguments.done":
+            if self.suppress_response: return
             self.spawn_call(event["call_id"], event["name"], json.loads(event.get("arguments", "{}")))
         elif kind in ("conversation.item.input_audio_transcription.completed", "response.output_audio_transcript.done"):
+            if kind.startswith("conversation") and await self.control_transcript(event.get("transcript", "")): return
+            if self.suppress_response: return
             self.runtime.emit("voice_transcript", {"role": "user" if kind.startswith("conversation") else "assistant", "text": event.get("transcript", "")})
         if kind in ("input_audio_buffer.speech_started", "input_audio_buffer.speech_stopped", "response.output_audio.delta"):
             self.last_activity = time.monotonic()
 
     async def gemini_event(self, event):
-        if not self.same_chat(): return
+        if not self.same_chat() or not self.active.is_set(): return
         if event.get("error"):
             raise RuntimeError("Gemini rechazó la sesión. Revisa el modelo, la voz y la cuenta.")
         content = event.get("serverContent", {})
@@ -227,10 +249,19 @@ class VoiceSession:
         if content.get("turnComplete") or content.get("interrupted"):
             self.response_active = False
         if content.get("inputTranscription"):
+            self.input_transcript += content['inputTranscription'].get('text', '')
+            self.suppress_response = False
+            if content['inputTranscription'].get('finished'):
+                text, self.input_transcript = self.input_transcript, ''
+                if await self.control_transcript(text): return
             self.last_activity = time.monotonic()
         if content.get("interrupted"):
             self.audio.interrupt()
             self.runtime.orb.update("listening", microphone=True)
+        if content.get('turnComplete') and self.input_transcript:
+            text, self.input_transcript = self.input_transcript, ''
+            if await self.control_transcript(text): return
+        if self.suppress_response: return
         for part in content.get("modelTurn", {}).get("parts", []):
             inline = part.get("inlineData", {})
             if inline.get("mimeType", "").startswith("audio/pcm"):
@@ -290,7 +321,7 @@ class VoiceSession:
             url = "wss://api.openai.com/v1/realtime?" + urllib.parse.urlencode({"model": self.config["voice_model"]})
             headers = {"Authorization": "Bearer " + key} if key else {}
             setup = {"type": "session.update", "session": {"type": "realtime", "model": self.config["voice_model"],
-                "instructions": INSTRUCTIONS, "audio": {"input": {"format": {"type": "audio/pcm", "rate": 24000},
+                "instructions": INSTRUCTIONS + (" Respond in English." if self.config.get("ui_language") == "en" else ""), "audio": {"input": {"format": {"type": "audio/pcm", "rate": 24000},
                     "turn_detection": {"type": "server_vad", "interrupt_response": True, "silence_duration_ms": self.config.get("voice_silence_ms",1400)},
                     "transcription": {"model": "whisper-1"}}, "output": {"format": {"type": "audio/pcm", "rate": 24000}, "voice": self.config["voice"]}},
                 "tools": [{"type": "function", **tool} for tool in TOOLS]}}
@@ -300,7 +331,7 @@ class VoiceSession:
             model = self.config["voice_model"].removeprefix("models/")
             setup = {"setup": {"model": "models/" + model, "generationConfig": {"responseModalities": ["AUDIO"],
                 "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": self.config["voice"]}}}},
-                "systemInstruction": {"parts": [{"text": INSTRUCTIONS}]}, "tools": [{"functionDeclarations": TOOLS}],
+                "systemInstruction": {"parts": [{"text": INSTRUCTIONS + (" Respond in English." if self.config.get("ui_language") == "en" else "")}]}, "tools": [{"functionDeclarations": TOOLS}],
                 "inputAudioTranscription": {}, "outputAudioTranscription": {}}}
         async with self.connect(url, additional_headers=headers, open_timeout=20, max_size=4_000_000) as ws:
             self.ws = ws
@@ -377,6 +408,9 @@ class VoiceService:
             self.preview_voice.active.clear()
             if self.preview_voice.audio:self.preview_voice.audio.interrupt()
         self.active.clear()
+        while True:
+            try: self.wakes.get_nowait()
+            except queue.Empty: break
         if self.local_bridge: self.local_bridge.interrupt()
         if self.audio:
             self.audio.interrupt()
@@ -510,7 +544,9 @@ class VoiceService:
                 except Exception as error: self.runtime.emit("error", {"text":str(error)[:300]})
         worker=threading.Thread(target=transcriber,daemon=True,name="arise-local-stt");worker.start()
         if initial: bridge.submit(initial)
-        else: bridge.speak(c.get("wake_reply") or "Te escucho.")
+        else:
+            from .i18n import tr
+            bridge.speak(tr(c.get("wake_reply") or "Te escucho.", c.get("ui_language","es")))
         from .turn_detection import TurnDetector
         detector=TurnDetector(c.get("voice_silence_ms",1400))
         deadline=time.monotonic()+int(c["voice_timeout"])
@@ -541,8 +577,8 @@ class VoiceService:
         import numpy as np
         samples = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768
         if engine == "openai-whisper":
-            return self.whisper.transcribe(samples, language="es", fp16=False).get("text", "").strip()
-        segments, _ = self.whisper.transcribe(samples, language="es", vad_filter=True)
+            return self.whisper.transcribe(samples, language=self.runtime.storage.config.get("ui_language","es"), fp16=False).get("text", "").strip()
+        segments, _ = self.whisper.transcribe(samples, language=self.runtime.storage.config.get("ui_language","es"), vad_filter=True)
         return " ".join(s.text for s in segments).strip()
 
     def _local_task(self, text):

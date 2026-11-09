@@ -84,6 +84,7 @@ class RemoteAssistant:
     def settings(self, changes):
         result = self.request("config", changes); self.storage.config = self.request("config"); return result
     def steer(self, text, images=None): return self.request("prompt", {"text": text, "images":images or []})
+    def study_control(self, action, **options): return self.request("study", {"action":action, **options})
     def stop(self): return self.request("stop", {})
     def switch_conversation(self, identity=None):
         result = self.request("conversation", {"id": identity}); self.storage.config = self.request("config"); return result

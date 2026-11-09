@@ -19,7 +19,8 @@ class TaskDialog(QDialog):
         self.input = None
         if self.method == 'select':
             self.input = QComboBox()
-            self.input.addItems([str(item) for item in data.get('options', [])])
+            for item in data.get('options', []): self.input.addItem(str(item), str(item))
+            self.input.setProperty('localizedItems', True)
             self.input.setMinimumWidth(0)
             self.input.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
         elif self.method == 'editor':
@@ -47,6 +48,6 @@ class TaskDialog(QDialog):
 
     def value(self):
         if self.method == 'confirm': return 'Sí' if self.result() == QDialog.Accepted else 'No'
-        if self.method == 'select': return self.input.currentText()
+        if self.method == 'select': return self.input.currentData()
         if self.method == 'editor': return self.input.toPlainText()
         return self.input.text()

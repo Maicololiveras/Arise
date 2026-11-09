@@ -30,6 +30,12 @@ class LocalVoiceBridge:
         self.audio.interrupt()
     def submit(self, text):
         if not self.valid() or not text.strip(): return
+        from .voice_controls import dispatch
+        def end():
+            self.active.clear()
+            voice = getattr(self.runtime, 'voice_service', None)
+            if voice: voice.mute(True)
+        if dispatch(self.runtime, text, self.conversation, self.chat_generation, self.interrupt, end): return
         self.interrupt()
         try: self.commands.put_nowait((text,self.generation))
         except queue.Full: self.runtime.emit('notice',{'text':'Hay demasiadas instrucciones de voz pendientes; espera un momento.'})
@@ -40,7 +46,7 @@ class LocalVoiceBridge:
         while not self.closed.is_set():
             try: text,epoch = self.commands.get(timeout=.1)
             except queue.Empty: continue
-            if not self.valid(): continue
+            if not self.valid() or epoch != self.generation: continue
             try:
                 if isinstance(text,dict):
                     if self.front:

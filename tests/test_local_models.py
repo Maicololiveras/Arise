@@ -29,7 +29,7 @@ class LocalModelTests(unittest.TestCase):
                 self.assertEqual(resolve_stt({'local_stt_engine':'auto','local_stt_model':'','wake_model':str(model)}), ('vosk',str(model)))
 
     def test_local_transcription_preserves_each_engine_contract(self):
-        runtime=SimpleNamespace(); service=VoiceService(runtime); pcm=bytes(320)
+        runtime=SimpleNamespace(storage=SimpleNamespace(config={'ui_language':'es'})); service=VoiceService(runtime); pcm=bytes(320)
         service.whisper=Mock(); service.whisper.FinalResult.return_value=json.dumps({'text':'hola arise'})
         self.assertEqual(service.transcribe_local(pcm,'vosk'), 'hola arise')
         service.whisper.AcceptWaveform.assert_called_once_with(pcm)
@@ -38,3 +38,7 @@ class LocalModelTests(unittest.TestCase):
         self.assertEqual(service.whisper.transcribe.call_args.kwargs, {'language':'es','fp16':False})
         service.whisper=Mock(); service.whisper.transcribe.return_value=([SimpleNamespace(text='hola'),SimpleNamespace(text='modelo')],None)
         self.assertEqual(service.transcribe_local(pcm,'faster-whisper'),'hola modelo')
+
+        runtime.storage.config['ui_language']='en'
+        service.transcribe_local(pcm,'faster-whisper')
+        self.assertEqual(service.whisper.transcribe.call_args.kwargs, {'language':'en','vad_filter':True})

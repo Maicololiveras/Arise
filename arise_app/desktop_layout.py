@@ -26,7 +26,8 @@ class DesktopLayout:
         excluded = {"control_status", "stop_control", "get_screen_size", "get_mouse_position",
                     "forge_speak", "forge_audio_emit", "forge_get_state", "forge_list_sessions",
                     "forge_list_skills", "forge_get_skill", "forge_get_templates", "forge_get_observation_status"}
-        enabled = self.runtime.storage.config.get("desktop_auto_clear", True)
+        study = getattr(self.runtime, "study", None)
+        enabled = self.runtime.storage.config.get("desktop_auto_clear", True) or bool(study and study.active and service == "screenview")
         if not enabled or service not in ("screenview", "inputcontrol", "forge") or tool in excluded or time.monotonic() - self.seen > 3:
             yield
             return

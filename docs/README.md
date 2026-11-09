@@ -77,3 +77,7 @@ Historical pending checks are not silently marked complete by later releases.
 
 - [Stable distributions and signing](STABLE-DISTRIBUTIONS.md)
 - [iPhone/iPad companion development and distribution](IOS-COMPANION.md)
+
+## QA 0.4.42
+
+See [voice controls, study assistance and live language switching](VOICE-STUDY-LANGUAGE.md) for behavior, privacy boundaries and physical acceptance. Published download tables remain generated from release evidence.

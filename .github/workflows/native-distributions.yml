@@ -1,7 +1,7 @@
 name: ARISE Preview installers
 on:
   push:
-    branches: [main]
+    branches: [main, qa]
     paths-ignore:
       - 'docs/**'
       - 'README.md'

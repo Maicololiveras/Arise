@@ -9,6 +9,8 @@ from PySide6.QtWidgets import QTextBrowser
 class ChatHistory(QTextBrowser):
     def __init__(self):
         super().__init__()
+        self.entries = []
+        self.rendered_language = None
         self.setOpenLinks(False)
         self.setOpenExternalLinks(False)
         self.document().setDefaultStyleSheet('''
@@ -25,12 +27,30 @@ class ChatHistory(QTextBrowser):
         # Model output cannot fetch remote images or read local files.
         return None
 
+    def clear(self):
+        self.entries = []
+        super().clear()
+
+    def retranslate(self):
+        from .i18n import language
+        if self.rendered_language == language(): return
+        self.rendered_language = language()
+        position=self.verticalScrollBar().value()
+        super().clear()
+        for role,text,images in self.entries: self.render_message(role,text,images)
+        self.verticalScrollBar().setValue(position)
+
     def append_message(self, role, text, images=None):
+        self.entries.append((role,text,images))
+        self.render_message(role,text,images)
+
+    def render_message(self, role, text, images=None):
+        from .i18n import tr
         bar=self.verticalScrollBar(); follow=bar.value()>=bar.maximum()-24
         position=bar.value()
         cursor=QTextCursor(self.document());cursor.movePosition(QTextCursor.End)
         if not self.document().isEmpty(): cursor.insertBlock()
-        cursor.insertHtml('<p><b style="color:#74F6FF">'+html.escape(role)+'</b></p>')
+        cursor.insertHtml('<p><b style="color:#74F6FF">'+html.escape(tr(role))+'</b></p>')
         cursor.insertBlock()
         document=QTextDocument()
         if role in ('ARISE','Voz · ARISE'):

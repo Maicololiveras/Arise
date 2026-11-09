@@ -10,3 +10,7 @@ class MobilePWATests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         subprocess.run([shutil.which('node'), 'tests/companion-install.test.cjs'],
                        cwd=root, check=True, capture_output=True, timeout=10)
+
+    def test_live_language_preserves_user_content(self):
+        root = Path(__file__).resolve().parents[1]
+        subprocess.run([shutil.which('node'), 'tests/companion-language.test.cjs'], cwd=root, check=True, capture_output=True, timeout=10)

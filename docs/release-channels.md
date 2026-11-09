@@ -102,3 +102,7 @@ QA mirror update. Other development branches do not receive documentation-only m
 ## Stable platform promotion
 
 See [stable distribution gates and signing](STABLE-DISTRIBUTIONS.md). The stable coordinator builds from its source commit after a versioned promotion request. Failed or unsigned mobile builds are never advertised as stable downloads.
+
+## Temporary QA development for 0.4.42
+
+The voice, study and language changes are staged on `qa` for acceptance before promotion. QA pushes run verification and native packaging, but public Stable/Preview publication remains restricted to `main`. Download tables and update manifests continue to point to already published releases. The QA mirror uses fast-forward only and must not discard these independent commits. Promote the accepted QA history to main, then resume mirroring.

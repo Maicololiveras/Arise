@@ -1,7 +1,7 @@
 name: ARISE verification
 on:
   push:
-    branches: [main, qa-connections-companion]
+    branches: [main, qa, qa-connections-companion]
   pull_request:
   workflow_call:
     inputs:

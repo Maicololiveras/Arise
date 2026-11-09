@@ -63,7 +63,7 @@ def make_server(runtime, port=0):
 
         def do_POST(self):
             if not self.authorize(): return
-            if (self.path.startswith("/api/accounts/") or self.path == "/api/desktop/layout-ack") and not hmac.compare_digest(self.headers.get("X-Arise-Accounts", ""), runtime.accounts_token):
+            if (self.path.startswith("/api/accounts/") or self.path in ("/api/desktop/layout-ack", "/api/study")) and not hmac.compare_digest(self.headers.get("X-Arise-Accounts", ""), runtime.accounts_token):
                 self.reply({"error":"Esta operación solo está disponible en Ajustes de ARISE."},403);return
             self.connection.settimeout(10)
             if not self.headers.get("Content-Type", "").startswith("application/json"):
@@ -85,6 +85,9 @@ def make_server(runtime, port=0):
                     runtime.connections.disconnect(data['provider']); value = {'disconnected': True}
                 elif route == '/api/connections/oauth/start': value = runtime.connections.oauth_start(data['provider'], data['client_id'])
                 elif route == '/api/connections/oauth/poll': value = runtime.connections.oauth_poll(data['provider'])
+                elif route == '/api/mobile/readiness':
+                    from .mobile_setup import readiness
+                    value = readiness(runtime)
                 elif route == '/api/mobile/prepare':
                     from .mobile_setup import prepare
                     value = prepare(runtime)
@@ -111,6 +114,7 @@ def make_server(runtime, port=0):
                         if not self.authorize(): return
                         value=runtime.call_tool(name, data.get("arguments", {}))
                 elif route == "/api/prompt": value = runtime.steer(data.get("text", ""), data.get("images"))
+                elif route == '/api/study': value = runtime.study_control(data.get('action'), **{k:v for k,v in data.items() if k != 'action'})
                 elif route == "/api/stop": value = runtime.stop()
                 elif route == "/api/config":
                     if runtime.voice_service:
@@ -118,7 +122,8 @@ def make_server(runtime, port=0):
                     value = runtime.settings(data)
                     if runtime.voice_service: runtime.voice_service.reconfigure()
                 elif route == "/api/preferences":
-                    allowed = {key: value for key, value in data.items() if key in ("orb_position", "orb_size", "pinned", "reduced_motion")}
+                    allowed = {key: value for key, value in data.items() if key in ("orb_position", "orb_size", "pinned", "reduced_motion", "ui_language")}
+                    if "ui_language" in allowed and allowed["ui_language"] not in ("es","en"): raise ValueError("Unsupported interface language")
                     position = allowed.get("orb_position")
                     if position is not None and (not isinstance(position, list) or len(position) != 2 or not all(type(v) is int for v in position)):
                         raise ValueError("Posición inválida")
@@ -231,5 +236,6 @@ def make_server(runtime, port=0):
 
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     server.daemon_threads = True
+    runtime.shutdown_callback = server.shutdown
     runtime.url = f"http://127.0.0.1:{server.server_port}"
     return server

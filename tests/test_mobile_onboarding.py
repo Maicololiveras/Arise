@@ -90,3 +90,14 @@ class MobileTests(unittest.TestCase):
                 self.assertEqual(post('/logout',{},token)[0],200)
                 self.assertEqual(post('/prompt',{'text':'hello'},token)[0],401)
         finally:server.shutdown();server.server_close();thread.join()
+
+class ReadinessTests(unittest.TestCase):
+    def test_readiness_never_changes_network_or_enrollment(self):
+        from arise_app.mobile_setup import readiness
+        r=SimpleNamespace(mobile_security=Mock(enabled=Mock(return_value=True)),mobile_server=object())
+        with patch('arise_app.mobile_setup.cli',return_value='{"BackendState":"Running"}') as command:
+            value=readiness(r)
+        command.assert_called_once_with('status','--json')
+        self.assertTrue(value['ready_to_pair'])
+        self.assertFalse(value['steps'][-1]['ready'])
+        r.mobile_security.begin.assert_not_called()

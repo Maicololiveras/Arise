@@ -1,5 +1,7 @@
 # ARISE Assistant
 
+**QA development: 0.4.42** adds voice stop/exit controls, opt-in study assistance, live Spanish/English UI and guided phone setup. See [usage and acceptance](docs/VOICE-STUDY-LANGUAGE.md). Download tables below describe published artifacts; this QA work does not replace Stable.
+
 ![ARISE Assistant animated orb](docs/identity/arise-assistant.gif)
 
 ARISE is a desktop assistant with a movable orb, a compact chat panel, voice,

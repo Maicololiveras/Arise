@@ -84,37 +84,20 @@ class ConnectionsDialog(QDialog):
             for x,dark in enumerate(row):
                 if dark:image.setPixelColor(x,y,Qt.black)
         self.pair_qr.setPixmap(QPixmap.fromImage(image).scaled(280,280,Qt.KeepAspectRatio,Qt.FastTransformation))
-        self.status.setText('Escanea con tu autenticador y confirma el código.' if 'uri' in value else 'Escanea con la cámara del teléfono. También puedes pegar el enlace en ARISE Android. Vence en cinco minutos.')
+        self.status.setText('Escanea con tu autenticador y confirma el código.' if 'uri' in value else 'Escanea con la cámara del teléfono. Abre el enlace en Safari o Chrome con Tailscale conectado. Vence en cinco minutos.')
         self.output.setPlainText(value.get('secret') or url)
 
     def android_download(self, form):
-        data = json.loads((Path(__file__).parent/'resources/android-download-qr.json').read_text())
-        url = data['url']
-        title = QLabel('1 · Descargar ARISE para Android · QA')
+        title = QLabel('ARISE en Android, iPhone y iPad · sin tienda de aplicaciones')
         title.setWordWrap(True); form.addRow(title)
-        matrix = data['matrix']; size = len(matrix)
-        image = QImage(size, size, QImage.Format_RGB32)
-        image.fill(Qt.white)
-        for y, row in enumerate(matrix):
-            for x, dark in enumerate(row):
-                if dark: image.setPixelColor(x, y, Qt.black)
-        qr = QLabel(); qr.setObjectName('androidDownloadQr')
-        qr.setAccessibleName('QR para descargar ARISE Android QA desde GitHub')
-        qr.setToolTip(url)
-        qr.setPixmap(QPixmap.fromImage(image).scaled(size*4, size*4, Qt.KeepAspectRatio, Qt.FastTransformation))
-        qr.setAlignment(Qt.AlignCenter); form.addRow(qr)
-        hint = QLabel('Escanea con tu Android y descarga ARISE-Android-QA.apk en Assets. '
-                      'Es una versión de prueba; Android solicitará autorizar la instalación. '
-                      'Este QR no vincula el celular ni concede permisos al PC. '
-                      'En iPad utiliza el acceso web privado; el APK es solo para Android.')
+        hint = QLabel('1. Instala Tailscale en ambos equipos e inicia sesión con la misma cuenta.\n2. Confirma el autenticador.\n3. Prepara la conexión privada y escanea el QR de vinculación.\n4. En Safari: Compartir → Añadir a pantalla de inicio. En Android: menú → Instalar aplicación. Abre el icono y vincula ese navegador con un código nuevo si lo solicita.')
         hint.setWordWrap(True); form.addRow(hint)
-        self.button(form, 'Abrir descarga Android', lambda: QDesktopServices.openUrl(QUrl(url)))
-        def copy():
-            QApplication.clipboard().setText(url)
-            self.status.setText('Enlace de descarga Android copiado. No contiene un código de vinculación.')
-        self.button(form, 'Copiar enlace de descarga', copy)
-        label = QLabel('2 · Vincular el celular con este PC')
-        label.setWordWrap(True); form.addRow(label)
+        self.button(form, 'Abrir descarga de Tailscale', lambda: QDesktopServices.openUrl(QUrl('https://tailscale.com/download')))
+        self.mobile_readiness = QLabel('Comprueba los pasos pendientes antes de vincular.')
+        self.mobile_readiness.setWordWrap(True); form.addRow(self.mobile_readiness)
+        def checked(value):
+            self.mobile_readiness.setText('\n'.join(('✓ ' if step['ready'] else '○ ')+step['message'] for step in value['steps']))
+        self.button(form, 'Comprobar preparación del teléfono', lambda:self.run('mobile/readiness',{},checked))
 
     def page(self,title):
         scroll=QScrollArea();scroll.setWidgetResizable(True);scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -136,6 +119,9 @@ class ConnectionsDialog(QDialog):
                  'connections/disconnect':r.connections.disconnect,'mobile/start':r.start_mobile,'mobile/stop':r.stop_mobile}
         if path in methods:return methods[path](**(data or {}))
         if path=='connections/token':return r.connections.save_token(data['provider'],data['token'],**data['options'])
+        if path=='mobile/readiness':
+            from .mobile_setup import readiness
+            return readiness(r)
         if path=='mobile/prepare':
             from .mobile_setup import prepare
             return prepare(r)

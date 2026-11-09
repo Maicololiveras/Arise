@@ -1,3 +1,12 @@
+# ARISE 0.4.42 QA
+
+- Add immediate, exact Spanish/English voice controls for speech interruption, microphone mute, task cancellation and graceful application shutdown.
+- Separate ending voice from stopping tasks in the chat panel. Starting a new voice conversation explicitly unmutes the microphone.
+- Add opt-in, chat-owned study sessions with bounded screenshot intervals, pause/resume/end controls and read-only model turns. Stop, chat changes and shutdown invalidate scheduled observations.
+- Add a persistent Spanish/English interface selector that refreshes existing windows and new dialogs without changing drafts, credentials, paths or history content. Future model turns follow the selected language.
+- Replace the legacy Android download panel with guided private web-app setup for Android, iPhone and iPad, including read-only Tailscale/authenticator readiness checks.
+- Keep current Stable/Preview public feeds and immutable downloads unchanged while QA verification runs. Physical audio, screen capture and phone acceptance are still required.
+
 # ARISE 0.4.41 Preview
 
 Installable mobile web app for iPhone, iPad and Android through the private PC URL. No app-store account, native signing key or store fee is required for this distribution. Pairing and TOTP remain mandatory. No offline task queue, service worker or chat cache is introduced. Native mobile releases are deferred; desktop stable publication remains enabled.
