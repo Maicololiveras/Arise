@@ -2,6 +2,12 @@ name: Native distribution previews
 on:
   push:
     branches: [feat/platform-distributions]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'tests/**'
+      - 'scripts/test.py'
+      - '.github/workflows/verify.yml'
   workflow_dispatch:
 permissions:
   contents: read
