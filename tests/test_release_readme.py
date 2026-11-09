@@ -89,3 +89,20 @@ class ReleaseReadmeTests(unittest.TestCase):
         self.assertIn('170 MB', result)
         self.assertNotIn('native-v0.4.38', result)
         self.assertIn('/v0.4.37/ARISE-Setup.exe', result)
+
+    def test_preview_metadata_preserves_divergent_qa_source(self):
+        writes=[]
+        base=self.fake_api(writes)
+        def api(endpoint,payload=None,method='POST'):
+            if payload is None and endpoint.endswith('/git/ref/heads/qa'):return {'object':{'sha':'qa-with-new-features'}}
+            if payload is None and '/git/commits/qa-with-new-features' in endpoint:return {'tree':{'sha':'qa-tree'}}
+            if payload is None and '/contents/README.md?ref=qa-with-new-features' in endpoint:
+                return {'content':base64.b64encode((self.readme+'\nQA-only notes\n').encode()).decode()}
+            return base(endpoint,payload,method)
+        publish_metadata(api,'qa',manifest('qa','0.4.11'))
+        trees=[p for e,p,m in writes if e.endswith('/git/trees')]
+        self.assertEqual(len(trees),2)
+        self.assertEqual(trees[1]['base_tree'],'qa-tree')
+        self.assertIn('QA-only notes',trees[1]['tree'][1]['content'])
+        commits=[p for e,p,m in writes if e.endswith('/git/commits')]
+        self.assertEqual(commits[1]['parents'],['qa-with-new-features'])

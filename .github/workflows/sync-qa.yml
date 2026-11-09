@@ -21,6 +21,12 @@ jobs:
         run: |
           set -euo pipefail
           head=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq .object.sha)
+          qa=$(gh api "repos/$GH_REPO/git/ref/heads/qa" --jq .object.sha)
+          relation=$(gh api "repos/$GH_REPO/compare/$qa...$head" --jq .status)
+          if [ "$relation" != "ahead" ] && [ "$relation" != "identical" ]; then
+            echo 'QA has independent work; preserving it. Release documentation is synchronized separately.'
+            exit 0
+          fi
           gh api --method PATCH "repos/$GH_REPO/git/refs/heads/qa" -f sha="$head" -F force=false
           actual=$(gh api "repos/$GH_REPO/git/ref/heads/qa" --jq .object.sha)
           test "$actual" = "$head"

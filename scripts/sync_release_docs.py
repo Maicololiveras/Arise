@@ -133,38 +133,38 @@ def main():
     if not catalog:
         raise RuntimeError('No complete published installers found; refusing to replace documentation')
     root = f'repos/{REPO}'
-    head = api(f'{root}/git/ref/heads/main')['object']['sha']
-    commit = api(f'{root}/git/commits/{head}')
-    entries = []
-    for path in GUIDES:
-        data = api(f'{root}/contents/{path}?ref={head}')
-        text = base64.b64decode(data['content']).decode()
-        block = render_catalog(catalog, "" if path == "README.md" else f"https://github.com/{REPO}/blob/main/README.md")
-        updated = replace_block(text, block)
-        if path == 'README.md' and 'stable' in catalog and 'preview' in catalog:
-            manifests = {}
-            for kind, channel in (('stable', 'main'), ('preview', 'qa')):
-                item = catalog[kind]
-                asset = next(a for a in item['assets'] if a['name'] == 'ARISE-Setup.exe')
-                manifests[channel] = dict(channel=channel, version=item['version'], size=asset['size'],
-                    installer_url=f'https://github.com/{REPO}/releases/download/{item["tag"]}/ARISE-Setup.exe')
-            updated = update_readme(updated, manifests)
-        if path == 'docs/README.md':
-            updated = re.sub(r'Native installer \d+\.\d+\.\d+ release notes', 'Native installer release notes', updated)
-        if path in ('README.md', 'docs/NATIVE-DISTRIBUTIONS.md') and 'native' in catalog:
-            item = catalog['native']
-            # Preserve recorded CI evidence: only the publisher knows the acceptance run.
-            updated = native_downloads(updated, item['version'], item['assets'], None)
-        if updated != text:
-            entries.append(dict(path=path, mode='100644', type='blob', content=updated))
-    if entries:
-        tree = api(f'{root}/git/trees', dict(base_tree=commit['tree']['sha'], tree=entries))
-        head = api(f'{root}/git/commits', dict(message='Synchronize published platform documentation [skip ci]',
-                    parents=[head], tree=tree['sha']))['sha']
-        api(f'{root}/git/refs/heads/main', dict(sha=head, force=False), 'PATCH')
-    # Also repair a previous interrupted mirror update; never force divergent QA history.
-    api(f'{root}/git/refs/heads/qa', dict(sha=head, force=False), 'PATCH')
-    print(f'Documentation reconciled on main and qa: {head}')
+    for branch in ('main', 'qa'):
+        head = api(f'{root}/git/ref/heads/{branch}')['object']['sha']
+        commit = api(f'{root}/git/commits/{head}')
+        entries = []
+        for path in GUIDES:
+            data = api(f'{root}/contents/{path}?ref={head}')
+            text = base64.b64decode(data['content']).decode()
+            block = render_catalog(catalog, "" if path == "README.md" else f"https://github.com/{REPO}/blob/main/README.md")
+            updated = replace_block(text, block)
+            if path == 'README.md' and 'stable' in catalog and 'preview' in catalog:
+                manifests = {}
+                for kind, channel in (('stable', 'main'), ('preview', 'qa')):
+                    item = catalog[kind]
+                    asset = next(a for a in item['assets'] if a['name'] == 'ARISE-Setup.exe')
+                    manifests[channel] = dict(channel=channel, version=item['version'], size=asset['size'],
+                        installer_url=f'https://github.com/{REPO}/releases/download/{item["tag"]}/ARISE-Setup.exe')
+                updated = update_readme(updated, manifests)
+            if path == 'docs/README.md':
+                updated = re.sub(r'Native installer \d+\.\d+\.\d+ release notes', 'Native installer release notes', updated)
+            if path in ('README.md', 'docs/NATIVE-DISTRIBUTIONS.md') and 'native' in catalog:
+                item = catalog['native']
+                # Preserve recorded CI evidence: only the publisher knows the acceptance run.
+                updated = native_downloads(updated, item['version'], item['assets'], None)
+            if updated != text:
+                entries.append(dict(path=path, mode='100644', type='blob', content=updated))
+        if entries:
+            tree = api(f'{root}/git/trees', dict(base_tree=commit['tree']['sha'], tree=entries))
+            head = api(f'{root}/git/commits', dict(message='Synchronize published platform documentation [skip ci]',
+                        parents=[head], tree=tree['sha']))['sha']
+            api(f'{root}/git/refs/heads/{branch}', dict(sha=head, force=False), 'PATCH')
+    print('Documentation reconciled independently on main and qa')
+
 
 
 if __name__ == '__main__':
