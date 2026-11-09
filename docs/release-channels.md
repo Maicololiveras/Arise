@@ -51,3 +51,25 @@ Android Preview also builds and publishes from main, retaining its legacy APK id
 Existing APK versions are immutable and are not republished during branch synchronization.
 Component/model repositories retain their separate distribution systems;
 VPS/Coolify is deferred.
+
+## Automatic documentation reconciliation
+
+`release-documentation.yml` runs after successful desktop/native/Android publication
+workflows, on published releases, daily for recovery, and on manual dispatch.
+It reads published GitHub assets rather than assuming a build succeeded. Drafts,
+incomplete uploads and releases without installer checksums are excluded.
+Each product retains its own latest published version; Android and desktop versions
+are independent. iOS remains explicitly unavailable until an iOS distribution and
+its validation contract are implemented.
+
+The generated published-platform table is refreshed in the root README, documentation
+index, native installation guide, Android guide, update guide and this channel guide.
+Native download filenames and installation commands are refreshed as well. Historical
+validation reports, incident records and introduction-version references remain intact;
+a newer release does not retroactively validate old tests. Add new current installation
+guides to `GUIDES` in `scripts/sync_release_docs.py`.
+
+Documentation updates are committed atomically on `main` and fast-forwarded to `qa`
+under the shared release-metadata concurrency lock. A divergent QA branch fails visibly
+instead of being overwritten. A repeated run is idempotent and repairs an interrupted
+QA mirror update. Other development branches do not receive documentation-only merges.

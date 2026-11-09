@@ -74,7 +74,10 @@ def native_downloads(text, version, assets, run_id):
     text = text.replace('ARISE Native Preview', 'ARISE Preview')
     text = text.replace('feat/platform-distributions/docs/', 'main/docs/')
     # These two download guides link only the native acceptance run.
-    text = re.sub(r'actions/runs/\d+', 'actions/runs/' + str(run_id), text)
+    if run_id is not None:
+        text = re.sub(r'actions/runs/\d+', 'actions/runs/' + str(run_id), text)
+        text = re.sub(r'\[run \d+\]', '[run ' + str(run_id) + ']', text)
+    text = re.sub(r'\[\d+\.\d+\.\d+ native prerelease assets\]', '[' + version + ' native prerelease assets]', text)
     for asset in assets:
         if asset['name'].endswith(('.exe', '.deb', '.pkg')):
             pattern = r'(^\|[^\n]*?/native-v' + re.escape(version) + '/' + re.escape(asset['name']) + r'\) \| )\d+ MB'

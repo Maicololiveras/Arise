@@ -1,0 +1,31 @@
+name: Synchronize published documentation
+on:
+  workflow_run:
+    workflows: ['ARISE Preview installers', 'ARISE Preview Android', 'ARISE verification']
+    types: [completed]
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+  schedule:
+    - cron: '23 6 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: arise-release-metadata
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconcile published assets and mirror documentation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/sync_release_docs.py
