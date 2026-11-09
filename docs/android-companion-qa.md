@@ -1,5 +1,21 @@
 # Android companion QA: wake phrase and overlay
 
+<!-- arise-published-platforms:start -->
+## Published downloads (automatic)
+
+Versions below refer to published installers, not unreleased source changes.
+
+| Platform / channel | Published version | Downloads |
+| --- | --- | --- |
+| Windows complete / stable | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37) |
+| Windows complete / ARISE Preview | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37) |
+| Windows, Linux and macOS / x64 and ARM64 Preview | 0.4.39 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39) |
+| Android / ARISE Preview | 0.2.0-qa | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/android-qa-v0.2.0-qa) |
+| iOS | Not published | No iOS installer is currently distributed. |
+
+<!-- arise-published-platforms:end -->
+
+
 Historical implementation originated on `qa-connections-companion`. Use
 [MOBILE-GUIDED-QA.md](MOBILE-GUIDED-QA.md) for the current pairing flow. This is a separate
 Android APK, not part of the Windows installer. No iPad background listener is

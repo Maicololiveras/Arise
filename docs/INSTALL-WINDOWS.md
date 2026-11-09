@@ -1,5 +1,21 @@
 # Install ARISE on Windows
 
+<!-- arise-published-platforms:start -->
+## Published downloads (automatic)
+
+Versions below refer to published installers, not unreleased source changes.
+
+| Platform / channel | Published version | Downloads |
+| --- | --- | --- |
+| Windows complete / stable | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37) |
+| Windows complete / ARISE Preview | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37) |
+| Windows, Linux and macOS / x64 and ARM64 Preview | 0.4.39 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39) |
+| Android / ARISE Preview | 0.2.0-qa | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/android-qa-v0.2.0-qa) |
+| iOS | Not published | No iOS installer is currently distributed. |
+
+<!-- arise-published-platforms:end -->
+
+
 The established installer targets Windows x64. For Windows ARM64 use the
 separate [native preview guide](NATIVE-DISTRIBUTIONS.md); do not assume the x64
 complete package is a native ARM64 distribution.

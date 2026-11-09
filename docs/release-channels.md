@@ -1,5 +1,21 @@
 # Release channels and source synchronization
 
+<!-- arise-published-platforms:start -->
+## Published downloads (automatic)
+
+Versions below refer to published installers, not unreleased source changes.
+
+| Platform / channel | Published version | Downloads |
+| --- | --- | --- |
+| Windows complete / stable | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37) |
+| Windows complete / ARISE Preview | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37) |
+| Windows, Linux and macOS / x64 and ARM64 Preview | 0.4.39 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39) |
+| Android / ARISE Preview | 0.2.0-qa | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/android-qa-v0.2.0-qa) |
+| iOS | Not published | No iOS installer is currently distributed. |
+
+<!-- arise-published-platforms:end -->
+
+
 **Main is the single source for installers, release workflows, download links and
 update manifests.** The `qa` branch is a fast-forward mirror of `main`, not an
 independent publication source. The public prerelease name is **ARISE Preview**.

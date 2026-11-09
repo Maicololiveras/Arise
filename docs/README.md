@@ -1,5 +1,21 @@
 # Documentation
 
+<!-- arise-published-platforms:start -->
+## Published downloads (automatic)
+
+Versions below refer to published installers, not unreleased source changes.
+
+| Platform / channel | Published version | Downloads |
+| --- | --- | --- |
+| Windows complete / stable | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37) |
+| Windows complete / ARISE Preview | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37) |
+| Windows, Linux and macOS / x64 and ARM64 Preview | 0.4.39 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39) |
+| Android / ARISE Preview | 0.2.0-qa | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/android-qa-v0.2.0-qa) |
+| iOS | Not published | No iOS installer is currently distributed. |
+
+<!-- arise-published-platforms:end -->
+
+
 Documentation is maintained in English. The application UI may use Spanish.
 Windows x64 is the established release path; other native targets are core
 previews with explicit capability and validation limits. VPS/Coolify is deferred.
@@ -8,7 +24,7 @@ previews with explicit capability and validation limits. VPS/Coolify is deferred
 
 - [Install ARISE on Windows](INSTALL-WINDOWS.md)
 - [Native installer previews](NATIVE-DISTRIBUTIONS.md)
-- [Native installer 0.4.38 release notes](NATIVE-RELEASE-NOTES.md)
+- [Native installer release notes](NATIVE-RELEASE-NOTES.md)
 - [ARISE-owned Gentle runtime (introduced in 0.4.36)](owned-gentle-runtime.md)
 - [Native accounts, fluent voice and desktop layout (introduced in 0.4.37)](accounts-voice-desktop-qa.md)
 - [Gentle commands in ARISE](GENTLE-COMMANDS.md)

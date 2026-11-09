@@ -1,5 +1,21 @@
 # Native distribution previews
 
+<!-- arise-published-platforms:start -->
+## Published downloads (automatic)
+
+Versions below refer to published installers, not unreleased source changes.
+
+| Platform / channel | Published version | Downloads |
+| --- | --- | --- |
+| Windows complete / stable | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/v0.4.37) |
+| Windows complete / ARISE Preview | 0.4.37 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/qa-v0.4.37) |
+| Windows, Linux and macOS / x64 and ARM64 Preview | 0.4.39 | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39) |
+| Android / ARISE Preview | 0.2.0-qa | [Release and checksums](https://github.com/Maicololiveras/Arise/releases/tag/android-qa-v0.2.0-qa) |
+| iOS | Not published | No iOS installer is currently distributed. |
+
+<!-- arise-published-platforms:end -->
+
+
 Windows x64 0.4.37 is the user-validated desktop baseline. Version 0.4.39 provides
 six published native core preview installers, each tested on its own OS and CPU.
 Production Windows installation remains documented in [INSTALL-WINDOWS.md](INSTALL-WINDOWS.md).
@@ -20,7 +36,7 @@ before packaging. Bundled manifests reject adoption on a different target.
 All six installers passed installation, installed engine/UI startup, same-version
 reinstallation, removal and user-data preservation in
 [run 42655321028](https://github.com/Maicololiveras/Arise/actions/runs/42663055949).
-Download the permanent [0.4.38 native prerelease assets](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39),
+Download the permanent [0.4.39 native prerelease assets](https://github.com/Maicololiveras/Arise/releases/tag/native-v0.4.39),
 including checksums and per-target JSON evidence. Portable archives and offscreen
 screenshots remain available as Actions artifacts with 14-day retention.
 
