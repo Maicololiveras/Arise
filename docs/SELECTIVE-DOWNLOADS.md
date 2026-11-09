@@ -1,11 +1,27 @@
-# Descargas desde Ajustes
+# Selective component downloads
 
-En **Herramientas** se puede descargar/reparar Forge, ScreenView e InputControl por separado o las tres juntas. El instalador consulta los manifiestos de `Maicololiveras/Arise`, rama `herramientas`, y obtiene únicamente los binarios publicados. No necesita sesión GitHub. Transcripción continúa siendo opcional y privada, con su botón propio.
+Windows Settings can download/repair Forge, ScreenView and InputControl
+individually or together, using published manifests from ARISE's `herramientas`
+branch. Private Transcription remains a separate authenticated operation.
+A missing/unpublished manifest is a recoverable error, not a successful install.
 
-En **Descargas** se puede instalar Vosk español, Whisper small, Piper español o Qwen con llama.cpp; también todos los modelos juntos. Las rutas se guardan automáticamente. Piper usa su motor directamente y no necesita el puente de voz Forge. Instalar Vosk no reemplaza el motor Whisper que el usuario haya elegido.
+Model downloads include supported Spanish Vosk, Whisper, Piper and Qwen/llama.cpp
+packages. Each uses pinned version/hash metadata, safe archive handling and a
+new destination. Model/catalog checks precede configuration changes; failure
+restores the previous selection. Unselected components remain unchanged.
+Partial downloads are not resumed. Installing Vosk does not replace an explicitly
+selected Whisper model. Piper does not require the Forge bridge.
 
-Las descargas grandes usan las versiones y SHA-256 del paquete offline existente. Cada instalación usa una carpeta nueva; los modelos y catálogos se comprueban antes de confirmar su configuración. Un fallo restaura los ajustes anteriores. Los componentes no seleccionados conservan su configuración. Reintentar inicia una descarga nueva; todavía no se reanudan archivos parciales.
+Tool repositories publish their binaries separately, with a narrowly scoped
+`TOOLS_PUBLISH_TOKEN` when needed. An ARISE merge does not publish another repo's
+binary. Existing public Forge packages may differ from source-based packages;
+the bundled Gonzalo adapter has its own runtime.
 
-Los manifiestos públicos de herramientas están pendientes hasta publicar sus binarios. Los workflows privados necesitan `TOOLS_PUBLISH_TOKEN` con escritura de contenido limitada a Arise. Un manifiesto pendiente muestra un error recuperable y conserva la instalación existente. El Forge público actual no incluye el puente de voz; se conserva el puente anterior si existe.
+These download recipes are Windows-oriented. Native core previews must not be
+assumed to contain or install equivalent desktop tools. Verify target/architecture
+support and the actual catalog before adoption; see
+[native distributions](NATIVE-DISTRIBUTIONS.md) and [managed updates](tool-updates.md).
 
-Esta preparación no modifica el instalador QA 0.4.9 ya publicado. Requiere una nueva compilación/versionado antes de distribuirse como actualización. Validación local: pruebas de selección individual, descargas corruptas, origen, rutas ZIP, rollback de modelos y MCP, conservación de voz y acciones Qt. La interfaz se recorrió con Qt offscreen en Linux; la ejecución de los binarios descargados debe validarse en Windows cuando estén publicados.
+Regression tests cover selection, corrupt downloads, origin/path checks,
+rollback, retained components and Qt actions. Offscreen tests do not validate
+desktop operations by the downloaded executable.

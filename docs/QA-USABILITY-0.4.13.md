@@ -1,41 +1,31 @@
-# QA de voz, chat y parada — 0.4.13
+# QA 0.4.13: voice, chat and stopping
 
-## Defectos confirmados
+Historical QA record. Use [current setup](INSTALL-WINDOWS.md) and
+[validation evidence](VALIDATION.md) for release status. Findings and pending
+checks below describe that revision, not every later build.
 
-- El puente anterior de voz usaba System.Speech; `forge_speak` sí expone `engine=edge`, pero ARISE no seleccionaba ese motor. Había sustitución automática por Windows. Se quitó esa sustitución.
-- 25 bloques de 20 ms cerraban un turno local a los 500 ms. Una prueba PCM con una pausa intermedia de 700 ms reproduce dos envíos frente a uno con 1400 ms.
-- Estado y privacidad estaban ocultos; un clic en el orbe solo cerraba el chat. Ahora un clic alterna su visibilidad y el estado permanece visible.
-- La parada esperaba a Pi, no cerraba ScreenView y la llamada a stop_control podía bloquearse detrás de otra llamada MCP. Se revoca el acceso primero, se cierran procesos propios en paralelo y se rechazan conexiones iniciadas antes de la parada.
-- Los selectores recibían la rueda; cerrar Ajustes ocultaba el formulario conservando valores no guardados. Ahora la rueda se ignora y el cierre descarta el formulario.
+The former voice bridge selected System.Speech instead of Forge Edge and silently
+substituted a Windows voice. That implicit substitution was removed. A PCM test
+showed that a 500 ms endpoint split speech around a 700 ms pause; a longer threshold
+preserved one turn. Orb clicking gained toggling and visible privacy/status.
 
-## Integración de voz
+Stop now revoked permission before waiting on Pi, closed owned MCPs concurrently
+and rejected stale connections. Settings ignored accidental wheel changes and
+closing discarded unsaved edits.
 
-El catálogo real de Forge compilado localmente tiene 22 herramientas y declara `forge_speak` con motores local/edge. El paquete público y la sesión del usuario pueden tener otro catálogo: ARISE verifica el catálogo instalado al iniciar la síntesis.
+The historical adapter pinned msedge-tts 2.0.4 and checked the installed Forge
+Edge capability. Audio went through ARISE's cancelable mixer rather than treating
+an asynchronous MCP acknowledgement as playback completion. The preset cleared
+Piper and selected Gonzalo; later 0.4.37 introduced the standalone adapter and
+explicit optional Windows fallback, superseding the older dependency/policy.
 
-QA incluye un adaptador del sintetizador msedge-tts usado por Forge, fijado a 2.0.4 y con solicitud/respuesta y cancelación propias. Forge instalado debe exponer Edge; ARISE reproduce el audio por su mezclador cancelable. El adaptador evita interpretar el acuse asíncrono `speaking` del MCP como una reproducción terminada. No instala permisos de escritorio.
+Evidence: Python/Node contracts, synthetic pauses, retained drafts, concurrent
+stop and real Qt offscreen. The external synthesis attempt failed with
+`Connect Error: {}`; audible Gonzalo was not certified at that revision.
+InputControl's emergency hook alone did not stop ScreenView; ARISE coordinated
+its owned processes and did not claim to close unrelated applications.
 
-En Ajustes, **Usar Gonzalo · Colombia · +5%** selecciona el motor y limpia una selección Piper previa; Guardar aplica los cambios. Windows/Piper siguen siendo opciones explícitas, no sustituciones de Gonzalo.
-
-## Comprobaciones y límites
-
-- Pruebas Python y Node de contrato, errores, pausa natural, conservación del borrador y parada concurrente.
-- Interfaz Qt real en Linux con backend offscreen: clic, rueda, cierre/reapertura y capturas a tamaño compacto. Esto no valida audio ni entrada física de Windows.
-- Intento de síntesis externa: falló con `Connect Error: {}`. **No se certifica que Gonzalo se haya escuchado**.
-- InputControl usa pynput para Ctrl+Alt+Esc. ARISE registra el mismo gesto para su parada general y comunica si el registro falla. La parada de InputControl por sí sola no detiene ScreenView.
-- La confirmación de parada corresponde a los procesos MCP que ARISE posee. No afirma cerrar herramientas abiertas fuera de ARISE.
-- Un error 503 no dispara reintentos. Recuperar el borrador no lo envía. Ante una respuesta ambigua se pide revisar la tarea; no se promete entrega exactamente una vez.
-
-## Pendiente en Windows
-
-1. Guardar el preset Gonzalo, confirmar Forge conectado y escuchar una frase (+5%). Desconectar Internet y comprobar error visible, sin voz sustitutiva.
-2. Dictar una frase con pausas de 700–1000 ms; confirmar un solo mensaje. Probar el umbral con el micrófono real; ruido/ganancia siguen siendo hipótesis.
-3. Iniciar control y observación autorizados. Probar botón y Ctrl+Alt+Esc; verificar teclas liberadas, ausencia de acciones/capturas pendientes y que no se reanuden hasta reactivación explícita.
-4. Abrir Ajustes a escala 125/150%, usar rueda, cerrar sin guardar y reabrir.
-
-## Propuestas adicionales — no implementadas
-
-1. **Alta:** diagnósticos guiados de micrófono, ruido y voz con reproducción de prueba independiente del agente. Requiere un flujo nuevo.
-2. **Alta:** identificadores persistentes de envío y consulta del resultado para resolver cortes de conexión ambiguos sin duplicar tareas. Requiere ampliar el protocolo y el almacenamiento.
-3. **Media:** calibración asistida del umbral de voz por dispositivo y perfil de accesibilidad (letra/contraste). Requiere preferencias y pantallas adicionales.
-
-Entrega solo QA. La publicación de QA actualiza su README y feed; no escribe el README de main.
+Physical speech, device thresholds, released keys, no delayed capture after Stop
+and Windows scaling remained pending. HTTP 503 did not trigger automatic replay;
+restoring a draft did not send it. Proposed diagnostics, device calibration and
+durable external-delivery reconciliation were not implemented by that revision.

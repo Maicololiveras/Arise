@@ -1,14 +1,30 @@
-# ARISE release channels
+# Release channels and promotion
 
-- `qa`: integration and Windows acceptance testing. All new work is delivered here first.
-- `main`: production. Promote a reviewed and tested QA revision through a pull request; do not promote automatically.
+| Stream | Purpose | Publication |
+| --- | --- | --- |
+| main | User-accepted production baseline | Windows `vX.Y.Z`, production feed |
+| qa | Windows integration and acceptance | `qa-vX.Y.Z` prerelease, QA feed |
+| feat/platform-distributions | Native core portability work | Successful native CI artifacts |
+| herramientas | Managed desktop-tool manifests | Component-owned releases |
+| distribution/parakeet-v3 | Pinned dictation mirror | Immutable model/runtime assets |
 
-Each Windows build embeds `arise_app/resources/update-channel.json` before freezing the executable. CI sets `ARISE_BUILD_CHANNEL=qa` for QA and `main` for production. This is independent of the Gentle stable/main selection. Installing a different ARISE channel explicitly changes the channel; user settings and conversations remain in place.
+Production promotion is explicit after review and acceptance. The user-validated
+0.4.37 revision was promoted to main, preserving the old production feed until
+the new main-channel executable passes publication gates. QA binaries are not
+relabelled as production. Main and QA publication rebuild and verify their own
+embedded channel. Subsequent binary changes require a new version.
 
-On startup ARISE reads `updates/windows.json` from its own branch. It checks the version, channel, release URL, asset size and SHA-256, then shows release notes and asks whether to install. QA cannot accept production manifests or vice versa. Updates close ARISE processes and run the installer over the current installation.
+Windows checks Docker, native tests, frozen engine/renderer, installation over a
+running instance and offline model inference before publishing. `ARISE-Setup.exe`
+and the complete ZIP have different contents; consult the release inventory.
+Successful publication updates the originating feed and both README download
+sections atomically per branch, with conflict checks and no forced ref updates.
 
-Pushes to `qa` and `main` run Docker, native Windows tests, frozen runtime/installer smoke checks and offline model inference before publication. QA releases use `qa-vX.Y.Z` and are prereleases; production uses `vX.Y.Z`. Versions are immutable: bump the application version before publishing a subsequent update within a channel.
+Each Windows installation follows its embedded channel. Switching channels is an
+explicit installer action; it is independent of external Gentle stable/main.
+Native previews embed target identity and do not use the Windows x64 feed.
+Their manual replacement, signing limits and separate physical acceptance are
+explained in [NATIVE-DISTRIBUTIONS.md](NATIVE-DISTRIBUTIONS.md).
 
-The release contains `ARISE-Setup.exe` and `ARISE-Windows-Complete.zip`. The complete ZIP includes the models and the one-click setup launcher. Successful publication updates only the originating branch's manifest with `[skip ci]`.
-
-Acceptance: install the QA ZIP; confirm chat/login, new chat, ScreenView, InputControl and Forge on a real Windows desktop; test updating an older QA installation and preserving data. Only then promote QA to main. Production publication happens only after main passes the same build gates.
+Never publish a failed target or infer ARM64 acceptance from x64. Android and
+component release workflows are separate. VPS/Coolify remains deferred.

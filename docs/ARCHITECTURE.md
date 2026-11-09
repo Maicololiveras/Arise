@@ -1,37 +1,61 @@
-# ARISE runtime
+# ARISE runtime architecture
 
-La esfera conserva la identidad ARISE del renderer QPainter de praxisgenai-harness. El atlas contiene 24 imágenes generadas de ese renderer; no usa WebGL. Panel y ajustes son widgets Qt.
+Qt owns the orb and settings/chat windows. A Python daemon owns storage, audio,
+tasks and authenticated local routes. The Rust host starts and waits for the
+engine; it is not a second agent loop. Pi runs the model loop with Gentle Shell
+extensions inside ARISE's private runtime.
 
 ```mermaid
 flowchart TD
-    U[Panel y orbe Qt] -->|HTTP autenticado local| D[Daemon Python]
-    R[Supervisor Rust] -->|Inicia y espera| D
-    W[Gateway web privado] --> D
-    D --> V[Audio y proveedores]
-    D --> P[Pi con Gentle Shell]
-    P -->|Extensión ARISE| C[Catálogo de capacidades]
-    C --> M[MCP de escritorio]
-    C --> G[Gmail y archivos]
+    UI[Qt panel and orb] -->|Local authenticated requests| D[Python daemon]
+    H[Rust host] --> D
+    G[Private mobile gateway] --> D
+    D --> A[Audio providers]
+    D --> P[Pi and Gentle Shell]
+    P --> C[ARISE capability bridge]
+    C --> T[Desktop MCP and local tools]
 ```
 
-`arise-host` es un supervisor pequeño de procesos, no un segundo motor de agentes. El engine Python posee el lock de instancia, audio, almacenamiento, tareas y el puente autenticado. El cliente Qt no mantiene herramientas ni claves. El motor Pi posee el bucle de ejecución y carga las extensiones de Gentle Shell.
+Closing the chat hides it; exiting ARISE stops owned work, voice and desktop
+control. Interrupted work is not replayed after a restart. Desktop operations
+are serialized and require authorization. Stop revokes permission before
+waiting for cancellation. Overlay acknowledgement precedes desktop capture/input.
 
-En desarrollo el launcher inicia el daemon Python directamente. El paquete compilado incorpora el host Rust. Ambos recorridos usan los mismos argumentos y lock. Cerrar el renderer no cierra el daemon. Salir detiene voz, revoca control y aborta Pi. Reiniciar no repite tareas externas: las tareas que estaban ejecutándose quedan interrumpidas y deben verificarse.
+The internal bridge rejects browser origins and requires a capability token.
+Account operations require a separate renderer capability. Windows protects
+stored bridge tokens with DPAPI; POSIX descriptors use mode 0600. These controls
+do not isolate malicious code already running as the same OS user.
 
-El descriptor del daemon contiene una capacidad local; Windows la protege con DPAPI. En Linux el descriptor solo tiene permisos 0600. Esos permisos no sustituyen aislamiento ante código que ya se ejecuta como el mismo usuario.
+SDK account credentials live in the private agent's native auth store, not in
+chat messages. Connection secrets have separate storage rules. External content
+is data, not new authority. Gmail records an attempt before delivery and does
+not automatically retry an ambiguous send.
 
-OpenAI Realtime y Gemini Live tienen protocolos diferentes. Se confirma la configuración del proveedor antes de enviar audio. Los llamados de voz delegan a la sesión Pi; no exponen todos los MCP al modelo de voz. La transcripción local utiliza Whisper y salida SAPI/Piper por turnos. El detector Vosk recibe audio únicamente cuando se habilita activación local.
+## Projects and delegated work
 
-Las acciones de escritorio de InputControl/Forge se serializan. El control está deshabilitado hasta que el usuario lo permite desde la interfaz. Detener revoca ese permiso antes de esperar el aborto. Los resultados externos son datos, no nuevas instrucciones. Gmail registra cada intento de envío antes de solicitarlo al proveedor y no repite automáticamente un envío incierto.
+SQLite indexes projects and chats. Chat folders retain metadata, preferences,
+messages and Pi's original JSONL session. The selected chat owns its RPC process;
+switching cancels active work and rejects late events from the old generation.
+Subsequent project chats use Git worktrees when available or independent copies.
+Closing a chat neither merges nor deletes its worktree.
 
-Las credenciales se guardan en DPAPI o durante la sesión en memoria. Pi conserva sus mecanismos de /login y proveedores configurados por el usuario. El modo Work bloquea shell y edición de Pi; Code permite sus herramientas cuando se habilita explícitamente en ajustes.
+The launcher uses Gentle's official invocation contract and resumes the explicit
+session file. RPC adapters preserve upstream command handlers and approval
+policies. Delegated children receive the adapted extensions, but do not inherit
+desktop-control permission. A per-task mailbox supports questions and steering
+within the originating chat; restart does not replay or reconnect old tasks.
 
-El puente interno rechaza Origin de navegadores y exige token por petición. El gateway opcional tiene su propia contraseña y cookies; no entrega al navegador el token interno ni las claves de los proveedores.
+Local execution authorization is per chat. A working directory is not a filesystem
+sandbox. Native DOCX creation and workspace file tools remain independently bounded.
+Private model reasoning is not displayed as public agent activity.
 
-## Proyectos y shells
+## Voice and platform boundaries
 
-SQLite indexa proyectos y chats. Cada carpeta chat contiene session.json, preferences.json, messages.json y session/ con el historial JSONL original de Pi. Solo el chat seleccionado mantiene un proceso RPC. Al suspenderlo se aborta la tarea, se verifica el archivo de sesión, se guarda el modelo actual y se cierran Pi y los MCP. El cliente renderiza exclusivamente eventos del chat elegido; la extensión etiqueta sus solicitudes con el ID del chat para rechazar llamadas de una sesión antigua.
+Realtime providers have separate protocols and credentials. Local conversation
+uses STT, a text model and TTS; it is not an end-to-end speech-to-speech model.
+Dictation only inserts a draft. Wake capture is opt-in and depends on a compatible
+Vosk runtime/model. Gonzalo is an online adapter, with bounded synthesis and one
+chunk of look-ahead. Physical echo cancellation is not implemented.
 
-Los nuevos chats usan git worktree con una rama arise/chat-ID. Sin Git se crea una copia. No se borra ni se fusiona un worktree al cerrar un chat. El launcher de Gentle importa Pi en el mismo proceso Node; no añade procesos hijos huérfanos. --continue se combina con el archivo explícito del chat, para no retomar accidentalmente otra conversación.
-
-Gentle 4.0.0 usa RPC nativo para preguntas cuando GENTLE_SHELL_INTERACTIVE_HOST=1. ARISE adapta sus paneles TUI de perfiles, modelos, comandos, uso, agentes, estadísticas, cambios e historial a select/input/editor/notify, conservando los handlers originales. El visor de agentes filtra thinking y no expone razonamiento privado. Se mantiene compatibilidad con los paneles de perfiles/modelos de 3.3.0. La copia generada en caché resuelve módulos y recursos desde la instalación original. Los forks o versiones distintas conservan su código sin transformación.
+See [owned engine](owned-gentle-runtime.md), [native distributions](NATIVE-DISTRIBUTIONS.md),
+[mobile access](MOBILE-GUIDED-QA.md) and [validation](VALIDATION.md).

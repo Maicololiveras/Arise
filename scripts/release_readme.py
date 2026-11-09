@@ -8,7 +8,7 @@ REPO = 'https://github.com/Maicololiveras/Arise'
 
 def update_readme(text, manifests):
     rows = []
-    for channel, label in (('main', 'Producción'), ('qa', 'QA')):
+    for channel, label in (('main', 'Production'), ('qa', 'QA')):
         manifest = manifests[channel]
         version = manifest['version']
         if not re.fullmatch(r'\d+\.\d+\.\d+', version):
@@ -18,7 +18,7 @@ def update_readme(text, manifests):
         if manifest.get('channel') != channel or manifest['installer_url'] != url:
             raise ValueError('Published installer belongs to another channel')
         size = round(manifest['size'] / 1_000_000)
-        rows.append(f'- **{label} {version}:** [instalador Windows — {size} MB]({url}) · [release y archivos disponibles]({REPO}/releases/tag/{tag}).')
+        rows.append(f'- **{label} {version}:** [Windows installer — {size} MB]({url}) · [release and available assets]({REPO}/releases/tag/{tag}).')
     block = START + '\n' + '\n'.join(rows) + '\n' + END
     if START in text and END in text:
         start = text.index(START)

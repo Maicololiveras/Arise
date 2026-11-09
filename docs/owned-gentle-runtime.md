@@ -1,4 +1,4 @@
-# ARISE-owned Gentle runtime (QA 0.4.36)
+# ARISE-owned Gentle runtime (introduced in 0.4.36)
 
 ARISE now ships Gentle Shell 4.7.0 and Pi 1.5.0. Node, pinned native
 Gentle AI 4.4.0, Engram 3.7.0 and gentle-engram 0.7.0 travel in the application
@@ -10,8 +10,8 @@ dependencies for tasks that need them.
 
 1. Install or extract the complete ARISE package and launch it.
 2. ARISE validates its bundled engine and selects it automatically.
-3. Open **Settings → Agent → Open Pi for /login** and authenticate your provider
-   in ARISE's private agent. Select the provider/model in ARISE if necessary.
+3. Open **Settings > Agent > Connect account and choose model** and authenticate
+   in ARISE's private agent. A separate Pi terminal is not required.
 4. Use the chat. Local execution and desktop control still require their normal
    per-chat permissions. The integrated engine does not enable YOLO mode.
 
@@ -60,11 +60,11 @@ The design follows Gentle Dot's owned agent/configuration and staged native
 runtime, using Gentle Shell's upstream `buildPiInvocation` launch contract.
 ARISE supplies RPC-compatible UI adapters and propagates those extension paths
 to delegated children through Gentle's child-package injection contract.
-Interactive login uses the upstream extensions. User-added agent packages remain
+Account login uses the upstream Pi SDK through a private helper. User-added agent packages remain
 intact; only previously tracked bundled entries are replaced during upgrades.
 
 Engram is downloaded only at build time from its official release, checked
-against a pinned SHA-256, and version-checked on Windows. Missing or mismatched
+against a pinned SHA-256, and version-checked on the build target. Missing or mismatched
 engine artifacts fail explicitly instead of falling back to a random global
 installation. Standard TLS validation remains enabled.
 
@@ -78,3 +78,7 @@ References:
 - [Gentle Shell v4.7.0](https://github.com/Gentleman-Programming/gentle-shell/tree/v4.7.0)
 - [Gentle Dot daemon](https://github.com/Gentleman-Programming/gentle-dot/tree/b141d30/packages/daemon)
 - [Engram v3.7.0](https://github.com/Gentleman-Programming/engram/releases/tag/v3.7.0)
+
+Native previews use platform-specific data paths and executables; see
+[NATIVE-DISTRIBUTIONS.md](NATIVE-DISTRIBUTIONS.md). Their desktop-tool and voice
+capabilities are narrower than the complete Windows installer.

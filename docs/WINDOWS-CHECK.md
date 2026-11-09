@@ -1,27 +1,30 @@
-# Validación en Windows real
+# Physical Windows acceptance checklist
 
-Estos casos requieren un Windows con escritorio, micrófono y cuentas de prueba. No quedan demostrados por Docker ni por Qt offscreen.
+Use a real desktop, microphone and test accounts. Docker and offscreen Qt do not
+prove these behaviors. Record version, architecture, devices and exact results;
+a user success report is not a blanket pass for every item or another platform.
 
-- [ ] Instalar ARISE-Setup.exe en Windows limpio sin Python/Node previos.
-- [ ] Configurar Pi y comprobar que las extensiones de Gentle Shell aparecen en la sesión RPC.
-- [ ] Elegir modelo y esfuerzo; mantener autenticaciones existentes de Pi.
-- [ ] Probar el microphone/altavoz seleccionado y conversación real de cada proveedor.
-- [ ] Decir "Oye Arise" con el modelo Vosk elegido, calibrar pronunciación/frases y medir falsos positivos.
-- [ ] Interrumpir salida con auriculares; comprobar que no se realimenta con altavoces. No se ha implementado cancelación acústica de eco.
-- [ ] Silenciar y comprobar que el dispositivo de captura se detiene.
-- [ ] Probar Ctrl+Alt+A y Ctrl+Alt+Esc sin colisiones con otras aplicaciones.
-- [ ] Transparencia, arrastre, varios monitores y escalas 100/150/200%.
-- [ ] Cerrar el panel mientras trabaja y reabrirlo sin duplicar la sesión.
-- [ ] Conectar los cuatro MCP y comprobar catálogo/versiones reales.
-- [ ] Observar Bloc de notas, iniciar control visible, escribir una frase, verificar captura y detener control.
-- [ ] Conectar una cuenta Gmail de prueba, buscar y crear borrador con adjunto.
-- [ ] Cancelar envío; después autorizar un borrador y verificar que se envió una sola vez.
-- [ ] Cortar red durante una acción y verificar el resultado externo antes de repetirla.
-- [ ] Reiniciar daemon con tarea activa: queda interrumpida, no se reproduce.
-- [ ] Detectar base.pt/small.pt y carpetas base/medium/tiny; elegir cada motor compatible.
-- [ ] Probar Enter/Shift+Enter, menú inferior y micrófono del chat ampliado.
-- [ ] Crear/aplicar/fijar perfiles con Gentle 4.0.0 y guardar modelos por agente.
-- [ ] Probar SAPI/Vosk/Whisper locales y, si se configura, un ejecutable y modelo Piper compatibles.
-- [ ] Instalar/desinstalar y verificar arranque opcional con Windows.
+- [ ] Install on a clean x64 PC without global Node/Python/Gentle.
+- [ ] Start the integrated engine and verify actual Gentle commands and memory.
+- [ ] Connect an account in Settings and choose an available model.
+- [ ] Verify microphone/output selection and output-only speech preview.
+- [ ] Test dictation separately: draft insertion, correction, cancellation and no automatic send.
+- [ ] Test wake phrases, opt-in capture, mute and panel-opening preference.
+- [ ] Test speech interruption with headphones; check feedback with speakers.
+- [ ] Test Ctrl+Alt+A / Ctrl+Alt+Esc without shortcut conflicts.
+- [ ] Check orb dragging, multiple monitors and 100/150/200% scaling.
+- [ ] Hide/reopen chat during work without duplicating the session.
+- [ ] Verify real MCP catalogs and a visible InputControl indicator.
+- [ ] Capture Notepad, authorize control, type harmless text, verify and stop.
+- [ ] Confirm overlay clearing and no capture/control after revocation.
+- [ ] Test delegated questions, replies, steering, explicit completion and cancellation.
+- [ ] Check long approval/settings dialogs with response buttons still visible.
+- [ ] Test Gmail only with a test account: draft, reject, approve once, verify externally.
+- [ ] Interrupt network delivery; inspect the external result before retrying.
+- [ ] Restart during work; confirm interrupted tasks are not replayed.
+- [ ] Upgrade over a running installation and retain chats, models and memory.
+- [ ] Test optional autostart and uninstall without claiming removal of retained data.
 
-La firma Authenticode y un canal de actualizaciones firmado requieren el certificado del distribuidor. Este repositorio no incluye certificados ni presenta builds sin firma como firmados.
+No acoustic echo cancellation is implemented. Authenticode signing requires a
+distributor certificate; unsigned builds must not be presented as signed.
+For ARM64 use the separate [native acceptance gates](NATIVE-DISTRIBUTIONS.md).

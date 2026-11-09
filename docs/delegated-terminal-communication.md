@@ -25,4 +25,7 @@ Tests cover chat and generation isolation, question/reply delivery, ordered stee
 python -m pytest tests/test_terminal_tasks.py tests/test_task_dialog.py tests/test_update_dialog.py tests/test_assistant.py tests/test_chat_capabilities.py tests/test_connections_companion.py -q
 ```
 
-The Windows frozen InputControl indicator fix for issue #8 is maintained in `Maicololiveras/inputcontrol-mcp` PR #9. It launches the indicator using its packaged executable instead of requiring a separate Python installation. That fix requires a rebuilt InputControl distribution; changing ARISE alone does not update existing binaries. Validate the Windows build's visible indicator and a complete start/act/verify/stop cycle before publishing a release.
+The InputControl indicator fix is distributed separately. Historical verification
+of the published master-derived package is recorded in [QA-0.4.35.md](QA-0.4.35.md).
+Do not infer a physical desktop-control pass from a catalog or indicator smoke.
+A full start/act/verify/stop cycle remains part of target-device acceptance.

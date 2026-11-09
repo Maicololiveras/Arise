@@ -1,23 +1,31 @@
-# Gentle 4.0.0 en ARISE
+# Gentle commands in ARISE
 
-El instalador fija gentle-pi/Gentle AI 4.0.0 y Pi 1.1.0. No reemplaza archivos del Gentle instalado: genera adaptadores en caché. Un Pi global anterior a 0.99.1 no sustituye el motor integrado compatible. Los forks o versiones no verificados conservan su código original y pueden tener paneles TUI sin adaptar.
+The integrated runtime pins Gentle Shell 4.7.0 and Pi 1.5.0. ARISE discovers
+commands from the actual session rather than claiming support from a static
+list. Unknown slash commands are rejected instead of being sent to the model.
 
-| Comando | Interacción en ARISE |
+| Command family | Native interaction |
 | --- | --- |
-| `/gentle:profiles` | Aplicar, crear, actualizar, duplicar, renombrar, eliminar, exportar/importar y fijar perfil al clon/repositorio. Los handlers originales conservan sus validaciones. |
-| `/gentle:models` | Modelo/esfuerzo por agente o todos; guardar/cancelar. No cambia el proveedor de voz. |
-| `/gentle:commands` | Paleta de los comandos registrados en la sesión. |
-| `/gentle:agents` | Selección de tarea, historial sin thinking y confirmación para detener un agente propio activo. |
-| `/gentle:stats` | 7 días, 30 días o todo; alcance proyecto/global; reporte de tokens, costes y sesión. |
-| `/gentle:usage` | Consulta real de los proveedores soportados por Gentle; distingue datos disponibles y fallos. |
-| `/gentle:changes` | Cambios capturados por Gentle en la sesión; selección de archivo y diff. No atribuye cambios externos. |
-| `/gentle:status`, `/gentle:doctor` | Reporte del proyecto y diagnósticos. |
-| `/gentle:persona`, `/gentle:vim`, `/gentle:background-subagents` | Diálogos RPC originales y políticas de Gentle. Vim corresponde a su terminal, no al QTextEdit de ARISE. |
-| `/gentle:telemetry`, `/gentle:review-mode`, `/gentle:dev-binary`, `/gentle:install-*` | Comandos del handler original; operaciones nativas requieren el helper integrado y condiciones del proyecto. |
-| `/history` | Selección de instrucción; la devuelve a la entrada sin enviarla. Captura de historial sigue la política de Gentle. |
-| `/gentle:customize` | En la UI de ARISE abre sus ajustes. No simula el panel visual de la terminal ni concede YOLO. |
-| Comandos de banner/animación y otros | Se descubren con `get_commands`; mantienen el alcance original de Gentle/TUI. No rediseñan el orbe de ARISE. |
+| Profiles/models | Upstream selections, edit/save/cancel and scope rules |
+| Commands | Searchable palette of registered commands |
+| Agents | Public task history and explicit cancellation of owned work |
+| Stats/usage | Available upstream measurements; errors remain visible |
+| Changes | Session-tracked files and diffs, without attributing external changes |
+| Status/doctor | Project state and diagnostics |
+| Persona/review/telemetry/install | Upstream handlers and permissions |
+| History | Restore an instruction into the draft without sending |
+| Customize | Open ARISE settings; no implied YOLO permission |
+| TUI appearance/Vim | Retain terminal-specific scope, not the Qt editor/orb |
 
-Las preguntas `ask_user_choice` y `ask_user_question` usan el modo RPC interactivo original. Diálogos select, input, confirm y editor aparecen en la ventana nativa. Las notificaciones se guardan en el historial; los comandos desconocidos se rechazan para evitar una llamada accidental al modelo.
+RPC select/input/confirm/editor prompts use native dialogs. Long content scrolls
+while response buttons remain reachable. Adapters retain upstream validation;
+unsupported forks are not silently rewritten as compatible packages. Agent
+views exclude private reasoning. Model selection does not change voice providers.
 
-Pruebas con Pi/Gentle reales: recuperación del mismo sessionId, crear/aplicar perfil, guardar modelo/esfuerzo, abrir/cerrar paleta/agentes, estadísticas y comandos de diagnóstico sin llamadas adicionales al proveedor de prueba. No se ejecutaron mutaciones de revisión, telemetría o instalación sobre un proyecto real del usuario.
+Gentle profiles retain their upstream global/repository scope. ARISE session
+preferences and local-execution authorization are per chat. Command registration
+is not proof of provider access, installed native helpers or successful operation.
+
+Integration tests exercise real Pi/Gentle with a local fixture provider: resume,
+profiles/models, command discovery, dialogs, delegation and cancellation. They do
+not authorize destructive commands against real user projects.
