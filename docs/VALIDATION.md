@@ -35,10 +35,13 @@ physical devices and per-target update acceptance remain separate release gates.
 
 The six-target matrix first passed in
 [run 42638622809](https://github.com/Maicololiveras/Arise/actions/runs/42638622809).
-Subsequent capability/UI and macOS trust refinements are tracked in
-[PR #12](https://github.com/Maicololiveras/Arise/pull/12), whose current CI is
-authoritative for its latest commit. Local validation of those refinements ran
-303 tests: 296 passed and seven explicit Windows-only skips.
+The final runtime revision `aaee782386e59e777956b049b6f954cf365510e6` also passed
+all six targets in [run 42639847104](https://github.com/Maicololiveras/Arise/actions/runs/42639847104),
+including capability/UI, Rust architecture and macOS trust refinements. Local
+validation ran 303 tests: 296 passed and seven explicit Windows-only skips.
+[PR #12](https://github.com/Maicololiveras/Arise/pull/12) remains a draft for
+physical platform acceptance. Later documentation-only commits do not change
+the tested runtime.
 
 ## Run checks
 

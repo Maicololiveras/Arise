@@ -18,6 +18,11 @@ The target must match the computer. ARM64 packages are compiled on ARM64 runners
 not x64 packages relabeled for emulation. Node and Python architecture are checked
 before packaging. Bundled manifests reject adoption on a different target.
 
+All six targets passed the final native matrix in
+[run 42639847104](https://github.com/Maicololiveras/Arise/actions/runs/42639847104).
+Download the matching preview artifact from that run; Actions artifacts expire
+after 14 days. These are test distributions, not permanent production release assets.
+
 ## Included and excluded
 
 All successful previews contain the Qt UI, Rust process host, Node 24.21.0,
