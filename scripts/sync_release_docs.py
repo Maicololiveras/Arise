@@ -67,6 +67,14 @@ def render_catalog(catalog, readme_url=""):
 
     stable = '<!-- arise-windows-stable -->' + link('stable', 'ARISE-Setup.exe', 'Complete') + '<!-- /arise-windows-stable -->'
     preview = '<!-- arise-windows-preview -->' + link('preview', 'ARISE-Setup.exe', 'Complete') + '<!-- /arise-windows-preview -->'
+    def mobile(channel, system):
+        kinds = ('stable', 'native_stable') if channel == 'stable' else ('preview', 'native')
+        hosts = [catalog[k] for k in kinds if k in catalog and catalog[k]['key'] >= (0, 4, 41)]
+        if not hosts:
+            return 'Web app requires PC 0.4.41+ (pending publication)'
+        host = max(hosts, key=lambda item: item['key'])
+        return f"[Web app · PC {host['version']}]({readme_url}#install-{system})"
+
     rows = [
         ('Windows 11', 'x64', stable + '<br>' + native('windows', 'x64', 'native_stable'), preview + '<br>' + native('windows', 'x64'), 'windows'),
         ('Windows 11', 'ARM64', native('windows', 'arm64', 'native_stable'), native('windows', 'arm64'), 'windows'),
@@ -74,18 +82,18 @@ def render_catalog(catalog, readme_url=""):
         ('Linux · Ubuntu 24.04', 'ARM64', native('linux', 'arm64', 'native_stable'), native('linux', 'arm64'), 'linux'),
         ('macOS 15', 'Intel x64', native('macos', 'x64', 'native_stable'), native('macos', 'x64'), 'macos'),
         ('macOS 15', 'Apple Silicon ARM64', native('macos', 'arm64', 'native_stable'), native('macos', 'arm64'), 'macos'),
-        ('Android 8+', 'Mobile companion', link('android_stable', 'ARISE-Android.apk'), link('android', 'ARISE-Android-QA.apk'), 'android'),
-        ('iOS / iPadOS', 'Mobile companion', 'Not released', 'Not released', 'ios'),
+        ('Android', 'Installable web app', mobile('stable', 'android'), mobile('preview', 'android'), 'android'),
+        ('iOS / iPadOS', 'Installable web app', mobile('stable', 'ios'), mobile('preview', 'ios'), 'ios'),
     ]
     lines = [START, '## Downloads', '',
-        'Choose your system and channel. Each link points to a published installer; versions can differ by platform.', '',
+        'Choose your system and channel. Desktop downloads point to published installers. Mobile web apps are served by your own updated PC; their links open installation instructions.', '',
         '| Operating system | Architecture | Stable | ARISE Preview | Installation |',
         '| --- | --- | --- | --- | --- |']
     lines += [f'| {os} | {arch} | {stable} | {preview} | {instructions(system)} |'
               for os, arch, stable, preview, system in rows]
     lines += ['', '**Stable** is the established release channel. **ARISE Preview** is for testing newer builds. Stable Core packages retain the same documented capability limits as Core Preview.', '',
         '**Complete** and **Core** are different packages: Core packages include the integrated agent engine, but exclude private desktop MCP servers and offline speech models. A higher Core version does not imply feature parity with Complete.', '',
-        '“Not released” means no installer is currently published for that platform and channel. iOS is separate from macOS.', '', END]
+        '“Not released” means no installer is currently published for that platform and channel. Mobile PWA installation requires no app-store developer account or signing key; native mobile releases are deferred.', '', END]
     return '\n'.join(lines)
 
 

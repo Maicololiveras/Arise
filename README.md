@@ -15,7 +15,7 @@ do not need to install Pi, Gentle Shell, Node or Go separately.
 <!-- arise-published-platforms:start -->
 ## Downloads
 
-Choose your system and channel. Each link points to a published installer; versions can differ by platform.
+Choose your system and channel. Desktop downloads point to published installers. Mobile web apps are served by your own updated PC; their links open installation instructions.
 
 | Operating system | Architecture | Stable | ARISE Preview | Installation |
 | --- | --- | --- | --- | --- |
@@ -25,14 +25,14 @@ Choose your system and channel. Each link points to a published installer; versi
 | Linux · Ubuntu 24.04 | ARM64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-arm64.deb.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb.sha256) | [Install →](#install-linux) |
 | macOS 15 | Intel x64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-x64.pkg.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg.sha256) | [Install →](#install-macos) |
 | macOS 15 | Apple Silicon ARM64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-arm64.pkg.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg.sha256) | [Install →](#install-macos) |
-| Android 8+ | Mobile companion | Not released | [0.2.0-qa](https://github.com/Maicololiveras/Arise/releases/download/android-qa-v0.2.0-qa/ARISE-Android-QA.apk) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/android-qa-v0.2.0-qa/ARISE-Android-QA.apk.sha256) | [Install →](#install-android) |
-| iOS / iPadOS | Mobile companion | Not released | Not released | [Install →](#install-ios) |
+| Android | Installable web app | Web app requires PC 0.4.41+ (pending publication) | Web app requires PC 0.4.41+ (pending publication) | [Install →](#install-android) |
+| iOS / iPadOS | Installable web app | Web app requires PC 0.4.41+ (pending publication) | Web app requires PC 0.4.41+ (pending publication) | [Install →](#install-ios) |
 
 **Stable** is the established release channel. **ARISE Preview** is for testing newer builds. Stable Core packages retain the same documented capability limits as Core Preview.
 
 **Complete** and **Core** are different packages: Core packages include the integrated agent engine, but exclude private desktop MCP servers and offline speech models. A higher Core version does not imply feature parity with Complete.
 
-“Not released” means no installer is currently published for that platform and channel. iOS is separate from macOS.
+“Not released” means no installer is currently published for that platform and channel. Mobile PWA installation requires no app-store developer account or signing key; native mobile releases are deferred.
 
 <!-- arise-published-platforms:end -->
 
@@ -166,26 +166,34 @@ production release above remains the established desktop option.
 
 ### Install on Android
 
-Android Stable and Preview are **companions to an existing PC installation**, not a standalone agent server. Requires Android 8 or later.
+The recommended mobile app is the **installable web app (PWA)** served by your own ARISE PC, starting with PC version **0.4.41**. It requires no APK, signing key or store account. Update the PC from the published Stable or Preview column first; do not use an older host for the new installation experience.
 
-1. Install and configure ARISE on your PC first; confirm that its chat works.
-2. Download the Android APK and SHA-256 file from your chosen channel above. Stable and Preview are separate apps and require separate pairing. Verify the checksum before installing.
-3. Open the APK. If Android requests permission to install from your browser or file manager, grant it only to that app for this installation and turn it off afterward. Do not bypass a security warning for an unverified file.
-4. Open ARISE Companion. Connect the PC and phone to your authorized Tailscale network.
-5. On the PC, open **Settings > Connections > Mobile**. Follow the guided private HTTPS connection and authenticator setup, select the chat and generate the pairing code.
-6. On Android, enter the exact private HTTPS address shown on the PC and pair the selected chat. Start with a text message and test the Stop control.
-7. Microphone, notifications and overlay are optional and need explicit permissions. Wake listening requires a separately configured detector/key/model; installing the APK does not enable it. See the [Android setup guide](docs/android-companion-qa.md) for prerequisites and limitations.
-8. To update, install the newer published APK. Preview signing changes can require reinstalling and pairing again; preserve connection information first.
+1. Install and configure ARISE on the PC; confirm that chat works.
+2. Connect the PC and phone to your authorized Tailscale network.
+3. On the PC open **Settings > Connections > Mobile**, configure private HTTPS and the authenticator, and copy the private address.
+4. Open that address in Chrome on Android. Tap **Install ARISE** when offered, or the browser menu > **Install app / Add to Home screen**.
+5. Open ARISE from its new home-screen icon. Generate a fresh pairing code on the PC and pair inside the installed app with your authenticator code. Browser and installed-app sessions can differ.
+6. Send a text message, try **Speak** and **Listen**, and verify **Stop**. Voice recording needs microphone permission and a connected PC; it does not send a prompt until you review and send the transcript.
+7. To update the web app, update ARISE on the PC and reopen the mobile app. Keep Tailscale connected and the PC awake. There is no offline task queue or background wake listener.
+
+Previously published native Android Preview APKs remain available in [historical releases](https://github.com/Maicololiveras/Arise/releases/tag/android-qa-v0.2.0-qa). They are optional development builds; the PWA is the current mobile distribution.
 
 [Back to downloads ↑](#downloads)
 
 <a id="install-ios"></a>
 
-### iOS and iPadOS availability
+### Install on iPhone or iPad
 
-**There is no native iOS/iPadOS installer, App Store release or TestFlight build published yet.** The macOS PKG is for Mac computers and cannot be installed on iPhone or iPad. An Android APK cannot be installed on iOS either.
+Use the same **installable web app**, with no Apple Developer subscription, TestFlight, App Store or configuration profile. A macOS PKG and an Android APK cannot be installed on iOS.
 
-The initial [iPhone/iPad companion source and simulator build guide](docs/IOS-COMPANION.md) are available for development. Device distribution awaits Apple Developer membership, signing and validation. Public installation links will appear here after publication. Do not install unofficial profiles or packages presented as ARISE for iOS. See the [mobile connection guide](docs/MOBILE-GUIDED-QA.md) for the existing PC-hosted companion; this does not imply a native iOS release or background-listening support.
+1. Update the ARISE PC to **0.4.41 or later** once published, and configure its **Settings > Connections > Mobile** private HTTPS address and authenticator.
+2. Install Tailscale on the iPhone/iPad and join the same authorized network as the PC.
+3. Open the private ARISE address in **Safari**. Tap **Share > Add to Home Screen**; enable **Open as Web App** if that option appears, then tap **Add**.
+4. Open the ARISE icon from the Home Screen. Generate a fresh code on the PC and pair in this app with the authenticator code.
+5. Test text, microphone recording, response playback and **Stop**. Keep the PC on and connected. iOS can suspend the app when it is hidden or the device locks; continuous background listening is not supported.
+6. Update the PC and reopen the web app to receive the latest interface. Removing the icon does not revoke the device: revoke its access in PC Settings when needed.
+
+See the [mobile web app guide](docs/MOBILE-WEB-APP.md). Native [iOS development](docs/IOS-COMPANION.md) is deferred until later; its simulator builds are not phone installers.
 
 [Back to downloads ↑](#downloads)
 

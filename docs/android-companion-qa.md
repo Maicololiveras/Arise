@@ -1,9 +1,12 @@
 # Android companion QA: wake phrase and overlay
 
+**Native mobile development is deferred.** Use the [installable mobile web app](MOBILE-WEB-APP.md) for current Android, iPhone and iPad installation, without store accounts or signing fees. The native workflows are manual development tools only.
+
+
 <!-- arise-published-platforms:start -->
 ## Downloads
 
-Choose your system and channel. Each link points to a published installer; versions can differ by platform.
+Choose your system and channel. Desktop downloads point to published installers. Mobile web apps are served by your own updated PC; their links open installation instructions.
 
 | Operating system | Architecture | Stable | ARISE Preview | Installation |
 | --- | --- | --- | --- | --- |
@@ -13,14 +16,14 @@ Choose your system and channel. Each link points to a published installer; versi
 | Linux · Ubuntu 24.04 | ARM64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-linux-arm64.deb.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-linux-arm64.deb.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-linux) |
 | macOS 15 | Intel x64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-x64.pkg.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-x64.pkg.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-macos) |
 | macOS 15 | Apple Silicon ARM64 | [Core 0.4.40](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.40/ARISE-0.4.40-macos-arm64.pkg.sha256) | [Core 0.4.39](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.39/ARISE-0.4.39-macos-arm64.pkg.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-macos) |
-| Android 8+ | Mobile companion | Not released | [0.2.0-qa](https://github.com/Maicololiveras/Arise/releases/download/android-qa-v0.2.0-qa/ARISE-Android-QA.apk) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/android-qa-v0.2.0-qa/ARISE-Android-QA.apk.sha256) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-android) |
-| iOS / iPadOS | Mobile companion | Not released | Not released | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-ios) |
+| Android | Installable web app | Web app requires PC 0.4.41+ (pending publication) | Web app requires PC 0.4.41+ (pending publication) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-android) |
+| iOS / iPadOS | Installable web app | Web app requires PC 0.4.41+ (pending publication) | Web app requires PC 0.4.41+ (pending publication) | [Install →](https://github.com/Maicololiveras/Arise/blob/main/README.md#install-ios) |
 
 **Stable** is the established release channel. **ARISE Preview** is for testing newer builds. Stable Core packages retain the same documented capability limits as Core Preview.
 
 **Complete** and **Core** are different packages: Core packages include the integrated agent engine, but exclude private desktop MCP servers and offline speech models. A higher Core version does not imply feature parity with Complete.
 
-“Not released” means no installer is currently published for that platform and channel. iOS is separate from macOS.
+“Not released” means no installer is currently published for that platform and channel. Mobile PWA installation requires no app-store developer account or signing key; native mobile releases are deferred.
 
 <!-- arise-published-platforms:end -->
 

@@ -92,9 +92,14 @@ def make_mobile_server(runtime, origin, port=0):
 
         def do_GET(self):
             try:
-                if self.path in ('/', '/companion.js', '/companion.css'):
-                    name = {'/':'companion.html', '/companion.js':'companion.js', '/companion.css':'companion.css'}[self.path]
-                    mime = {'/':'text/html; charset=utf-8', '/companion.js':'text/javascript', '/companion.css':'text/css'}[self.path]
+                public = {'/': ('companion.html', 'text/html; charset=utf-8'),
+                          '/companion.js': ('companion.js', 'text/javascript'),
+                          '/companion-install.js': ('companion-install.js', 'text/javascript'),
+                          '/companion.css': ('companion.css', 'text/css'),
+                          '/companion.webmanifest': ('companion.webmanifest', 'application/manifest+json')}
+                public.update({f'/companion-icon-{size}.png': (f'companion-icon-{size}.png', 'image/png') for size in (180, 192, 512)})
+                if self.path in public:
+                    name, mime = public[self.path]
                     return self.reply((Path(__file__).parent/'resources'/name).read_bytes(), mime=mime)
                 token, device = self.context()
                 if self.path != '/messages': return self.reply({'error':'Ruta no disponible.'},404)

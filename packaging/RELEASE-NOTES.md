@@ -1,3 +1,7 @@
+# ARISE 0.4.41 Preview
+
+Installable mobile web app for iPhone, iPad and Android through the private PC URL. No app-store account, native signing key or store fee is required for this distribution. Pairing and TOTP remain mandatory. No offline task queue, service worker or chat cache is introduced. Native mobile releases are deferred; desktop stable publication remains enabled.
+
 # ARISE 0.4.40 Preview
 
 Stable Core installers now have separate identities on all six desktop targets. Android stable requires a persistent release signature. The initial iPhone/iPad companion is available as source and simulator CI; Apple device distribution is not yet published. CI also fixes UTF-8 documentation reads, Docker README inclusion, and channel-aware Start menu validation.

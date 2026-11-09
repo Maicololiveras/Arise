@@ -1,5 +1,8 @@
 # ARISE Companion for iPhone and iPad
 
+**Native mobile development is deferred.** Use the [installable mobile web app](MOBILE-WEB-APP.md) for current Android, iPhone and iPad installation, without store accounts or signing fees. The native workflows are manual development tools only.
+
+
 The initial native UIKit/WebKit app lives in `mobile/ios`. It targets iOS/iPadOS 16+
 and both device families. It connects to the existing PC-hosted companion using
 an exact private HTTPS Tailscale origin. The PC still runs the agent and tools.

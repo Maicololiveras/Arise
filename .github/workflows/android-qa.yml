@@ -1,10 +1,6 @@
 name: ARISE Preview Android
 on:
-  push:
-    branches: [main]
-    paths: ['mobile/android/**', '.github/workflows/android-qa.yml', 'arise_app/resources/companion.*', 'tests/companion-client.test.cjs', 'assets/orb-atlas.png']
-  pull_request:
-    paths: ['mobile/android/**', '.github/workflows/android-qa.yml', 'arise_app/resources/companion.*', 'tests/companion-client.test.cjs', 'assets/orb-atlas.png']
+  # Native mobile distribution is deferred; the PC serves the installable PWA.
   workflow_dispatch:
 permissions:
   contents: read

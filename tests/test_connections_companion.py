@@ -129,6 +129,35 @@ class DurableTests(unittest.TestCase):
         with patch('arise_app.companion.time.time',return_value=time.time()+901):
             with self.assertRaises(PermissionError):self.r.devices.rotate(token)
 
+    def test_installable_assets_are_public_but_chat_stays_private(self):
+        server=make_mobile_server(self.r,'https://pc.example.ts.net')
+        thread=threading.Thread(target=server.serve_forever);thread.start()
+        def get(path):
+            client=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=3)
+            try:
+                client.request('GET',path)
+                response=client.getresponse()
+                return response.status, dict(response.getheaders()), response.read()
+            finally:client.close()
+        try:
+            status, headers, body=get('/companion.webmanifest')
+            self.assertEqual(status,200)
+            self.assertEqual(headers['Content-Type'],'application/manifest+json')
+            self.assertEqual(headers['Cache-Control'],'no-store')
+            self.assertNotIn('Set-Cookie',headers)
+            manifest=json.loads(body)
+            self.assertEqual(manifest['start_url'],'/')
+            self.assertEqual(manifest['display'],'standalone')
+            for icon in manifest['icons']:
+                code, icon_headers, image=get(icon['src'])
+                self.assertEqual(code,200)
+                self.assertEqual(icon_headers['Content-Type'],'image/png')
+                self.assertEqual(image[:8],b'\x89PNG\r\n\x1a\n')
+            self.assertEqual(get('/messages')[0],401)
+            self.assertEqual(get('/../storage.db')[0],401)
+            self.r.steer.assert_not_called()
+        finally:server.shutdown();server.server_close();thread.join()
+
     def test_mobile_http_authorization_chat_and_privilege_boundaries(self):
         server=make_mobile_server(self.r,'https://pc.example.ts.net')
         thread=threading.Thread(target=server.serve_forever);thread.start()

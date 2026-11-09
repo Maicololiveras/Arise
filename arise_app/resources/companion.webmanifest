@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "ARISE Companion",
+  "short_name": "ARISE",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#081b29",
+  "theme_color": "#081b29",
+  "description": "Tu asistente privado: el PC realiza las tareas.",
+  "icons": [
+    {
+      "src": "/companion-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/companion-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

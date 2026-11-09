@@ -31,7 +31,3 @@ jobs:
     secrets: inherit
     with:
       release_channel: stable
-  android:
-    needs: validate
-    uses: ./.github/workflows/android-stable.yml
-    secrets: inherit

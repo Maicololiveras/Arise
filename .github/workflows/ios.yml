@@ -1,10 +1,6 @@
 name: ARISE iOS companion
 on:
-  push:
-    branches: [main]
-    paths: ['mobile/ios/**', '.github/workflows/ios.yml']
-  pull_request:
-    paths: ['mobile/ios/**', '.github/workflows/ios.yml']
+  # Native mobile distribution is deferred; the PC serves the installable PWA.
   workflow_dispatch:
 permissions:
   contents: read

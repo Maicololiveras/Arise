@@ -25,8 +25,15 @@ class PublishedDocsTests(unittest.TestCase):
         self.assertEqual(catalog['preview']['version'], '0.4.10')
         self.assertEqual(catalog['android']['version'], '0.2.0-qa')
         table = render_catalog(catalog)
-        self.assertIn('| iOS / iPadOS | Mobile companion | Not released | Not released |', table)
-        self.assertIn('/android-qa-v0.2.0-qa/ARISE-Android-QA.apk)', table)
+        self.assertIn('| iOS / iPadOS | Installable web app |', table)
+        self.assertIn('PC 0.4.41+ (pending publication)', table)
+
+    def test_pwa_is_advertised_only_after_capable_pc_release(self):
+        names=['ARISE-Setup.exe','ARISE-Setup.exe.sha256']
+        table=render_catalog(published_catalog([release('v0.4.41',names)]))
+        self.assertIn('[Web app · PC 0.4.41](#install-ios)',table)
+        self.assertIn('[Web app · PC 0.4.41](#install-android)',table)
+        self.assertNotIn('[Web app · PC 0.4.40]',render_catalog(published_catalog([release('v0.4.40',names)])))
 
     def test_requires_all_native_architectures(self):
         names = [f'ARISE-0.4.39-{os}-{arch}{ext}' for os, ext in
@@ -66,7 +73,7 @@ class PublishedDocsTests(unittest.TestCase):
         self.assertIn('[Complete 0.4.10]', updated)
         self.assertIn('[Complete 0.4.8]', updated)
         self.assertNotIn('qa-v0.4.9', updated)
-        self.assertIn('| Android 8+', updated)
+        self.assertIn('| Android |', updated)
         self.assertTrue(updated.endswith('video-url\n<!-- arise-video:end -->'))
         self.assertEqual(updated, update_readme(updated, manifests))
 
