@@ -80,6 +80,24 @@ class NativePublicationTests(unittest.TestCase):
             run.assert_not_called()
 
 
+    def test_stable_release_uses_only_stable_evidence_and_tag(self):
+        from types import SimpleNamespace
+        def command(args, **kwargs):
+            return SimpleNamespace(returncode=1 if args[:3] == ['gh','release','view'] else 0, stdout='{"assets": []}')
+        with tempfile.TemporaryDirectory() as tmp, patch.dict('os.environ', GITHUB_REF_NAME='main', GITHUB_SHA='fixture', GITHUB_RUN_ID='123', ARISE_NATIVE_CHANNEL='stable'), patch.object(publisher.subprocess,'run',side_effect=command) as run, patch('scripts.release_readme.publish_native_metadata') as preview_metadata:
+            root=Path(tmp); self.fixture(root)
+            for path in root.glob('*-installer.json'):
+                report=json.loads(path.read_text());report.update(channel='stable',version=publisher.__version__)
+                path.write_text(json.dumps(report))
+            publisher.main(root)
+            create,publish=[call.args[0] for call in run.call_args_list[1:3]]
+            self.assertIn('native-stable-v'+publisher.__version__,create)
+            self.assertNotIn('--prerelease',create)
+            self.assertIn('--prerelease=false',publish)
+            self.assertIn('--draft',create)
+            preview_metadata.assert_not_called()
+
+
 
 class BundlePermissionsTests(unittest.TestCase):
     @unittest.skipIf(__import__('os').name == 'nt', 'POSIX package permissions')
