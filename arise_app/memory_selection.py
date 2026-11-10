@@ -26,6 +26,10 @@ def validate(config, env=None):
     source = selection(os.environ if env is None else env, config)
     if config.get('memory_mode', 'private') != 'shared':
         return
+    configured = config.get('pi_command', [])
+    if (len(configured) != 2 or Path(configured[0]).stem.lower() != 'node'
+            or not (Path(config.get('gentle_path', ''))/'runtime/gentle-shell-bundled.mjs').is_file()):
+        raise RuntimeError(ERROR)
     try:
         command = [config['pi_command'][0], str(Path(__file__).parent/'resources/shared-memory.mjs'),
                    '--verify', config['gentle_path']]

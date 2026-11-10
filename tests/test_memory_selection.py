@@ -37,6 +37,11 @@ class MemorySelectionTests(unittest.TestCase):
             for key in m.CONFLICTS: self.assertNotIn(key, env)
             self.assertEqual(env['ARISE_MEMORY_MODE'],'shared')
 
+    def test_shared_rejects_shell_commands_before_running_them(self):
+        with patch("subprocess.run") as run, self.assertRaises(RuntimeError):
+            m.validate({"memory_mode":"shared", "pi_command":["pi"], "gentle_path":"/package"}, {})
+        run.assert_not_called()
+
     def test_failed_probe_does_not_change_config(self):
         config={'memory_mode':'shared','pi_command':['node','pi'],'gentle_path':'/package'}
         original=config.copy()

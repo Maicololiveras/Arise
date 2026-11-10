@@ -120,7 +120,7 @@ class Runtime:
         gmail_connected = self.gmail.vault.path.exists()
         return {"version": __version__, "conversation": self.conversation, "busy": self.busy,
             "session": self.sessions.get(self.conversation),
-            "memory": {"mode": config.get("memory_mode", "private"), "state": self.memory_state if self.pi and self.pi.process.poll() is None else "configured"},
+            "memory": {"mode": config.get("memory_mode", "private"), "state": self.memory_state if self.memory_state == "error" or (self.pi and self.pi.process.poll() is None) else "configured"},
             "capabilities": self.capabilities(),
             "activity": self.activity.snapshot(),
             "model_service": self.model_service.snapshot(),
