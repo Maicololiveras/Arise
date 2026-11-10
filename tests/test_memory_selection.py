@@ -71,6 +71,19 @@ class MemoryRuntimeTests(unittest.TestCase):
             disconnect.assert_called_once()
         self.assertEqual(self.r.storage.config['memory_mode'],'shared')
 
+    def test_shared_reconnect_validates_before_replacing_live_pi(self):
+        from unittest.mock import Mock
+        r=self.r;r.storage.config['memory_mode']='shared';r.memory_state='error'
+        process=Mock();process.process.poll.return_value=None;r.pi=process
+        try:
+            with patch('arise_app.memory_selection.validate',side_effect=RuntimeError('missing')),patch.object(r,'disconnect_pi') as disconnect:
+                with self.assertRaisesRegex(RuntimeError,'missing'):r.connect_pi()
+                disconnect.assert_not_called()
+            with patch('arise_app.memory_selection.validate') as validate,patch.object(r,'disconnect_pi',side_effect=RuntimeError('reconnect-started')):
+                with self.assertRaisesRegex(RuntimeError,'reconnect-started'):r.connect_pi()
+                validate.assert_called_once()
+        finally:r.pi=None
+
     def test_rejected_delegate_leaves_no_task_files(self):
         r=self.r
         r.storage.config.update(code_enabled=True,gentle_agent_home=self.temp.name,pi_command=['node','pi'],memory_mode='shared')

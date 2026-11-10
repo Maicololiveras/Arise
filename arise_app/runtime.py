@@ -223,7 +223,11 @@ class Runtime:
             if self.accounts.active:
                 raise RuntimeError("Termina o cancela el inicio de sesión en Ajustes > Cuentas.")
             if self.pi and self.pi.process.poll() is None:
-                return self.pi_state
+                if self.storage.config.get("memory_mode") != "shared" or self.memory_state != "error":
+                    return self.pi_state
+                from .memory_selection import validate
+                validate(self.storage.config)
+                self.disconnect_pi()
             if time.monotonic() < self.pi_retry_after:
                 raise RuntimeError("Pi está temporalmente pausado tras un fallo. Espera 30 segundos o guarda la configuración corregida. " + self.pi_failure)
             from .memory_selection import validate
