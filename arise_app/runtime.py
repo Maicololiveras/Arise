@@ -69,6 +69,7 @@ class Runtime:
         self.connect_lock = threading.Lock()
         self.tool_lock = threading.Lock()
         self.mcp = {}
+        self.memory_state = "configured"
         self.pi = None
         self.pi_state = {}
         self.pi_commands = set()
@@ -119,6 +120,7 @@ class Runtime:
         gmail_connected = self.gmail.vault.path.exists()
         return {"version": __version__, "conversation": self.conversation, "busy": self.busy,
             "session": self.sessions.get(self.conversation),
+            "memory": {"mode": config.get("memory_mode", "private"), "state": self.memory_state if self.pi and self.pi.process.poll() is None else "configured"},
             "capabilities": self.capabilities(),
             "activity": self.activity.snapshot(),
             "model_service": self.model_service.snapshot(),
@@ -163,6 +165,8 @@ class Runtime:
                 raise ValueError("Cada MCP necesita command como lista.")
         if not all(isinstance(config[k], str) and 0 < len(config[k]) < 120 for k in ("voice", "voice_model")):
             raise ValueError("Modelo o voz inválidos.")
+        from .memory_selection import validate
+        validate(config)
         # Background tool installation updates MCP only. It must not terminate
         # Pi while its RPC handshake (or an idle connected session) is active.
         mcp_only = set(changes) == {"mcp"}
@@ -179,7 +183,7 @@ class Runtime:
             self.disconnect()
         elif any(config.get(key) != self.storage.config.get(key) for key in (
                 "pi_command", "pi_extra_args", "gentle_path", "gentle_agent_home", "gentle_bundle_root", "engine_mode", "owned_engine_root",
-                "agent_provider", "agent_model", "thinking", "code_enabled", "ui_language", "engram_bin", "preferred_name")):
+                "agent_provider", "agent_model", "thinking", "code_enabled", "ui_language", "engram_bin", "memory_mode", "preferred_name")):
             self.disconnect_pi()
         if any(config.get(key) != self.storage.config.get(key) for key in
                ("local_server_command", "local_dialogue_url", "local_dialogue_model")):
@@ -222,6 +226,12 @@ class Runtime:
                 return self.pi_state
             if time.monotonic() < self.pi_retry_after:
                 raise RuntimeError("Pi está temporalmente pausado tras un fallo. Espera 30 segundos o guarda la configuración corregida. " + self.pi_failure)
+            from .memory_selection import validate
+            try:
+                validate(self.storage.config)
+            except Exception:
+                self.memory_state = "error"
+                raise
             if self.pi:
                 self.pi.close()
                 self.pi = None
@@ -301,6 +311,7 @@ class Runtime:
                 return self.pi_state
             except Exception as error:
                 self.pi_retry_after = time.monotonic() + 30
+                if config.get("memory_mode") == "shared": self.memory_state = "error"
                 self.pi_failure = str(error)[:600]
                 self.pi.close()
                 self.pi = None
@@ -331,6 +342,11 @@ class Runtime:
             if self.activity.consume(event): self.emit("activity", self.activity.snapshot())
 
     def pi_event(self, event):
+        if event.get("type") == "arise_memory_status":
+            self.memory_state = event.get("state", "error")
+            return
+        if self.storage.config.get("memory_mode") == "shared" and event.get("type") == "tool_execution_end" and event.get("toolName", "").startswith("mem_"):
+            self.memory_state = "error" if event.get("isError") or self.memory_state == "error" else ("connected" if self.memory_state in ("verifying", "connected") else "configured")
         self.publish_activity(event)
         kind = event.get("type")
         if kind == "message_start" and event.get("message", {}).get("role") == "assistant":
@@ -728,6 +744,7 @@ class Runtime:
         return {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}], "isError": False}
 
     def disconnect_pi(self):
+        self.memory_state = "configured"
         with self.lock:
             self.pi_epoch += 1
             self.pi_tools = []

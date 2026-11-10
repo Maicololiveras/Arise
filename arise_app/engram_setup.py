@@ -58,7 +58,9 @@ def verified_executable(archive, checksums, name):
 
 def engine_environment(env, config):
     """Explicit selection wins; otherwise reuse the official Windows install."""
-    result=dict(env)
+    from .memory_selection import selection
+    result=selection(env, config)
+    if config.get('memory_mode') == 'shared': return result
     selected=config.get('engram_bin') or result.get('ENGRAM_BIN')
     if not selected and result.get('LOCALAPPDATA'):
         known=Path(result['LOCALAPPDATA'])/'engram/bin/engram.exe'

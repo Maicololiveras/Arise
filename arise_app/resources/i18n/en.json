@@ -428,5 +428,15 @@
   "Todos los agentes": "All agents",
   "Usar en esta sesión": "Use in this session",
   "¿Detener este agente y conservar su historial?": "Stop this agent and preserve its history?",
-  "El catálogo no informa esfuerzos para este modelo; Pi resolverá el nivel admitido al iniciarlo.": "The catalog does not report reasoning levels for this model; Pi will resolve the supported level at startup."
+  "El catálogo no informa esfuerzos para este modelo; Pi resolverá el nivel admitido al iniciarlo.": "The catalog does not report reasoning levels for this model; Pi will resolve the supported level at startup.",
+  "Memoria privada de ARISE": "ARISE private memory",
+  "Servidor local compartido de Engram": "Shared local Engram server",
+  "Memoria": "Memory",
+  "Estado de memoria": "Memory status",
+  "Configurado": "Configured",
+  "Conectado": "Connected",
+  "La memoria compartida requiere un servidor compatible ya iniciado. No copia ni mezcla bases. El ejecutable privado guardado se conserva, pero no se usa en modo compartido. Guardar desconecta Pi; Conectar verifica la nueva selección.": "Shared memory requires an already-running compatible server. Databases are not copied or merged. The saved private executable is retained but unused in shared mode. Saving disconnects Pi; Connect verifies the new selection.",
+  "Selecciona memoria privada o compartida.": "Select private or shared memory.",
+  "No se pudo verificar la memoria compartida. Inicia un servidor Engram compatible en 127.0.0.1:7437 y vuelve a intentarlo.": "Shared memory could not be verified. Start a compatible Engram server on 127.0.0.1:7437 and retry.",
+  "La memoria compartida entra en conflicto con variables ENGRAM heredadas. Retíralas del entorno de ARISE y vuelve a abrirlo.": "Shared memory conflicts with inherited ENGRAM variables. Remove them from the ARISE environment and reopen it."
 }

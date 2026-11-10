@@ -119,8 +119,9 @@ def environment(source, config):
     # Never open/migrate the user's global database as a side effect of engine setup.
     for key in ('ENGRAM_URL', 'ENGRAM_PORT', 'ENGRAM_HTTP_TOKEN'):
         env.pop(key, None)
-    env['ENGRAM_DATA_DIR'] = str(base/'memory')
-    env['ENGRAM_SERVER_MODE'] = 'session-owned'
+    if config.get('memory_mode', 'private') != 'shared':
+        env['ENGRAM_DATA_DIR'] = str(base/'memory')
+        env['ENGRAM_SERVER_MODE'] = 'session-owned'
     node = str(Path(config['pi_command'][0]).parent)
     paths = [v for k,v in env.items() if k.upper() == 'PATH']
     for key in list(env):

@@ -28,6 +28,8 @@ class ProviderAccounts:
             return
         self._idle()
         r=self.runtime
+        from .memory_selection import validate
+        validate(r.storage.config)
         from .bundle import configure_bundle
         configure_bundle(r)
         c=r.storage.config
@@ -42,6 +44,8 @@ class ProviderAccounts:
                     if json.loads(meta.read_text()).get('name')=='@earendil-works/pi-coding-agent':package=parent;break
                 except (ValueError,OSError):pass
         if not package:raise RuntimeError('No se encontró la API de cuentas del motor. Repara ARISE.')
+        from .memory_selection import validate
+        validate(c)
         from .owned_engine import environment
         env=environment({**os.environ,**r.credentials.environment()},c)
         for key in list(env):

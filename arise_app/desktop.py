@@ -260,6 +260,25 @@ class Settings(QDialog):
         self.button(f, "Conectar y listar modelos", self.models)
         self.button(f, "Conectar cuenta y elegir modelo", self.accounts)
         self.button(f, "Detectar Pi y Gentle Shell", self.detect_agent)
+        self.fields['memory_mode'] = WheelSafeCombo()
+        self.fields['memory_mode'].addItem('Memoria privada de ARISE', 'private')
+        self.fields['memory_mode'].addItem('Servidor local compartido de Engram', 'shared')
+        self.fields['memory_mode'].setCurrentIndex(1 if config.get('memory_mode') == 'shared' else 0)
+        self.fields['memory_mode'].setProperty('localizedItems', True)
+        f.addRow('Memoria', self.fields['memory_mode'])
+        memory_help = QLabel('La memoria compartida requiere un servidor compatible ya iniciado. No copia ni mezcla bases. El ejecutable privado guardado se conserva, pero no se usa en modo compartido. Guardar desconecta Pi; Conectar verifica la nueva selección.')
+        memory_help.setWordWrap(True); f.addRow(memory_help)
+        self.memory_status = QLabel()
+        f.addRow('Estado de memoria', self.memory_status)
+        def refresh_memory():
+            from .i18n import tr
+            labels = {'configured':'Configurado', 'verifying':'Verificando', 'connected':'Conectado', 'error':'Error'}
+            state = getattr(self.runtime, 'memory_state', 'configured')
+            if self.fields['memory_mode'].currentData() != self.runtime.storage.config.get('memory_mode', 'private'):
+                state = 'configured'
+            self.memory_status.setText(tr(labels.get(state, 'Error')))
+        self.memory_timer = QTimer(self); self.memory_timer.timeout.connect(refresh_memory)
+        self.memory_timer.start(1000); refresh_memory()
         self.text_field(f, 'engram_bin', 'Ejecutable Engram (vacío: detectar instalación oficial)', config.get('engram_bin',''))
         self.button(f, 'Actualizar / reinstalar Engram estable · QA', lambda: controller.update_dependencies(False))
         self.button(f, 'Actualizar Gentle, Pi y Engram y usar este entorno · QA', lambda: controller.update_dependencies(True))
@@ -392,7 +411,7 @@ class Settings(QDialog):
         for key, field in self.fields.items():
             if isinstance(field, QCheckBox): value = field.isChecked()
             elif isinstance(field, QSpinBox): value = field.value()
-            elif isinstance(field, QComboBox): value = field.currentData() if key.endswith("_device") or key in ("engine_mode", "desktop_orb_corner") else field.currentText()
+            elif isinstance(field, QComboBox): value = field.currentData() if key.endswith("_device") or key in ("engine_mode", "desktop_orb_corner", "memory_mode") else field.currentText()
             else: value = field.text().strip()
             changes[key] = value
         changes["pi_command"] = json.loads(changes["pi_command"])
@@ -409,6 +428,9 @@ class Settings(QDialog):
             self.controller.voice.end_session()
             if self.controller.voice.active.is_set():
                 raise RuntimeError("Termina la conversación de voz antes de guardar.")
+            from .memory_selection import validate
+            if not getattr(self.runtime, "is_remote", False):
+                validate({**self.runtime.storage.config, **self.changes()})
             for provider, field in self.keys.items():
                 if field.text().strip():
                     self.runtime.credentials.save(provider, field.text().strip(), self.persist.isChecked())

@@ -347,3 +347,7 @@ The orb reuses the ARISE renderer identity from
 [praxisgenai-harness](https://github.com/Maicololiveras/praxisgenai-harness/blob/main/docs/ARISE-ORB.md).
 JetBrains Mono retains its OFL license. Bundled dependencies retain their
 respective licenses and attribution.
+
+## Shared local memory (0.4.43 Preview)
+
+Choose private memory or an existing compatible local Engram server in Settings > Agent > Memory without changing the integrated engine. Private memory remains the default. See [setup, ownership and recovery](docs/shared-memory.md).

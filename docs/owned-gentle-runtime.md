@@ -82,3 +82,7 @@ References:
 Native previews use platform-specific data paths and executables; see
 [NATIVE-DISTRIBUTIONS.md](NATIVE-DISTRIBUTIONS.md). Their desktop-tool and voice
 capabilities are narrower than the complete Windows installer.
+
+## Memory source selection (0.4.43 Preview)
+
+Private memory remains the default. Settings > Agent > Memory can select an already-running compatible shared local Engram server independently of engine and account selection. See [shared memory and recovery](shared-memory.md) for ownership, validation and connection limits.

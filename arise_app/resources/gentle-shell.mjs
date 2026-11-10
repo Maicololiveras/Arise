@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 const [cli, ...args] = process.argv.slice(2);
 if (!cli) throw new Error('gentle-shell requires the configured Pi CLI path');
+const shared = process.env.ARISE_MEMORY_MODE === 'shared';
 let piArgs = [resolve(cli), ...args];
 const root = process.env.ARISE_GENTLE_ROOT;
 const home = process.env.ARISE_GENTLE_HOME;
@@ -63,6 +64,12 @@ if (root && home) {
     if (!(key in invocation.env)) delete process.env[key];
   }
   Object.assign(process.env,invocation.env);
+}
+if (shared) {
+  const {sharedMemory} = await import('./shared-memory.mjs');
+  const notify = state => { if (args.includes('--mode') && args.includes('rpc')) process.stdout.write(JSON.stringify({type:'arise_memory_status',state})+'\n'); };
+  const connection = await sharedMemory(root, process.env, notify);
+  connection.install();
 }
 process.argv = [process.execPath, ...piArgs];
 await import(pathToFileURL(resolve(cli)).href);

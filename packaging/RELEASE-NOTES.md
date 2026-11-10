@@ -1,3 +1,15 @@
+# ARISE 0.4.43 Preview
+
+- Choose ARISE private memory (default) or an already-running shared local Engram server in Settings, independently of the engine.
+- Validate the upstream compatibility contract before saving, reconnecting, or creating delegated tasks; reject inherited Engram overrides explicitly.
+- Adopt a shared server over a pinned connection without spawning, stopping, migrating or merging its database. Connection loss requires explicit reconnection.
+- Show configured, verifying, connected and error states with Spanish/English labels. Connected requires successful memory-tool evidence.
+- Preserve the saved private executable for switching back; it is not injected in shared mode.
+
+Shared mode supports the default local endpoint only. It requires a compatible server already running and does not configure Engram Cloud or copy memories. See docs/shared-memory.md.
+
+---
+
 # ARISE 0.4.42 QA
 
 - Add immediate, exact Spanish/English voice controls for speech interruption, microphone mute, task cancellation and graceful application shutdown.

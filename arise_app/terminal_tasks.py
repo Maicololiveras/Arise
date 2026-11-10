@@ -49,6 +49,8 @@ class TerminalTasks:
             command=config['pi_command']
             if len(command)!=2 or Path(command[0]).stem.lower()!='node': raise RuntimeError('Se necesita el Node y Pi directos de la instalación de Gentle.')
             if sum(j['process'].poll() is None for j in self.jobs.values())>=3: raise RuntimeError('Hay tres terminales activas. Detén o termina una antes de abrir otra.')
+            from .memory_selection import validate
+            validate(config)
             identity=uuid.uuid4().hex
             directory=self.folder(chat)/identity; directory.mkdir(parents=True)
             (directory/'task.json').write_text(json.dumps({'task':task}),encoding='utf-8')
