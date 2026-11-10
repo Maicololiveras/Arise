@@ -40,8 +40,8 @@ def transcribe(config, audio):
             return json.loads(recognizer.FinalResult()).get('text','')
         import numpy as np
         samples=np.frombuffer(pcm,dtype='<i2').astype(np.float32)/32768
-        if engine=='openai-whisper': return MODEL.transcribe(samples,language='es',fp16=False).get('text','').strip()
-        segments,_=MODEL.transcribe(samples,language='es',vad_filter=True)
+        if engine=='openai-whisper': return MODEL.transcribe(samples,language=config.get('ui_language','es'),fp16=False).get('text','').strip()
+        segments,_=MODEL.transcribe(samples,language=config.get('ui_language','es'),vad_filter=True)
         return ' '.join(s.text for s in segments).strip()
     finally: LOCK.release()
 

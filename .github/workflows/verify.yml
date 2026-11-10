@@ -1,7 +1,7 @@
 name: ARISE verification
 on:
   push:
-    branches: [main, qa-connections-companion]
+    branches: [main, qa, qa-connections-companion]
   pull_request:
   workflow_call:
     inputs:
@@ -250,7 +250,7 @@ jobs:
     concurrency:
       group: arise-release-metadata
       cancel-in-progress: false
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_channel != 'none'))
+    if: (github.ref == 'refs/heads/main' || (github.ref == 'refs/heads/qa' && inputs.release_channel != 'stable')) && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_channel != 'none'))
     needs: [parakeet-mirror, docker, prerequisites, windows, windows-tests, offline-models, windows-offline]
     runs-on: ubuntu-latest
     permissions:

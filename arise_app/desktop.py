@@ -164,6 +164,13 @@ class Settings(QDialog):
         tabs = QTabWidget(); layout.addWidget(tabs)
         self.fields, self.keys, self.mcp = {}, {}, {}
         config = self.runtime.storage.config
+        language_row = QHBoxLayout()
+        language_row.addWidget(QLabel('Idioma de la interfaz'))
+        self.language_choice = QComboBox(); self.language_choice.addItem('Español', 'es'); self.language_choice.addItem('English', 'en')
+        self.language_choice.setCurrentIndex(max(0,self.language_choice.findData(config.get('ui_language','es'))))
+        language_row.addWidget(self.language_choice); layout.insertLayout(1, language_row)
+        self.language_choice.setAccessibleName("Idioma de la interfaz")
+        self.language_choice.currentIndexChanged.connect(lambda: controller.change_language(self.language_choice.currentData()))
         voice = QWidget(); f = QFormLayout(voice); tabs.addTab(voice, "Conversación de voz")
         dictation_help = QLabel("Dictado al borrador: Parakeet TDT 0.6B v3 local, micrófono predeterminado del sistema. Es independiente de los modelos de conversación configurados aquí.")
         dictation_help.setWordWrap(True); f.addRow(dictation_help)
@@ -237,6 +244,7 @@ class Settings(QDialog):
         f.addRow('Motor del asistente', self.fields['engine_mode'])
         self.text_field(f, "preferred_name", "Cómo llamarte (vacío: usuario del PC)", config.get("preferred_name", ""))
         self.fields["preferred_name"].setMaxLength(80)
+        self.fields["engine_mode"].setProperty("localizedItems", True)
         for key, label in (("workspace", "Carpeta de trabajo"), ("pi_command", "Comando Pi (lista JSON)"), ("gentle_path", "Carpeta Gentle Shell"), ("agent_provider", "Proveedor del agente"), ("agent_model", "Modelo del agente")):
             value = json.dumps(config[key]) if key == "pi_command" else config[key]
             self.text_field(f, key, label, value)
@@ -614,6 +622,12 @@ class Panel(QWidget):
         self.input = ChatInput(); self.input.setAcceptRichText(False); self.input.setPlaceholderText("Escribe o pega una imagen con Ctrl+V…"); self.input.setFixedHeight(58)
         self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea · Alt+Q recupera el último mensaje"); self.input.submitted.connect(self.send); self.input.image_pasted.connect(self.add_image); layout.addWidget(self.input)
         self.dictation_label = QLabel(); self.dictation_label.setWordWrap(True); self.dictation_label.hide(); layout.addWidget(self.dictation_label)
+        self.study_bar = QWidget(); study_row = QHBoxLayout(self.study_bar); study_row.setContentsMargins(0,0,0,0)
+        self.study_status = QLabel(); self.study_status.setWordWrap(True); study_row.addWidget(self.study_status,1)
+        for label, action in [('Pausar','pause'),('Reanudar','resume'),('Finalizar','end')]:
+            button = QPushButton(label); button.clicked.connect(lambda checked=False,a=action: controller.background(lambda:self.runtime.study_control(a)))
+            study_row.addWidget(button)
+        layout.addWidget(self.study_bar); self.study_bar.hide()
         self.connection_notice = ConnectionNotice(); layout.addWidget(self.connection_notice)
         row = QHBoxLayout(); row.setSpacing(3); layout.addLayout(row)
         self.navigation = self.icon_button(row, "menu", "Proyectos, chats y comandos")
@@ -627,6 +641,7 @@ class Panel(QWidget):
         self.navigation_menu.addAction("Cerrar sesión del chat (conservar historial)", lambda: controller.background(lambda:(controller.voice.end_session(), self.runtime.suspend_chat())))
         self.navigation_menu.addAction("Recuperar último mensaje · Alt+Q", self.restore_draft)
         self.navigation_menu.addAction("Configurar todo desde ZIP…", controller.install_model_pack)
+        self.navigation_menu.addAction("Modo estudio / cuestionario…", controller.show_study)
         self.navigation_menu.addAction("Historial de dictado y descargas…", self.show_dictation_history)
         self.navigation_menu.addAction("Reparar dictado local Parakeet…", lambda: controller.start_dictation(repair=True) if not controller.dictation.active else None)
         self.navigation_menu.addAction(control_icon("settings"), "Ajustes…", controller.show_settings)
@@ -644,6 +659,8 @@ class Panel(QWidget):
         self.icon_button(row, "stop", "Detener voz y tarea", controller.stop)
         self.send_button = self.icon_button(row, "send", "Enviar · Enter", self.send)
         self.voice_button = self.icon_button(row, "wave", "Iniciar conversación de voz", controller.wake)
+        self.end_voice_button = self.icon_button(row, "stop", "Terminar conversación de voz · silenciar micrófono", controller.end_voice)
+        self.end_voice_button.setObjectName('endVoiceButton')
         self.voice_button.setStyleSheet("background:#126BCA; border-radius:17px;")
         self.cancel_dictation = QShortcut(QKeySequence('Escape'), self)
         self.cancel_dictation.activated.connect(controller.cancel_dictation)
@@ -753,7 +770,9 @@ class Panel(QWidget):
         catalog = self.runtime.project_catalog(); self.current_chat = catalog["active"]["conversation"]
         self.history.clear()
         self.connection_notice.set_notice('')
-        self.activity_view.set_activity(self.runtime.status().get("activity", {}))
+        snapshot = self.runtime.status()
+        self.activity_view.set_activity(snapshot.get("activity", {}))
+        if hasattr(self,"study_bar"): self.study_bar.setVisible(bool(snapshot.get("study",{}).get("active")))
         for message in self.runtime.storage.messages(self.current_chat):
             if message["role"] == "system": continue  # Retain diagnostic records without replaying notices as answers.
             self.append({"user":"Tú","voice_user":"Voz · Tú","voice_assistant":"Voz · ARISE"}.get(message["role"],"ARISE"), message["text"], message.get("images"))
@@ -1039,7 +1058,7 @@ class Controller(QObject):
         self.last_interaction = time.monotonic()
         self.orb.show(); self.orb.raise_()
         if self.runtime.storage.config.get("wake_open_panel",True):self.show_panel()
-        self.background(lambda:self.voice.wake(initial))
+        self.background(lambda:(self.voice.mute(False), self.voice.wake(initial)))
 
     def stop(self): self.stop_requested.emit()
 
@@ -1133,8 +1152,34 @@ class Controller(QObject):
             box.setTextFormat(Qt.PlainText); box.setText("No se pudo completar la descarga. Puedes reintentarlo desde Ajustes.\n\n"+message); self.update_dialog = box; box.open()
         self.background(lambda:Path(self.runtime.request("updates/download",{"manifest":manifest},timeout=7200)["path"]) if getattr(self.runtime,"is_remote",False) else download_update(manifest, self.runtime.storage.root), complete, failed)
 
+    def change_language(self, locale):
+        self.language_epoch = getattr(self,'language_epoch',0) + 1
+        epoch = self.language_epoch
+        if not hasattr(self,'language_lock'): self.language_lock = threading.Lock()
+        self.translator.set_language(locale)
+        def save():
+            with self.language_lock:
+                if epoch != self.language_epoch: return
+                if getattr(self.runtime,'is_remote',False):
+                    self.runtime.request('preferences',{'ui_language':locale})
+                else:
+                    self.runtime.storage.save_config({**self.runtime.storage.config,'ui_language':locale})
+                self.runtime.storage.config['ui_language'] = locale
+        def failed(message):
+            if epoch != self.language_epoch: return
+            previous = self.runtime.storage.config.get('ui_language','es')
+            self.translator.set_language(previous)
+            if self.settings_window:
+                choice=self.settings_window.language_choice
+                choice.blockSignals(True);choice.setCurrentIndex(choice.findData(previous));choice.blockSignals(False)
+            self.panel.status.setText(str(message))
+        self.background(save,failed=failed)
+
     def reconfigure(self):
         c = self.runtime.storage.config
+        from .i18n import LiveTranslator
+        if not hasattr(self,'translator'): self.translator = LiveTranslator(self.app,c.get('ui_language','es'))
+        else: self.translator.set_language(c.get('ui_language','es'))
         self.orb.apply_state({"size": c["orb_size"], "visible": True, "reason": "OYE ARISE", "reduced_motion": c["reduced_motion"]})
         for timer in self.orb.findChildren(QTimer): timer.setInterval(200 if c["reduced_motion"] else 100 if c.get("orb_animation") == "sprite" else 33)
         self.clamp_position()
@@ -1212,6 +1257,20 @@ class Controller(QObject):
             return
         for event in result["events"]:
             kind, data = event["kind"], event["data"]
+            if kind == 'shutdown_requested':
+                self.quit(); return
+            if kind == 'study_setup':
+                self.show_study(); continue
+            if kind == 'study_result':
+                if event.get('conversation') == self.panel.current_chat: self.show_panel()
+                continue
+            if kind == 'study_status':
+                if event.get('conversation') == self.panel.current_chat:
+                    was_active = self.panel.study_bar.isVisible()
+                    if data.get('paused') or was_active and not data.get('active'): self.show_panel()
+                    self.panel.study_status.setText('Estudio pausado' if data.get('paused') else 'Estudio activo · observación periódica' if data.get('active') else '')
+                    self.panel.study_bar.setVisible(bool(data.get('active')))
+                continue
             if kind == "desktop_layout":
                 self.desktop_layout_event(data);continue
             if kind == 'tools_configured':
@@ -1332,6 +1391,15 @@ class Controller(QObject):
             self.panel.reload(); self.reconfigure()
         self.background(operation, complete)
 
+    def end_voice(self):
+        self.cancel_dictation()
+        self.background(lambda: self.voice.mute(True))
+
+    def show_study(self):
+        from .study_widget import StudyDialog
+        dialog = StudyDialog(self, self.panel)
+        dialog.exec()
+
     def quit_all(self):
         if getattr(self.runtime, "is_remote", False):
             self.background(self.runtime.shutdown, lambda _: self.quit(), lambda _: self.quit())
@@ -1345,6 +1413,7 @@ class Controller(QObject):
         if self.closed: return
         muted = self.dictation_restore_mute
         self.closed = True; self.dictation.close()
+        if hasattr(self,"translator"): self.translator.close()
         if muted is not None:
             try: self.voice.mute(muted)
             except RuntimeError: pass

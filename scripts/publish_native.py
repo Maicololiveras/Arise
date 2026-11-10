@@ -11,12 +11,13 @@ from arise_app import __version__
 
 
 def main(directory):
-    if __import__('os').environ.get('GITHUB_REF_NAME') != 'main':
-        raise RuntimeError('ARISE Preview is published only from main')
     assets = Path(directory)
     from arise_app.distribution import native_release
     release_config = native_release()
     stable = release_config['channel'] == 'stable'
+    branch = __import__('os').environ.get('GITHUB_REF_NAME')
+    if branch != 'main' and not (branch == 'qa' and not stable):
+        raise RuntimeError('Stable publication only from main; QA may publish only Preview')
     tag = release_config['tag_prefix'] + __version__
     files = []
     for system, extension in [('windows', '-Setup.exe'), ('linux', '.deb'), ('macos', '.pkg')]:

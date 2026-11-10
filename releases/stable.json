@@ -1,5 +1,5 @@
 {
-  "version": "0.4.41",
+  "version": "0.4.42",
   "android_version": "0.2.0",
-  "notes": "Build stable installers from this main commit after native acceptance gates. Android requires the maintainer's persistent release signing key. iOS device distribution is pending Apple Developer membership."
+  "notes": "Promote tested Preview 0.4.42 to Stable. Build all stable installers and require native acceptance gates."
 }

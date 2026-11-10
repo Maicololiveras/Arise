@@ -41,6 +41,13 @@ export default function arise(pi: ExtensionAPI) {
     },
   });
   pi.on("tool_call", async (event) => {
+    // Query the host on every call: a study turn may start on an existing Pi session.
+    try {
+      const state = await api("/status", undefined, AbortSignal.timeout(5000));
+      if (state.study_read_only) return { block: true, reason: "Study turns only analyze the supplied screenshot and context. No tools are allowed." };
+    } catch {
+      return { block: true, reason: "ARISE could not verify the current task permissions." };
+    }
     if (process.env.ARISE_CODE_ENABLED !== "1" && ["bash", "powershell", "write", "edit"].includes(event.toolName)) {
       return { block: true, reason: "ARISE Work usa el catálogo arise_tools. Cambia a Pi TUI para tareas de código." };
     }

@@ -50,3 +50,12 @@ class LayoutTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError,'emergencia'):runtime.call_tool('screenview.capture',{})
                 client.call.assert_not_called()
             finally:runtime.mcp.clear();runtime.close();runtime.storage.db.close()
+    def test_study_always_clears_overlays_even_when_regular_auto_clear_is_disabled(self):
+        runtime=SimpleNamespace(storage=SimpleNamespace(config={'desktop_auto_clear':False}),study=SimpleNamespace(active=True))
+        layout=DesktopLayout(runtime);layout.heartbeat();events=[]
+        def emit(kind,data):
+            events.append(data['action'])
+            if data['action']=='prepare':layout.acknowledge(data['id'])
+        runtime.emit=emit
+        with layout.clear('screenview','screen_capture'):events.append('capture')
+        self.assertEqual(events,['prepare','capture','done'])

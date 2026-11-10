@@ -20,6 +20,10 @@ class Assistant(Runtime):
         self.action_lock = threading.RLock()
         self.stop_generation = 0
         self.voice_service = None
+        self.shutdown_requested = False
+        self.shutdown_callback = None
+        from .study import StudySession
+        self.study = StudySession(self)
         from .connections import Connections
         from .companion import Devices
         from .reminders import Reminders
@@ -64,7 +68,22 @@ class Assistant(Runtime):
             save_settings(self, {'enabled':False})
         return {'stopped': True}
 
+    def request_shutdown(self):
+        if self.shutdown_requested: return
+        self.shutdown_requested = True
+        if self.voice_service: self.voice_service.mute(True)
+        self.stop()
+        self.emit('shutdown_requested', {})
+        if self.shutdown_callback:
+            timer = threading.Timer(1.0, self.shutdown_callback)
+            timer.daemon = True
+            timer.start()
+
+    def study_control(self, action, **options):
+        return self.study.control(action, **options)
+
     def close(self):
+        self.study.close()
         self.reminders.close()
         self.stop_mobile(persist=False)
         super().close()
@@ -76,6 +95,8 @@ class Assistant(Runtime):
     def status(self):
         result = super().status()
         result["version"] = __version__
+        result["study"] = self.study.status()
+        result["study_read_only"] = self.study.guarded
         result["orb"] = vars(self.orb.value).copy()
         result["voice"] = {"provider": self.storage.config["voice_provider"], "model": self.storage.config["voice_model"],
             "configured": self.storage.config["voice_provider"] == "local" or (self.storage.config["voice_provider"] == "forge-local" and self.storage.config["voice_model"] not in ("local","modelo-local-voz")) or bool(self.credentials.get("openai" if self.storage.config["voice_provider"]=="forge-openai" else self.storage.config["voice_provider"]))}
@@ -124,6 +145,7 @@ class Assistant(Runtime):
     def finish_task(self, error=None):
         identity = self.current_task
         super().finish_task(error)
+        if hasattr(self, "study") and self.study.guarded: self.study.guarded = False
         if identity and hasattr(self, "orb"):
             self.persist_task(self.tasks[identity])
         if hasattr(self, "orb"):
@@ -176,6 +198,7 @@ class Assistant(Runtime):
             pending["event"].set()
 
     def stop(self):
+        if hasattr(self, "study"): self.study.stop_scheduling()
         interrupted = self.current_task if self.busy else None
         with self.lock:
             self.stop_generation += 1
@@ -206,6 +229,8 @@ class Assistant(Runtime):
         return catalog
 
     def call_tool(self, name, arguments):
+        if self.study.guarded:
+            raise RuntimeError('El turno de estudio solo analiza la captura y el contexto; no ejecuta herramientas.')
         if not isinstance(arguments, dict):
             raise ValueError("arguments debe ser un objeto.")
         if name.startswith('reminders.'):
@@ -276,6 +301,8 @@ class Assistant(Runtime):
         return {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}], "isError": False}
 
     def settings(self, changes):
+        if changes.get("ui_language", self.storage.config.get("ui_language", "es")) not in ("es", "en"):
+            raise ValueError("Unsupported interface language")
         if changes.get("local_stt_engine", self.storage.config["local_stt_engine"]) not in ("auto", "vosk", "faster-whisper", "openai-whisper"):
             raise ValueError("Motor de transcripción no compatible.")
         for key in ("voice_provider",):

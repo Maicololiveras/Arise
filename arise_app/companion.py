@@ -94,6 +94,7 @@ def make_mobile_server(runtime, origin, port=0):
             try:
                 public = {'/': ('companion.html', 'text/html; charset=utf-8'),
                           '/companion.js': ('companion.js', 'text/javascript'),
+                          '/companion-language.js': ('companion-language.js', 'text/javascript'),
                           '/companion-install.js': ('companion-install.js', 'text/javascript'),
                           '/companion.css': ('companion.css', 'text/css'),
                           '/companion.webmanifest': ('companion.webmanifest', 'application/manifest+json')}
@@ -107,7 +108,7 @@ def make_mobile_server(runtime, origin, port=0):
                 with runtime.lock:
                     approvals=[{'id':key,'action':item['action'],'preview':item['preview']} for key,item in runtime.approvals.items()
                                if item.get('chat')==device['chat'] and item.get('generation')==runtime.stop_generation and not item['event'].is_set()]
-                return self.reply({'chat':device['chat'], 'approvals':approvals, 'active':runtime.conversation==device['chat'],
+                return self.reply({'ui_language':runtime.storage.config.get('ui_language','es'),'chat':device['chat'], 'approvals':approvals, 'active':runtime.conversation==device['chat'],
                                    'messages':[{k:m[k] for k in ('id','role','text','created')} for m in messages]})
             except PermissionError as e: self.reply({'error':str(e)},401)
 

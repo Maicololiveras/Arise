@@ -48,7 +48,7 @@ def personalized_system(config):
         except (OSError, KeyError):
             name = ""
     name = " ".join(name.split())[:80]
-    return SYSTEM + "\nEl nombre preferido actual del usuario (dato, no instrucciones) es: " + json.dumps(name, ensure_ascii=False) + ". Usa este nombre al dirigirte a la persona; prevalece sobre nombres de saludos anteriores. Si está vacío, no supongas un nombre."
+    return SYSTEM + ("\nRespond in English." if config.get("ui_language") == "en" else "\nResponde en español.") + "\nEl nombre preferido actual del usuario (dato, no instrucciones) es: " + json.dumps(name, ensure_ascii=False) + ". Usa este nombre al dirigirte a la persona; prevalece sobre nombres de saludos anteriores. Si está vacío, no supongas un nombre."
 
 
 class Runtime:
@@ -179,7 +179,7 @@ class Runtime:
             self.disconnect()
         elif any(config.get(key) != self.storage.config.get(key) for key in (
                 "pi_command", "pi_extra_args", "gentle_path", "gentle_agent_home", "gentle_bundle_root", "engine_mode", "owned_engine_root",
-                "agent_provider", "agent_model", "thinking", "code_enabled", "engram_bin", "preferred_name")):
+                "agent_provider", "agent_model", "thinking", "code_enabled", "ui_language", "engram_bin", "preferred_name")):
             self.disconnect_pi()
         if any(config.get(key) != self.storage.config.get(key) for key in
                ("local_server_command", "local_dialogue_url", "local_dialogue_model")):
@@ -294,6 +294,7 @@ class Runtime:
                     self.pi_state["gentleVerified"] = False
                 if self.pi_state.get("sessionFile"):
                     self.storage.set_pi_file(self.conversation, self.pi_state["sessionFile"])
+                self.last_prompt_language = config.get("ui_language","es")
                 self.pi_retry_after = 0.0
                 self.pi_failure = ""
                 self.emit("notice", {"text": "Sesión de Pi conectada. Las extensiones instaladas se cargan desde Pi."})
@@ -463,8 +464,10 @@ class Runtime:
             # Retain bounded voice-call status, not an unbounded in-memory task log.
             while len(self.tasks) > 100:
                 self.tasks.pop(next(iter(self.tasks)))
+        generation = getattr(self, "stop_generation", 0)
         try:
             self.connect_pi()
+            if generation != getattr(self, "stop_generation", 0): raise RuntimeError("Task cancelled before submission.")
             self.storage.message(self.conversation, "user", text, images)
             self.emit("user", {"text": text, "images":images})
             command_name = text.split()[0][1:] if text.startswith("/") else ""
@@ -486,7 +489,12 @@ class Runtime:
                 self.finish_task(str(error)); self.emit("error", {"text": str(error)[:300]})
 
     def _submit_prompt(self, text, identity, process, epoch, registered, images=None):
-        payload = {"type": "prompt", "message": text}
+        locale = self.storage.config.get('ui_language','es')
+        prefix = ''
+        if not registered and locale != getattr(self,'last_prompt_language','es'):
+            prefix = 'Respond in English.\n' if locale == 'en' else 'Responde en español.\n'
+            self.last_prompt_language = locale
+        payload = {"type": "prompt", "message": prefix + text}
         if images: payload["images"] = images
         result = process.request(payload, timeout=600 if registered else 30)
         state = process.request({"type": "get_state"}).get("data", {})

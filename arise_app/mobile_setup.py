@@ -71,3 +71,22 @@ def invite(runtime):
     from urllib.parse import urlencode
     invitation=runtime.devices.invite(runtime.conversation)
     return {**invitation,'url':runtime.mobile_origin+'/#'+urlencode({'code':invitation['code']})}
+
+
+def readiness(runtime):
+    """Read-only diagnostics; no account creation, enrollment or Serve mutation."""
+    steps = []
+    try:
+        state = json.loads(cli('status', '--json'))
+        connected = state.get('BackendState') == 'Running'
+        message = 'Tailscale conectado en el PC.' if connected else 'Abre Tailscale en el PC e inicia sesión.'
+    except Exception:
+        connected = False
+        message = 'Instala o abre Tailscale en el PC e inicia sesión.'
+    steps.append({'ready':connected,'message':message})
+    secured = runtime.mobile_security.enabled()
+    steps.append({'ready':secured,'message':'Autenticador confirmado.' if secured else 'Configura y confirma el autenticador en este panel.'})
+    serving = bool(runtime.mobile_server)
+    steps.append({'ready':serving,'message':'Acceso privado preparado.' if serving else 'Prepara la conexión privada después del autenticador.'})
+    steps.append({'ready':False,'message':'En el teléfono: conecta Tailscale, escanea el QR y añade ARISE a la pantalla de inicio. Esta comprobación es manual.'})
+    return {'steps':steps,'ready_to_pair':connected and secured and serving}
