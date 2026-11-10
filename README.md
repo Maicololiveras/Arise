@@ -1,6 +1,6 @@
 # ARISE Assistant
 
-**QA development: 0.4.42** adds voice stop/exit controls, opt-in study assistance, live Spanish/English UI and guided phone setup. See [usage and acceptance](docs/VOICE-STUDY-LANGUAGE.md). Download tables below describe published artifacts; this QA work does not replace Stable.
+**Stable 0.4.42** includes voice stop/exit controls, opt-in study assistance, live Spanish/English UI and guided phone setup. See [usage and acceptance](docs/VOICE-STUDY-LANGUAGE.md). **Preview 0.4.43** adds selection between private ARISE memory and an existing compatible local Engram server; see the [shared-memory guide](https://github.com/Maicololiveras/Arise/blob/qa/docs/shared-memory.md).
 
 ![ARISE Assistant animated orb](docs/identity/arise-assistant.gif)
 
@@ -27,8 +27,8 @@ Choose your system and channel. Desktop downloads point to published installers.
 | Linux · Ubuntu 24.04 | ARM64 | [Core 0.4.42](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.42/ARISE-0.4.42-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.42/ARISE-0.4.42-linux-arm64.deb.sha256) | [Core 0.4.43](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.43/ARISE-0.4.43-linux-arm64.deb) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.43/ARISE-0.4.43-linux-arm64.deb.sha256) | [Install →](#install-linux) |
 | macOS 15 | Intel x64 | [Core 0.4.42](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.42/ARISE-0.4.42-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.42/ARISE-0.4.42-macos-x64.pkg.sha256) | [Core 0.4.43](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.43/ARISE-0.4.43-macos-x64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.43/ARISE-0.4.43-macos-x64.pkg.sha256) | [Install →](#install-macos) |
 | macOS 15 | Apple Silicon ARM64 | [Core 0.4.42](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.42/ARISE-0.4.42-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-stable-v0.4.42/ARISE-0.4.42-macos-arm64.pkg.sha256) | [Core 0.4.43](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.43/ARISE-0.4.43-macos-arm64.pkg) · [SHA-256](https://github.com/Maicololiveras/Arise/releases/download/native-v0.4.43/ARISE-0.4.43-macos-arm64.pkg.sha256) | [Install →](#install-macos) |
-| Android | Installable web app | [Web app · PC 0.4.42](#install-android) | [Web app · PC 0.4.42](#install-android) | [Install →](#install-android) |
-| iOS / iPadOS | Installable web app | [Web app · PC 0.4.42](#install-ios) | [Web app · PC 0.4.42](#install-ios) | [Install →](#install-ios) |
+| Android | Installable web app | [Web app · PC 0.4.42](#install-android) | [Web app · PC 0.4.43](#install-android) | [Install →](#install-android) |
+| iOS / iPadOS | Installable web app | [Web app · PC 0.4.42](#install-ios) | [Web app · PC 0.4.43](#install-ios) | [Install →](#install-ios) |
 
 **Stable** is the established release channel. **ARISE Preview** is for testing newer builds. Stable Core packages retain the same documented capability limits as Core Preview.
 
