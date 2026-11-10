@@ -114,6 +114,13 @@ class MemoryRuntimeTests(unittest.TestCase):
         self.assertEqual(result.returncode,0,result.stderr)
 
 class MemoryUiTests(unittest.TestCase):
+    def test_remote_connect_allows_the_bounded_cold_start(self):
+        from arise_app.remote import RemoteAssistant
+        from unittest.mock import Mock
+        remote=object.__new__(RemoteAssistant);remote.request=Mock(return_value={})
+        remote.connect_pi()
+        remote.request.assert_called_once_with("connect", {}, timeout=120)
+
     def test_selector_translates_without_changing_protocol_value(self):
         from PySide6.QtWidgets import QApplication
         from unittest.mock import Mock

@@ -1,5 +1,6 @@
 # ARISE 0.4.43 Preview
 
+- Allow up to 90 seconds for macOS cold engine startup; the panel waits for the bounded handshake instead of timing out first. Readiness gates remain mandatory.
 - Choose ARISE private memory (default) or an already-running shared local Engram server in Settings, independently of the engine.
 - Validate the upstream compatibility contract before saving, reconnecting, or creating delegated tasks; reject inherited Engram overrides explicitly.
 - Adopt a shared server over a pinned connection without spawning, stopping, migrating or merging its database. Connection loss requires explicit reconnection.

@@ -297,7 +297,7 @@ class Runtime:
             self.pi = JsonProcess(command, cwd=config["workspace"], env=env,
                 on_event=lambda event: self.session_event(epoch, event))
             try:
-                self.pi_state = self.pi.request({"type": "get_state"}, timeout=35).get("data", {})
+                self.pi_state = self.pi.request({"type": "get_state"}, timeout=90 if __import__("sys").platform == "darwin" else 35).get("data", {})
                 self.activity.model_state(self.pi_state.get("model", {}))
                 self.emit("activity", self.activity.snapshot())
                 try:
