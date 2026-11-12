@@ -21,7 +21,7 @@ class AntigravityTests(unittest.TestCase):
     def test_missing_or_wrong_package_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             config,bridge=self.fixture(Path(tmp))
-            self.assertEqual(validate(config),bridge)
+            self.assertEqual(validate(config),bridge.resolve())
             (bridge/'src/entry.ts').unlink()
             with self.assertRaises(ValueError):validate(config)
         with self.assertRaises(ValueError):validate({'antigravity_enabled':'true'})
