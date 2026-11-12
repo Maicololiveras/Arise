@@ -91,7 +91,8 @@ def prepare(runtime, bundle, manifest):
 def environment(source, config):
     """Separate writable state and inherited overrides; keep Git identity; use a session-owned private memory server."""
     if not enabled(config) or not config.get('owned_engine_root'):
-        return dict(source)
+        from .antigravity import environment as antigravity_environment
+        return antigravity_environment(dict(source), config)
     base = Path(config['owned_engine_root'])
     home = base/'home'
     env = dict(source)
@@ -127,4 +128,5 @@ def environment(source, config):
     for key in list(env):
         if key.upper() == 'PATH':env.pop(key)
     env['PATH'] = node + os.pathsep + (paths[0] if paths else '')
-    return env
+    from .antigravity import environment as antigravity_environment
+    return antigravity_environment(env, config)

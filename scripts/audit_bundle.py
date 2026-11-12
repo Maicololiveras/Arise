@@ -13,7 +13,7 @@ def audit(root):
     if missing:raise RuntimeError('Bundle base incompleto: '+', '.join(missing))
     manifest=json.loads((bundle/'manifest.json').read_text(encoding='utf-8-sig'))
     if manifest.get('owned_engine') == 1:
-        for leaf in ('engram/engram.exe','node/node_modules/gentle-engram/package.json',manifest['gentle_ai_bin'].removeprefix('@bundle/')):
+        for leaf in ('engram/engram.exe','node/node_modules/gentle-engram/package.json','node/node_modules/@3d24rd0/pi-antigravity-bridge/src/entry.ts',manifest['gentle_ai_bin'].removeprefix('@bundle/')):
             if not (bundle/leaf).is_file(): raise RuntimeError('Incomplete owned engine: '+leaf)
     node=bundle/'node/node_modules'
     shell=json.loads((node/'gentle-pi/package.json').read_text())

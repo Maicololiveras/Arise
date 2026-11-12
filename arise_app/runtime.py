@@ -167,6 +167,8 @@ class Runtime:
             raise ValueError("Modelo o voz inválidos.")
         from .memory_selection import validate
         validate(config)
+        from .antigravity import validate as validate_antigravity
+        validate_antigravity(config)
         # Background tool installation updates MCP only. It must not terminate
         # Pi while its RPC handshake (or an idle connected session) is active.
         mcp_only = set(changes) == {"mcp"}
@@ -183,7 +185,7 @@ class Runtime:
             self.disconnect()
         elif any(config.get(key) != self.storage.config.get(key) for key in (
                 "pi_command", "pi_extra_args", "gentle_path", "gentle_agent_home", "gentle_bundle_root", "engine_mode", "owned_engine_root",
-                "agent_provider", "agent_model", "thinking", "code_enabled", "ui_language", "engram_bin", "memory_mode", "preferred_name")):
+                "agent_provider", "agent_model", "thinking", "code_enabled", "ui_language", "engram_bin", "memory_mode", "antigravity_enabled", "preferred_name")):
             self.disconnect_pi()
         if any(config.get(key) != self.storage.config.get(key) for key in
                ("local_server_command", "local_dialogue_url", "local_dialogue_model")):

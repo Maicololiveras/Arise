@@ -1,10 +1,10 @@
-# ARISE Preview 0.4.43
+# ARISE Preview 0.4.44
 
-Stable Core 0.4.42 is published separately after its gates pass. This Preview is published as `native-v0.4.43`; neither channel implies private desktop tools or offline models are bundled.
+Stable Core 0.4.42 is published separately after its gates pass. This Preview is published as `native-v0.4.44`; neither channel implies private desktop tools or offline models are bundled.
 
 Built and verified on QA; ARISE Preview is the public prerelease name.
 
-This release adds independent private/shared local Engram memory selection and verified, non-owning shared transport. See [Voice, study and language](VOICE-STUDY-LANGUAGE.md) for behavior and limitations.
+This release adds opt-in Antigravity connection from Agent settings with the pinned bridge 1.3.1. See [Antigravity setup and limits](ANTIGRAVITY.md). It retains private/shared local Engram selection. See [Voice, study and language](VOICE-STUDY-LANGUAGE.md) for behavior and limitations.
 
 Six architecture-specific installers, with the owned Gentle Shell 4.7.0 engine:
 
@@ -14,7 +14,7 @@ Six architecture-specific installers, with the owned Gentle Shell 4.7.0 engine:
 | Ubuntu 24.04 | `linux-x64.deb` | `linux-arm64.deb` |
 | macOS 15 | `macos-x64.pkg` | `macos-arm64.pkg` |
 
-Each filename begins with `ARISE-0.4.43-`. Download the matching installer and
+Each filename begins with `ARISE-0.4.44-`. Download the matching installer and
 its `.sha256` file. Installation, installed engine/UI, same-version reinstall,
 uninstall and preservation checks must pass on all six native runners before
 this prerelease is published. Per-target JSON reports accompany the installers.

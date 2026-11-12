@@ -257,6 +257,10 @@ class Settings(QDialog):
         self.button(f, "Ver capacidades reales", self.show_capabilities)
         self.button(f, "Elegir carpeta de trabajo", lambda: self.pick("workspace", True))
         self.button(f, "Elegir Gentle Shell", lambda: self.pick("gentle_path", True))
+        self.check_field(f, "antigravity_enabled", "Activar Antigravity Bridge", config.get("antigravity_enabled", False))
+        agy_help = QLabel("Antigravity usa su propia cuenta de Google. Al activar y conectar puede descargar el servidor ACP (aprox. 1,5 GB). Guarda, conecta y usa /agy para acceder y diagnosticar; después lista los modelos. Requiere autorización de ejecución local para conversar. No importa credenciales externas.")
+        agy_help.setWordWrap(True); f.addRow(agy_help)
+        self.button(f, "Conectar con Antigravity", self.connect_antigravity)
         self.button(f, "Conectar y listar modelos", self.models)
         self.button(f, "Conectar cuenta y elegir modelo", self.accounts)
         self.button(f, "Detectar Pi y Gentle Shell", self.detect_agent)
@@ -431,6 +435,8 @@ class Settings(QDialog):
             from .memory_selection import validate
             if not getattr(self.runtime, "is_remote", False):
                 validate({**self.runtime.storage.config, **self.changes()})
+                from .antigravity import validate as validate_antigravity
+                validate_antigravity({**self.runtime.storage.config, **self.changes()})
             for provider, field in self.keys.items():
                 if field.text().strip():
                     self.runtime.credentials.save(provider, field.text().strip(), self.persist.isChecked())
@@ -453,6 +459,13 @@ class Settings(QDialog):
 
     def test_voice(self):
         if self.save(): self.controller.wake("Saluda brevemente y confirma que escuchas.")
+
+    def connect_antigravity(self):
+        self.fields["antigravity_enabled"].setChecked(True)
+        if not self.save(): return
+        self.message.setText("Preparando Antigravity. Completa el acceso de Google y después elige un modelo con Conectar y listar modelos.")
+        self.controller.background(lambda: self.runtime.session_command('/agy auth'),
+            failed=lambda error: self.message.setText(str(error)))
 
     def models(self):
         if not self.save(): return

@@ -1,3 +1,11 @@
+# ARISE 0.4.44 Preview
+
+- Add a dedicated Connect to Antigravity button in Agent settings, using the pinned bridge 1.3.1 inside the owned runtime.
+- Keep the integration opt-in, adapt its command menu to native dialogs, and preserve per-chat execution permissions and study-mode restrictions.
+- Google sign-in, ACP download and live account acceptance remain explicit prerequisites. See docs/ANTIGRAVITY.md.
+
+---
+
 # ARISE 0.4.43 Preview
 
 - Allow up to 90 seconds for macOS cold engine startup; the panel waits for the bounded handshake instead of timing out first. Readiness gates remain mandatory.

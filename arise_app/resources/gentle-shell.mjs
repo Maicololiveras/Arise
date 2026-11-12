@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Keep Pi in this process so stopping ARISE never leaves a detached engine.
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { resolve, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -8,6 +8,7 @@ const [cli, ...args] = process.argv.slice(2);
 if (!cli) throw new Error('gentle-shell requires the configured Pi CLI path');
 const shared = process.env.ARISE_MEMORY_MODE === 'shared';
 let piArgs = [resolve(cli), ...args];
+const bridgeExtension = process.env.ARISE_AGY_ROOT ? fileURLToPath(new URL('./antigravity.mjs', import.meta.url)) : null;
 const root = process.env.ARISE_GENTLE_ROOT;
 const home = process.env.ARISE_GENTLE_HOME;
 if (root && home && process.env.ARISE_GENTLE_PREFIX) {
@@ -57,7 +58,7 @@ if (root && home) {
       piArgs.push('--extension', root);
     }
     invocation.env[injection.CHILD_PACKAGE_INJECTION_ENV] = injection.encodeChildPackageInjection({
-      noExtensions: false, extensionPaths: rpcExtensions ? JSON.parse(rpcExtensions) : [root],
+      noExtensions: false, extensionPaths: [...(rpcExtensions ? JSON.parse(rpcExtensions) : [root]), ...(bridgeExtension ? [bridgeExtension] : [])],
     });
   }
   for (const key of Object.keys(process.env)) {
@@ -71,5 +72,6 @@ if (shared) {
   const connection = await sharedMemory(root, process.env, notify);
   connection.install();
 }
+if (bridgeExtension) piArgs.push("--extension", bridgeExtension);
 process.argv = [process.execPath, ...piArgs];
 await import(pathToFileURL(resolve(cli)).href);
