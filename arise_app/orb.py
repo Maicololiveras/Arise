@@ -36,10 +36,10 @@ class SpriteOrb(QWidget):
         p = QPainter(self); p.setRenderHint(QPainter.Antialiasing); p.setRenderHint(QPainter.SmoothPixmapTransform)
         p.drawPixmap(self.rect(), self.frames[self.index])
         colors = {"understanding": "#C792EA", "working": "#508EFF", "waiting_approval": "#FFC050", "error": "#FF646E", "speaking": "#FFAB66"}
-        p.setPen(QColor(colors.get(self.state, "#74F6FF")))
+        p.setPen(QColor(colors.get(self.state, "#005DA4")))
         p.drawEllipse(self.rect().adjusted(4, 4, -4, -4))
         if self.privacy.get("microphone"):
-            p.setBrush(QColor("#74F6FF")); p.drawEllipse(QRectF(self.width()*.45, self.height()*.83, 5, 5))
+            p.setBrush(QColor("#005DA4")); p.drawEllipse(QRectF(self.width()*.45, self.height()*.83, 5, 5))
         if self.privacy.get("control"):
             p.setBrush(QColor("#FFC050")); p.drawEllipse(QRectF(self.width()*.57, self.height()*.83, 5, 5))
         p.end()
