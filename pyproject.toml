@@ -24,5 +24,5 @@ packages = ["arise_app", "assets"]
 include-package-data = true
 
 [tool.setuptools.package-data]
-assets = ["*.json", "*.ttf", "*.txt", "orb-atlas.png", "icon.svg"]
+assets = ["*.json", "*.ttf", "*.txt", "orb-atlas.png", "icon.svg", "weg-logo.png"]
 arise_app = ["resources/*", "resources/i18n/*", "resources/parakeet/*", "resources/parakeet/lib/*", "resources/parakeet/scripts/*"]

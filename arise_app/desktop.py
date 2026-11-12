@@ -52,21 +52,21 @@ class ConnectionNotice(QLabel):
 
 
 STYLE = """
-QWidget {background:#0A1828;color:#EDF8FF;font-family:'Segoe UI';font-size:13px;}
-QDialog {background:#0A1828;}
-QLineEdit,QTextEdit,QTextBrowser,QComboBox,QSpinBox {background:#10283C;border:1px solid #25445B;border-radius:7px;padding:8px;selection-background-color:#2563EB;}
-QPushButton {background:#14394A;border:1px solid #2F6878;border-radius:7px;padding:9px 16px;}
-QPushButton:hover {background:#205368;} QPushButton:disabled {color:#7292A8;}
-QLabel#title {font-size:24px;font-weight:700;color:#74F6FF;}
+QWidget {background:#071D33;color:#EDF8FF;font-family:'Segoe UI';font-size:13px;}
+QDialog {background:#071D33;}
+QLineEdit,QTextEdit,QTextBrowser,QComboBox,QSpinBox {background:#0B2D4C;border:1px solid #25445B;border-radius:7px;padding:8px;selection-background-color:#2563EB;}
+QPushButton {background:#005DA4;border:1px solid #327EB8;border-radius:7px;padding:9px 16px;}
+QPushButton:hover {background:#086DAF;} QPushButton:disabled {color:#7292A8;}
+QLabel#title {font-size:24px;font-weight:700;color:#88C8F5;}
 QLabel#chatTitle {font-size:18px;font-weight:600;color:#EDF8FF;}
 QLabel#chatStatus,QLabel#chatPrivacy {font-size:11px;color:#9DB3C7;}
 QTextBrowser#chatHistory {background:transparent;border:0;padding:6px;font-size:15px;}
 QPushButton#iconButton {padding:6px;border:0;background:transparent;border-radius:8px;}
-QPushButton#iconButton:hover {background:#17364C;}
-QPushButton#iconButton:checked {background:#205368;border:1px solid #74F6FF;}
-QTabWidget::pane {border:1px solid #25445B;} QTabBar::tab {padding:12px;background:#10283C;}
-QTabBar::tab:selected {color:#74F6FF;background:#17364C;}
-QCheckBox {padding:5px;} QMenu {background:#10283C;}
+QPushButton#iconButton:hover {background:#0C4169;}
+QPushButton#iconButton:checked {background:#086DAF;border:1px solid #88C8F5;}
+QTabWidget::pane {border:1px solid #25445B;} QTabBar::tab {padding:12px;background:#0B2D4C;}
+QTabBar::tab:selected {color:#88C8F5;background:#0C4169;}
+QCheckBox {padding:5px;} QMenu {background:#0B2D4C;}
 """
 
 class WheelSafeCombo(QComboBox):
@@ -142,10 +142,10 @@ class Settings(QDialog):
     def __init__(self, controller):
         super().__init__()
         self.controller, self.runtime = controller, controller.runtime
-        self.setWindowTitle("ARISE · Configuración")
+        self.setWindowTitle("WEG · Configuración")
         self.resize(760, 650); self.setStyleSheet(STYLE)
         layout = QVBoxLayout(self)
-        title = QLabel("Configura tu ARISE"); title.setObjectName("title"); layout.addWidget(title)
+        title = QLabel("Configura tu WEG"); title.setObjectName("title"); layout.addWidget(title)
         intro=QLabel("Elige voz, conecta el agente y habilita las herramientas que usarás.");intro.setWordWrap(True);layout.addWidget(intro)
         quick_setup=QPushButton("Configurar todo desde ZIP")
         quick_setup.clicked.connect(controller.install_model_pack);layout.addWidget(quick_setup)
@@ -333,7 +333,7 @@ class Settings(QDialog):
         self.check_field(f, "pinned", "Orbe siempre visible", True); self.fields["pinned"].setEnabled(False)
         self.check_field(f, "reduced_motion", "Reducir animación", config["reduced_motion"])
         self.fields["orb_animation"] = WheelSafeCombo(); self.fields["orb_animation"].addItems(["sprite", "native"]); self.fields["orb_animation"].setCurrentText(config["orb_animation"]); f.addRow("Animación", self.fields["orb_animation"])
-        autostart = QCheckBox("Iniciar ARISE al entrar a Windows")
+        autostart = QCheckBox("Iniciar WEG al entrar a Windows")
         autostart.setEnabled(os.name == "nt" and getattr(sys, "frozen", False))
         autostart.setChecked(self.autostart_enabled()); self.autostart = autostart; f.addRow(autostart)
         self.button(f, "Abrir carpeta de datos", controller.open_data)
@@ -550,7 +550,7 @@ class Settings(QDialog):
 
     def detect_agent(self):
         if self.fields['engine_mode'].currentData() == 'bundled' and self.runtime.storage.config.get('owned_engine_root'):
-            self.message.setText('ARISE usa su motor integrado. Configurar / reparar verifica el paquete; no busca instalaciones globales.')
+            self.message.setText('WEG usa su motor integrado. Configurar / reparar verifica el paquete; no busca instalaciones globales.')
             return
         from .discovery import detect
         selection = dict(self.runtime.storage.config)
@@ -596,7 +596,7 @@ class Settings(QDialog):
         import winreg
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run") as key:
-                return bool(winreg.QueryValueEx(key, "ARISE")[0])
+                return bool(winreg.QueryValueEx(key, "WEG")[0])
         except OSError: return False
 
     @staticmethod
@@ -604,9 +604,9 @@ class Settings(QDialog):
         if os.name != "nt" or not getattr(sys, "frozen", False): return
         import winreg
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run") as key:
-            if enabled: winreg.SetValueEx(key, "ARISE", 0, winreg.REG_SZ, '"' + sys.executable + '" --background')
+            if enabled: winreg.SetValueEx(key, "WEG", 0, winreg.REG_SZ, '"' + sys.executable + '" --background')
             else:
-                try: winreg.DeleteValue(key, "ARISE")
+                try: winreg.DeleteValue(key, "WEG")
                 except FileNotFoundError: pass
 
     def show_capabilities(self):
@@ -810,7 +810,7 @@ class Panel(QWidget):
         if hasattr(self,"study_bar"): self.study_bar.setVisible(bool(snapshot.get("study",{}).get("active")))
         for message in self.runtime.storage.messages(self.current_chat):
             if message["role"] == "system": continue  # Retain diagnostic records without replaying notices as answers.
-            self.append({"user":"Tú","voice_user":"Voz · Tú","voice_assistant":"Voz · ARISE"}.get(message["role"],"ARISE"), message["text"], message.get("images"))
+            self.append({"user":"Tú","voice_user":"Voz · Tú","voice_assistant":"Voz · WEG"}.get(message["role"],"WEG"), message["text"], message.get("images"))
         self.conversations.blockSignals(True); self.conversations.clear()
         for c in catalog["chats"]: self.conversations.addItem(c["title"], c["id"])
         self.conversations.setCurrentIndex(max(0, self.conversations.findData(self.current_chat))); self.conversations.blockSignals(False)
@@ -915,12 +915,12 @@ class Controller(QObject):
         self.dictation.transcript.connect(self.panel.insert_dictation)
         self.dictation.finished.connect(self.restore_dictation_voice)
         self.wake_requested.connect(self._wake); self.stop_requested.connect(self._stop)
-        self.orb.setToolTip("ARISE · clic para abrir el chat · clic derecho para detener")
-        self.orb.setAccessibleName("ARISE: abrir conversación")
-        self.tray = QSystemTrayIcon(icon(), self); self.tray.setToolTip("ARISE · Oye Arise")
+        self.orb.setToolTip("WEG · clic para abrir el chat · clic derecho para detener")
+        self.orb.setAccessibleName("WEG: abrir conversación")
+        self.tray = QSystemTrayIcon(icon(), self); self.tray.setToolTip("WEG · Oye Arise")
         self.menu = QMenu()
         for label, callback in (("Hablar", self.wake), ("Conversación", self.show_panel), ("Ajustes", self.show_settings),
-                                ("Silenciar / activar micrófono", self.toggle_mute), ("Detener manos y ojos · Ctrl+Alt+Esc", self.stop), ("Reiniciar asistente", self.restart), ("Salir de ARISE", self.quit_all), ("Ocultar conversación", self.hide_panel), ("Buscar actualizaciones", self.check_updates)):
+                                ("Silenciar / activar micrófono", self.toggle_mute), ("Detener manos y ojos · Ctrl+Alt+Esc", self.stop), ("Reiniciar asistente", self.restart), ("Salir de WEG", self.quit_all), ("Ocultar conversación", self.hide_panel), ("Buscar actualizaciones", self.check_updates)):
             self.menu.addAction(label, callback)
         self.tray.setContextMenu(self.menu); self.tray.activated.connect(lambda reason: self.show_panel() if reason == QSystemTrayIcon.Trigger else None)
         if QSystemTrayIcon.isSystemTrayAvailable(): self.tray.show()
@@ -963,11 +963,11 @@ class Controller(QObject):
 
     def update_dependencies(self, include_gentle=False):
         if getattr(self,'gentle_busy',False): return
-        message=('Se descargará de nuevo Engram estable y se verificará su checksum. ARISE usará su ruta explícita sin borrar memorias. '
+        message=('Se descargará de nuevo Engram estable y se verificará su checksum. WEG usará su ruta explícita sin borrar memorias. '
                  'La comprobación del proveedor activo se hace después con mem_doctor.')
         if include_gentle:
             message+=' Primero se abrirá el instalador oficial de Gentle: elige estable y revisa el plan de actualización de Shell, Pi y sus componentes.'
-        if QMessageBox.question(None,'Actualizar dependencias de ARISE',message,QMessageBox.Yes|QMessageBox.No,QMessageBox.No)!=QMessageBox.Yes: return
+        if QMessageBox.question(None,'Actualizar dependencias de WEG',message,QMessageBox.Yes|QMessageBox.No,QMessageBox.No)!=QMessageBox.Yes: return
         self.gentle_busy=True
         def operation():
             remote=getattr(self.runtime,'is_remote',False)
@@ -1010,7 +1010,7 @@ class Controller(QObject):
     def install_model_pack(self, filename=None):
         if getattr(self,'pack_busy',False): return
         if not isinstance(filename,str) or not filename:
-            filename=QFileDialog.getOpenFileName(self.panel,"Configurar ARISE desde ZIP",filter="Paquete ARISE (*.zip)")[0]
+            filename=QFileDialog.getOpenFileName(self.panel,"Configurar WEG desde ZIP",filter="Paquete WEG (*.zip)")[0]
         if not filename: return
         self.pack_busy=True
         self.show_panel()
@@ -1149,7 +1149,7 @@ class Controller(QObject):
             if manifest: self.offer_update(manifest)
         def failed(message):
             self.update_busy = False
-            self.tray.setToolTip("ARISE · No se pudo consultar main. Usa Buscar actualizaciones para reintentar.")
+            self.tray.setToolTip("WEG · No se pudo consultar main. Usa Buscar actualizaciones para reintentar.")
         # A network failure does not interrupt a conversation or open the hidden panel.
         worker = Worker(self); self.workers.append(worker)
         worker.finished.connect(complete); worker.failed.connect(failed)
@@ -1169,9 +1169,9 @@ class Controller(QObject):
         from .updates import download_update, launch_update
         from .bundle import application_root
         if self.update_busy: return
-        self.update_busy = True; self.tray.setToolTip("ARISE · Descargando actualización…")
+        self.update_busy = True; self.tray.setToolTip("WEG · Descargando actualización…")
         self.update_progress=QProgressDialog('Conectando con GitHub…','',0,100,self.panel)
-        self.update_progress.setCancelButton(None);self.update_progress.setWindowTitle('Actualizar ARISE')
+        self.update_progress.setCancelButton(None);self.update_progress.setWindowTitle('Actualizar WEG')
         self.update_progress.setAutoClose(False);self.update_progress.setValue(0);self.update_progress.show()
         def complete(installer):
             self.update_progress.close()
@@ -1183,7 +1183,7 @@ class Controller(QObject):
         def failed(message):
             self.update_busy = False; self.tray.setToolTip(application_name())
             self.update_progress.close()
-            box = QMessageBox(self.orb); box.setWindowTitle("ARISE · Actualización")
+            box = QMessageBox(self.orb); box.setWindowTitle("WEG · Actualización")
             box.setTextFormat(Qt.PlainText); box.setText("No se pudo completar la descarga. Puedes reintentarlo desde Ajustes.\n\n"+message); self.update_dialog = box; box.open()
         self.background(lambda:Path(self.runtime.request("updates/download",{"manifest":manifest},timeout=7200)["path"]) if getattr(self.runtime,"is_remote",False) else download_update(manifest, self.runtime.storage.root), complete, failed)
 
@@ -1215,7 +1215,7 @@ class Controller(QObject):
         from .i18n import LiveTranslator
         if not hasattr(self,'translator'): self.translator = LiveTranslator(self.app,c.get('ui_language','es'))
         else: self.translator.set_language(c.get('ui_language','es'))
-        self.orb.apply_state({"size": c["orb_size"], "visible": True, "reason": "OYE ARISE", "reduced_motion": c["reduced_motion"]})
+        self.orb.apply_state({"size": c["orb_size"], "visible": True, "reason": "WEG Assistant", "reduced_motion": c["reduced_motion"]})
         for timer in self.orb.findChildren(QTimer): timer.setInterval(200 if c["reduced_motion"] else 100 if c.get("orb_animation") == "sprite" else 33)
         self.clamp_position()
 
@@ -1328,7 +1328,7 @@ class Controller(QObject):
                     "reason": data["activity"], "state": data["state"], "privacy": data, "speaker": {"understanding": "subagent", "waiting_approval": "approval", "error": "error", "speaking": "human", "working": "working"}.get(data["state"], "orchestrator"),
                     "visible": not self.layout_pending})
                 self.panel.status.setText(data["activity"])
-                self.orb.setToolTip("ARISE · "+data["activity"]+" · clic para abrir chat")
+                self.orb.setToolTip("WEG · "+data["activity"]+" · clic para abrir chat")
                 self.panel.send_button.setToolTip(data["activity"])
                 if data['control']:self.panel.emergency.setText('■ Detener')
                 self.panel.control.setText("Control del PC " + ("activo" if data["control"] else "apagado"))
@@ -1351,10 +1351,10 @@ class Controller(QObject):
                     from .user_errors import friendly_error
                     data={**data,'text':friendly_error(data.get('text',''))}
                     self.panel.input.setToolTip("Alt+Q: recuperar último mensaje para revisarlo; no se reenvía automáticamente.")
-                self.panel.append({"user": "Tú", "assistant_end": "ARISE", "notice": "Aviso", "error": "Revisar"}[kind], data.get("text", ""), data.get("images"))
+                self.panel.append({"user": "Tú", "assistant_end": "WEG", "notice": "Aviso", "error": "Revisar"}[kind], data.get("text", ""), data.get("images"))
                 if kind == "error":
                     self.runtime.orb.update("error")
-                    self.tray.setToolTip('ARISE · '+data.get('text','Revisar aviso')[:200])
+                    self.tray.setToolTip('WEG · '+data.get('text','Revisar aviso')[:200])
             elif kind == "voice_transcript":
                 if data['role']=='user': self.last_interaction=time.monotonic()
                 self.panel.append("Voz · " + data["role"], data["text"])
@@ -1371,7 +1371,7 @@ class Controller(QObject):
         from .task_dialog import TaskDialog
         preview = data.get('preview', '')
         if not isinstance(preview, str): preview = json.dumps(preview, ensure_ascii=False, indent=2)
-        box = TaskDialog({'method':'confirm', 'title':data.get('action','ARISE · Revisar'), 'message':preview}, self.panel)
+        box = TaskDialog({'method':'confirm', 'title':data.get('action','WEG · Revisar'), 'message':preview}, self.panel)
         box.finished.connect(lambda result: self.answer_approval(data['id'], result == QDialog.Accepted))
         box.finished.connect(box.deleteLater)
         self.show_panel(); box.open()
@@ -1460,7 +1460,7 @@ def main():
         sys.argv.remove("--daemon")
         from .daemon import main as daemon_main
         return daemon_main()
-    parser = argparse.ArgumentParser(description="ARISE · Desktop assistant")
+    parser = argparse.ArgumentParser(description="WEG · Desktop assistant")
     from .platforms import data_directory
     parser.add_argument("--data-dir", default=str(data_directory()))
     parser.add_argument("--shutdown", action="store_true", help="Cerrar interfaz, daemon y sus procesos para actualizar")
@@ -1481,7 +1481,7 @@ def main():
         return shutdown_application(args.data_dir)
     if os.name == 'nt':
         import ctypes
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('PRAXISGENAI.ARISE')
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('WEG.Assistant.Native')
     app = QApplication.instance() or QApplication(sys.argv); app.setApplicationName(application_name()); app.setWindowIcon(icon()); app.setQuitOnLastWindowClosed(False)
     import hashlib
     address = "ARISE-" + hashlib.sha256(str(Path(args.data_dir).resolve()).encode()).hexdigest()[:20]
@@ -1491,7 +1491,7 @@ def main():
     local = QLocalServer()
     if not args.screenshot and not local.listen(address):
         QLocalServer.removeServer(address)
-        if not local.listen(address): raise RuntimeError("No se pudo iniciar la instancia de ARISE.")
+        if not local.listen(address): raise RuntimeError("No se pudo iniciar la instancia de WEG.")
     if args.screenshot:
         runtime = Assistant(args.data_dir)
     else:

@@ -13,11 +13,9 @@ class SpriteOrb(QWidget):
         super().__init__()
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowTitle("ARISE"); self.resize(size, size); self.move(x, y)
-        folder = Path(frame_dir or Path(assets.__file__).parent / "frames")
-        atlas = QPixmap(str(Path(assets.__file__).parent / "orb-atlas.png"))
-        self.frames = [atlas.copy(i * (atlas.width() // 24), 0, atlas.width() // 24, atlas.height()) for i in range(24)] if not atlas.isNull() else [QPixmap(str(p)) for p in sorted(folder.glob("*.png"))]
-        if not self.frames or any(f.isNull() for f in self.frames): raise RuntimeError("Fotogramas del orbe no disponibles")
+        self.setWindowTitle("WEG Assistant"); self.resize(size, size); self.move(x, y)
+        from .brand import icon_image
+        self.frames = [QPixmap.fromImage(icon_image(256))]
         self.index = 0; self.status_label = "OYE ARISE"; self.state = "idle"; self.privacy = {}; self.drag = None; self.reduced = False
         self.size_changed.connect(self._resize); self.visibility_changed.connect(self.setVisible)
         self.timer = QTimer(self); self.timer.timeout.connect(self.tick); self.timer.start(100)
@@ -53,9 +51,6 @@ class SpriteOrb(QWidget):
 
 
 def build_orb(app, size, x, y, mode="sprite"):
-    if mode == "sprite":
-        try:
-            window = SpriteOrb(size, x, y); window.show(); return app, window
-        except RuntimeError: pass
-    from assets.orb_original import build_app
-    return build_app("", size, size, x, y, None, 0)
+    window = SpriteOrb(size, x, y)
+    window.show()
+    return app, window

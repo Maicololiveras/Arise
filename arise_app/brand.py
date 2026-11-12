@@ -1,15 +1,23 @@
-"""Shared application identity from the actual animated ARISE orb."""
+"""WEG identity from the official, user-supplied unmodified logo."""
 from pathlib import Path
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QImage
+from PySide6.QtCore import Qt, QRectF
+from PySide6.QtGui import QImage, QPainter, QColor
 import assets
 
 
 def icon_image(size):
-    atlas = QImage(str(Path(assets.__file__).parent / 'orb-atlas.png'))
-    if atlas.isNull() or atlas.width() != atlas.height() * 24:
-        raise RuntimeError('No se pudo cargar el atlas del orbe ARISE.')
-    # The first animation frame is the static identity, including its halo and
-    # particles. Crop before resizing so adjacent frames never enter the icon.
-    orb = atlas.copy(0, 0, atlas.height(), atlas.height())
-    return orb.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    logo = QImage(str(Path(assets.__file__).parent / 'weg-logo.png'))
+    if logo.isNull():
+        raise RuntimeError('The official WEG logo is missing from this distribution.')
+    canvas = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
+    canvas.fill(Qt.transparent)
+    painter = QPainter(canvas)
+    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setRenderHint(QPainter.SmoothPixmapTransform)
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(QColor('white'))
+    painter.drawEllipse(QRectF(1, 1, size-2, size-2))
+    fitted = logo.scaled(int(size*.74), int(size*.74), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    painter.drawImage((size-fitted.width())//2, (size-fitted.height())//2, fitted)
+    painter.end()
+    return canvas

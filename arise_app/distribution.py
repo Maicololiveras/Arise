@@ -8,10 +8,10 @@ def native_release(channel=None):
         raise ValueError('Native channel must be stable or preview')
     stable = channel == 'stable'
     return dict(channel=channel, build_channel='main' if stable else 'qa',
-                title='ARISE Core' if stable else 'ARISE Preview',
-                tag_prefix='native-stable-v' if stable else 'native-v',
-                windows_dir='ARISE-Native' if stable else 'ARISE-Native-Preview',
-                windows_id='PRAXISGENAI.ARISE.Native' if stable else 'PRAXISGENAI.ARISE.NativePreview',
-                linux_package='arise-native' if stable else 'arise-native-preview',
-                command='arise' if stable else 'arise-preview',
-                mac_id='com.praxisgenai.arise.core' if stable else 'com.praxisgenai.arise.preview')
+                title='WEG Assistant',
+                tag_prefix='weg-v',
+                windows_dir='WEG-Assistant',
+                windows_id='WEG.Assistant.Native',
+                linux_package='weg-assistant',
+                command='weg-assistant',
+                mac_id='com.weg.assistant.preview')

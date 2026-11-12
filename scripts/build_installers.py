@@ -75,9 +75,9 @@ Icon={command}
 Terminal=false
 Categories=Utility;
 ''')
-        icon = package / ('usr/share/icons/hicolor/scalable/apps/' + command + '.svg')
+        icon = package / ('usr/share/icons/hicolor/256x256/apps/' + command + '.png')
         icon.parent.mkdir(parents=True)
-        shutil.copy2(ROOT / 'assets/icon.svg', icon)
+        shutil.copy2(ROOT / 'assets/weg-logo.png', icon)
         artifact = output / (stem + '.deb')
         run('dpkg-deb', '--root-owner-group', '-Zxz', '-z1', '--build', package, artifact)
         installed = Path('/opt') / package_id

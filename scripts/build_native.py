@@ -104,6 +104,9 @@ def build(expected):
         command += ['--collect-all', 'vosk']
     for name in ('web', 'assets', 'arise_app/resources'):
         command += ['--add-data', name + os.pathsep + name]
+    if windows:
+        run(sys.executable, ROOT / 'scripts/build_icon.py')
+        command += ['--icon', str(ROOT / 'artifacts/arise.ico')]
     run(*command, 'run.py')
     package = ROOT / ('dist/ARISE.app' if mac else 'dist/ARISE')
     application = package / 'Contents/Resources' if mac else package
@@ -137,7 +140,7 @@ def build(expected):
         'capabilities': {'desktop_tools_bundled': False, 'offline_models_bundled': False, 'automatic_updates': False},
     }
     (bundle / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
-    shutil.copy2(ROOT / 'docs/NATIVE-DISTRIBUTIONS.md', (package / 'Contents/Resources/README.txt' if mac else package / 'README.txt'))
+    shutil.copy2(ROOT / 'docs/WEG.md', (package / 'Contents/Resources/README.txt' if mac else package / 'README.txt'))
     if not windows:
         public_bundle_permissions(package)
     if mac:
@@ -148,7 +151,7 @@ def build(expected):
         metadata['CFBundleName'] = release['title']
         metadata['CFBundleShortVersionString'] = __version__
         metadata['CFBundleVersion'] = __version__
-        metadata['NSMicrophoneUsageDescription'] = 'ARISE uses the microphone for dictation and voice features you explicitly enable.'
+        metadata['NSMicrophoneUsageDescription'] = 'WEG Assistant uses the microphone for dictation and voice features you explicitly enable.'
         with info.open('wb') as stream: plistlib.dump(metadata, stream)
         # Added resources must be included in the final ad-hoc seal. Not notarization.
         run('codesign', '--force', '--sign', '-', application / 'ARISE-host')

@@ -1,7 +1,7 @@
-name: ARISE Preview installers
+name: WEG installers
 on:
   push:
-    branches: [main, qa]
+    branches: [weg]
     paths-ignore:
       - 'docs/**'
       - 'README.md'
@@ -65,6 +65,10 @@ jobs:
       - name: Install Windows installer compiler
         if: runner.os == 'Windows'
         run: choco install innosetup --no-progress -y
+      - name: Verify WEG identity and publication isolation
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest discover -s tests -p test_weg_identity.py -v
       - name: Build and verify native distribution
         run: python scripts/build_native.py --target ${{ matrix.target }}
       - name: Build and test installation, reinstall and uninstall
@@ -89,7 +93,7 @@ jobs:
       group: arise-release-metadata
       cancel-in-progress: false
     needs: native
-    if: github.ref == 'refs/heads/main' || (github.ref == 'refs/heads/qa' && inputs.release_channel != 'stable')
+    if: github.ref == 'refs/heads/weg'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
