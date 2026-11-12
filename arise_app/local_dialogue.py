@@ -9,7 +9,7 @@ class LocalRedirect(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(request,fp,code,message,headers,new_url)
 # Local dialogue retains its existing queued dispatch contract; realtime task IDs
 # are a separate contract until local request aliases are persisted.
-INSTRUCTIONS = "Eres ARISE. Habla español de forma natural y breve. Gentle Shell ejecuta las tareas con los permisos actuales. Nunca inventes acciones completadas ni reveles razonamiento privado."
+INSTRUCTIONS = "Eres WEG Assistant. Habla español de forma natural y breve. Gentle Shell ejecuta las tareas con los permisos actuales. Nunca inventes acciones completadas ni reveles razonamiento privado."
 
 STATUS_TOOL={'type':'function','function':{'name':'task_status','description':'Consulta el estado real de las tareas de Gentle Shell sin detenerlas.','parameters':{'type':'object','properties':{}}}}
 LOCAL_SYSTEM=INSTRUCTIONS+'''\nEres la voz conversacional local de ARISE, separada del motor de trabajo.

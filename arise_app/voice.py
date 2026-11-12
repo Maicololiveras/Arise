@@ -15,7 +15,7 @@ from pathlib import Path
 from .audio import Audio, AudioDeviceError, resample
 from .processes import executable_argv
 
-INSTRUCTIONS = """Eres ARISE. Habla español de forma natural y breve. Para realizar tareas usa
+INSTRUCTIONS = """Eres WEG Assistant. Habla español de forma natural y breve. Para realizar tareas usa
  delegate_task: Gentle Shell ejecuta las herramientas con los permisos del chat. La aceptación no es
  finalización. Puedes seguir conversando mientras trabaja. Usa task_status para consultar, steer_task
  con task_id para corregir y cancel_task con task_id para cancelar. No conviertas una petición nueva

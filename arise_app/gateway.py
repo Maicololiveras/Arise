@@ -13,7 +13,7 @@ from pathlib import Path
 from .remote import RemoteAssistant
 from .daemon import ensure_daemon
 
-LOGIN=b'''<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ARISE</title><body style="background:#0A1828;color:#EDF8FF;font:16px system-ui;display:grid;place-items:center;height:90vh"><form method="post" action="/login"><h1 style="color:#74F6FF">ARISE</h1><p>Acceso privado al asistente</p><input name="password" type="password" placeholder="Clave de acceso" required autocomplete="current-password"><button>Entrar</button></form></body></html>'''
+LOGIN=b'''<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>WEG</title><body style="background:#0A1828;color:#EDF8FF;font:16px system-ui;display:grid;place-items:center;height:90vh"><form method="post" action="/login"><h1 style="color:#74F6FF">WEG</h1><p>Acceso privado al asistente</p><input name="password" type="password" placeholder="Clave de acceso" required autocomplete="current-password"><button>Entrar</button></form></body></html>'''
 
 def make_gateway(remote,password,public_origin,port=8766):
     if len(password)<16:raise ValueError("La clave remota debe tener al menos 16 caracteres")
