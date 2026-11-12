@@ -95,7 +95,7 @@ class NativeTests(unittest.TestCase):
             self.assertEqual(panel.input.toPlainText(), "")
         self.assertIn("Dictar al borrador", panel.mic_button.toolTip())
         self.assertIn("conversación de voz", panel.voice_button.toolTip())
-        self.assertEqual(panel.windowTitle(), "ARISE Assistant")
+        self.assertEqual(panel.windowTitle(), "WEG Assistant")
 
     def test_failed_image_send_keeps_draft_then_success_clears_it(self):
         from PySide6.QtGui import QImage

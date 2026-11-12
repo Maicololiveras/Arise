@@ -56,7 +56,8 @@ class PublishedDocsTests(unittest.TestCase):
         readme = (Path(__file__).resolve().parents[1] / 'README.md').read_text(encoding='utf-8')
         for system in ('windows', 'linux', 'macos', 'android', 'ios'):
             self.assertIn(f'(#install-{system})', root)
-            self.assertIn(f'<a id="install-{system}"></a>', readme)
+            self.assertIn('(docs/WEG.md)', readme)
+            self.assertNotIn('releases/download/native-', readme)
         nested = render_catalog({}, 'https://github.com/Maicololiveras/Arise/blob/main/README.md')
         self.assertIn('/README.md#install-linux)', nested)
         self.assertNotIn('](#install-', nested)

@@ -16,20 +16,19 @@ MANIFEST={'schema':1,'version':'0.5.0','installer_url':'https://github.com/Maico
 class Response(io.BytesIO):
     def geturl(self): return 'https://release-assets.githubusercontent.com/signed-fixture'
 class UpdateTests(unittest.TestCase):
-    def test_checks_main_with_numeric_version_order_and_shows_notes(self):
+    def test_weg_does_not_check_main_and_manifest_validation_remains(self):
         calls=[]
         def opener(request,timeout): calls.append(request);return Response(json.dumps(MANIFEST).encode())
-        self.assertEqual(check_update(opener=opener)['notes'],MANIFEST['notes'])
-        self.assertIn('ref=main',calls[0].full_url)
+        self.assertIsNone(check_update(opener=opener))
+        self.assertEqual(calls, [])
         self.assertIsNone(validate_manifest({**MANIFEST,'version':__version__}))
         self.assertIsNotNone(validate_manifest({**MANIFEST,'version':'0.10.0','installer_url':'https://github.com/Maicololiveras/Arise/releases/download/v0.10.0/ARISE-Setup.exe'},'0.9.0'))
     def test_qa_feed_is_separate_and_cross_channel_rejected(self):
         qa={**MANIFEST,'channel':'qa','installer_url':MANIFEST['installer_url'].replace('/v0.5.0/','/qa-v0.5.0/')}
         calls=[]
         def opener(request,timeout):calls.append(request.full_url);return Response(json.dumps(qa).encode())
-        self.assertEqual(check_update(opener=opener,channel='qa'),qa)
-        self.assertIn('updates/windows-preview.json?ref=main',calls[0])
-        self.assertNotIn('ref=qa',calls[0])
+        self.assertIsNone(check_update(opener=opener,channel='qa'))
+        self.assertEqual(calls, [])
         with self.assertRaises(ValueError):validate_manifest(qa,channel='main')
         with self.assertRaises(ValueError):validate_manifest(MANIFEST,channel='qa')
         with tempfile.TemporaryDirectory() as tmp:

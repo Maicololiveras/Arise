@@ -27,7 +27,7 @@ class NativePublicationTests(unittest.TestCase):
                 (root / f'{target}-smoke.json').write_text('{}')
 
     def test_corruption_blocks_release(self):
-        with tempfile.TemporaryDirectory() as tmp, patch.object(publisher.subprocess, 'run') as run, patch.dict('os.environ', GITHUB_REF_NAME='main'):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(publisher.subprocess, 'run') as run, patch.dict('os.environ', GITHUB_REF_NAME='weg'):
             root = Path(tmp); self.fixture(root)
             next(root.glob('*.deb')).write_bytes(b'corrupt')
             with self.assertRaisesRegex(RuntimeError, 'Checksum mismatch'):
@@ -35,7 +35,7 @@ class NativePublicationTests(unittest.TestCase):
             run.assert_not_called()
 
     def test_failed_preservation_blocks_release(self):
-        with tempfile.TemporaryDirectory() as tmp, patch.object(publisher.subprocess, 'run') as run, patch.dict('os.environ', GITHUB_REF_NAME='main'):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(publisher.subprocess, 'run') as run, patch.dict('os.environ', GITHUB_REF_NAME='weg'):
             root = Path(tmp); self.fixture(root)
             report = root / 'macos-arm64-installer.json'
             data = json.loads(report.read_text()); data['profile_preserved'] = False
@@ -48,33 +48,40 @@ class NativePublicationTests(unittest.TestCase):
         from types import SimpleNamespace
         def command(args, **kwargs):
             return SimpleNamespace(returncode=1 if args[:3] == ['gh', 'release', 'view'] else 0, stdout='{"assets": []}')
-        with tempfile.TemporaryDirectory() as tmp, patch.object(publisher.subprocess, 'run', side_effect=command) as run, patch.dict('os.environ', GITHUB_SHA='fixture-commit', GITHUB_REF_NAME='qa', GITHUB_RUN_ID='123'), patch('scripts.release_readme.publish_native_metadata') as metadata:
+        with tempfile.TemporaryDirectory() as tmp, patch.object(publisher.subprocess, 'run', side_effect=command) as run, patch.dict('os.environ', GITHUB_SHA='fixture-commit', GITHUB_REF_NAME='weg', GITHUB_RUN_ID='123'), patch('scripts.release_readme.publish_native_metadata') as metadata:
             root = Path(tmp); self.fixture(root)
             publisher.main(root)
             create, publish = [call.args[0] for call in run.call_args_list[1:3]]
             self.assertIn('--draft', create)
             self.assertIn('--draft=false', publish)
             self.assertIn('--latest=false', publish)
-            self.assertIn('ARISE Preview ' + publisher.__version__, create)
+            self.assertIn('WEG Assistant ' + publisher.__version__, create)
             self.assertNotIn('--clobber', create)
-            metadata.assert_called_once()
+            installers = [Path(arg) for arg in create if arg.endswith(('.exe', '.deb', '.pkg'))]
+            self.assertEqual(len(installers), 6)
+            for installer in installers:
+                self.assertTrue(installer.name.startswith('WEG-'))
+                digest, name = Path(str(installer) + '.sha256').read_text().strip().split('  ', 1)
+                self.assertEqual(name, installer.name)
+                self.assertEqual(digest, hashlib.sha256(installer.read_bytes()).hexdigest())
+            metadata.assert_not_called()
 
     def test_stable_publication_rejects_qa_as_source_branch(self):
         with patch.dict('os.environ', GITHUB_REF_NAME='qa', ARISE_NATIVE_CHANNEL='stable'), patch.object(publisher.subprocess, 'run') as run:
-            with self.assertRaisesRegex(RuntimeError, 'only from main'):
+            with self.assertRaisesRegex(RuntimeError, 'only from weg'):
                 publisher.main('unused')
             run.assert_not_called()
 
     def test_existing_version_is_not_overwritten(self):
         from types import SimpleNamespace
-        with tempfile.TemporaryDirectory() as tmp, patch.dict('os.environ', GITHUB_REF_NAME='main'), patch.object(publisher.subprocess, 'run', return_value=SimpleNamespace(returncode=0)) as run:
+        with tempfile.TemporaryDirectory() as tmp, patch.dict('os.environ', GITHUB_REF_NAME='weg'), patch.object(publisher.subprocess, 'run', return_value=SimpleNamespace(returncode=0)) as run:
             root = Path(tmp); self.fixture(root)
             publisher.main(root)
             self.assertEqual(run.call_count, 1)
             self.assertEqual(run.call_args.args[0][:3], ['gh', 'release', 'view'])
 
     def test_stable_rejects_preview_acceptance_reports(self):
-        with tempfile.TemporaryDirectory() as tmp, patch.dict('os.environ', GITHUB_REF_NAME='main', ARISE_NATIVE_CHANNEL='stable'), patch.object(publisher.subprocess, 'run') as run:
+        with tempfile.TemporaryDirectory() as tmp, patch.dict('os.environ', GITHUB_REF_NAME='weg', ARISE_NATIVE_CHANNEL='stable'), patch.object(publisher.subprocess, 'run') as run:
             root=Path(tmp);self.fixture(root)
             with self.assertRaisesRegex(RuntimeError,'stable build evidence'):publisher.main(root)
             run.assert_not_called()
@@ -84,14 +91,14 @@ class NativePublicationTests(unittest.TestCase):
         from types import SimpleNamespace
         def command(args, **kwargs):
             return SimpleNamespace(returncode=1 if args[:3] == ['gh','release','view'] else 0, stdout='{"assets": []}')
-        with tempfile.TemporaryDirectory() as tmp, patch.dict('os.environ', GITHUB_REF_NAME='main', GITHUB_SHA='fixture', GITHUB_RUN_ID='123', ARISE_NATIVE_CHANNEL='stable'), patch.object(publisher.subprocess,'run',side_effect=command) as run, patch('scripts.release_readme.publish_native_metadata') as preview_metadata:
+        with tempfile.TemporaryDirectory() as tmp, patch.dict('os.environ', GITHUB_REF_NAME='weg', GITHUB_SHA='fixture', GITHUB_RUN_ID='123', ARISE_NATIVE_CHANNEL='stable'), patch.object(publisher.subprocess,'run',side_effect=command) as run, patch('scripts.release_readme.publish_native_metadata') as preview_metadata:
             root=Path(tmp); self.fixture(root)
             for path in root.glob('*-installer.json'):
                 report=json.loads(path.read_text());report.update(channel='stable',version=publisher.__version__)
                 path.write_text(json.dumps(report))
             publisher.main(root)
             create,publish=[call.args[0] for call in run.call_args_list[1:3]]
-            self.assertIn('native-stable-v'+publisher.__version__,create)
+            self.assertIn('weg-v'+publisher.__version__,create)
             self.assertNotIn('--prerelease',create)
             self.assertIn('--prerelease=false',publish)
             self.assertIn('--draft',create)
