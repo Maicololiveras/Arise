@@ -78,6 +78,12 @@ class RemoteAssistant:
     def emit(self, kind, data): return self.request("notice", {"kind": kind, "data": data})
     def events_after(self, after): return self.request("events?after=" + str(after), timeout=1)
     def connect_pi(self): return self.request("connect", {}, timeout=120)
+    def connect_memory(self, changes):
+        try:
+            return self.request("memory/connect", changes, timeout=120)
+        finally:
+            self.storage.config = self.request("config")
+
     def connect_mcp(self, name):
         data = self.request("mcp/connect", {"name": name})
         return type("Catalog", (), {"tools": data["tools"]})()

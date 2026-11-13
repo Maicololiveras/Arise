@@ -164,6 +164,7 @@ def make_server(runtime, port=0):
                 elif route == '/api/gentle/install':
                     from .gentle_setup import install_gentle
                     value=install_gentle(runtime)
+                elif route == "/api/memory/connect": value = runtime.connect_memory(data)
                 elif route == "/api/connect": value = runtime.connect_pi()
                 elif route == "/api/mcp/connect": value = {"tools": runtime.connect_mcp(data["name"]).tools}
                 elif route == "/api/credential":

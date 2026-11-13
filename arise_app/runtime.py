@@ -199,6 +199,24 @@ class Runtime:
             self.select_project(config["workspace"])
         return self.status()
 
+    def connect_memory(self, changes):
+        """Apply only memory preferences and reconnect the agent, keeping the UI/chat alive."""
+        if not isinstance(changes, dict) or set(changes) - {"memory_mode", "engram_bin"}:
+            raise ValueError("Solo se permiten ajustes de memoria.")
+        with self.transition_lock:
+            # settings validates before disconnecting or persisting anything.
+            self.settings(changes)
+            if self.memory_state == "error":
+                self.disconnect_pi()
+            try:
+                self.connect_pi()
+                if self.memory_state == "configured":
+                    self.memory_state = "verifying"
+            except Exception:
+                self.memory_state = "error"
+                raise
+            return self.status()
+
     def connect_mcp(self, name):
         with self.connect_lock:
             if name in ('inputcontrol','screenview') and self.desktop_halted:
@@ -351,7 +369,7 @@ class Runtime:
         if event.get("type") == "arise_memory_status":
             self.memory_state = event.get("state", "error")
             return
-        if self.storage.config.get("memory_mode") == "shared" and event.get("type") == "tool_execution_end" and event.get("toolName", "").startswith("mem_"):
+        if event.get("type") == "tool_execution_end" and event.get("toolName", "").startswith("mem_"):
             self.memory_state = "error" if event.get("isError") or self.memory_state == "error" else ("connected" if self.memory_state in ("verifying", "connected") else "configured")
         self.publish_activity(event)
         kind = event.get("type")

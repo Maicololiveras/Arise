@@ -16,6 +16,7 @@ COPY assets/ assets/
 RUN pip install --no-cache-dir .
 COPY vendor/package*.json vendor/
 COPY vendor/forge-voice/ vendor/forge-voice/
+COPY vendor/gentle-patches/ vendor/gentle-patches/
 RUN npm ci --prefix vendor --ignore-scripts --no-audit --no-fund
 COPY web/ web/
 COPY tests/ tests/

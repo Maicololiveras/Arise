@@ -1,8 +1,8 @@
-# Private and shared local memory — 0.4.43 Preview
+# Private and shared local memory — 0.4.45 Preview
 
 Settings > Agent > Memory selects **ARISE private memory** (default) or **Shared local Engram server**. Engine and account selection stay independent.
 
-For shared mode, start your compatible Engram server using its existing installation, then select shared memory and save. Saving disconnects Pi deliberately; **Connect and list models** or the next chat connects with the new selection. ARISE validates before changing configuration or creating delegated-task files. A rejected selection preserves the old configuration and connection.
+For shared mode, start your compatible Engram server using its existing installation, then select shared memory and press **Apply and connect memory**. The button applies only the selected memory mode and private binary path, verifies compatibility, and reconnects the internal agent without closing ARISE/WEG or deleting the chat. Other unsaved settings are not applied. Switch back to private memory with the same button. A busy agent rejects the change until its task ends. ARISE validates before changing configuration or creating delegated-task files. A failed preflight preserves the old configuration and connection. If startup fails after a successful preflight, the explicit selection remains saved, Error is shown and the button can retry. Connected is only shown after a memory tool succeeds; opening a transport alone is not proof.
 
 The saved private executable remains stored for switching back, but shared mode does not inject or automatically discover an executable. Explicit inherited ENGRAM_BIN, ENGRAM_URL, ENGRAM_DATA_DIR, ENGRAM_PORT, ENGRAM_SOCKET, ENGRAM_DATABASE_URL, ENGRAM_SERVER_MODE, ENGRAM_HTTP_TOKEN, or ENGRAM_STARTUP_POLICY values are rejected. Remove conflicting overrides from ARISE's launch environment and reopen it; do not delete databases.
 
