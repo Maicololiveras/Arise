@@ -1,0 +1,3 @@
+# These reviewed sources are verified byte-for-byte before packaging.
+/vendor/gentle-patches/*.ts text eol=lf
+/vendor/gentle-patches/*.sha256 text eol=lf
