@@ -444,5 +444,10 @@
   "Antigravity usa su propia cuenta de Google. Al activar y conectar puede descargar el servidor ACP (aprox. 1,5 GB). Guarda, conecta y usa /agy para acceder y diagnosticar; después lista los modelos. Requiere autorización de ejecución local para conversar. No importa credenciales externas.": "Antigravity uses its own Google sign-in. Enabling and connecting may download the ACP server (about 1.5 GB). Save, connect and use /agy for sign-in and diagnostics; then list models. Chat requires local execution authorization. External credentials are not imported.",
   "Preparando Antigravity. Completa el acceso de Google y después elige un modelo con Conectar y listar modelos.": "Preparing Antigravity. Complete Google sign-in, then select a model with Connect and list models.",
   "Falta Antigravity Bridge compatible. Instala el paquete de ARISE con soporte Antigravity.": "The compatible Antigravity Bridge is missing. Install the ARISE package with Antigravity support.",
-  "La opción Antigravity debe ser booleana.": "The Antigravity option must be a boolean."
+  "La opción Antigravity debe ser booleana.": "The Antigravity option must be a boolean.",
+  "Aplicar y conectar memoria": "Apply and connect memory",
+  "Verificando y conectando memoria…": "Verifying and connecting memory…",
+  "Selección de memoria aplicada. Agente conectado; el estado Conectado se confirma al usar una herramienta de memoria.": "Memory selection applied. Agent connected; Connected status is confirmed when a memory tool succeeds.",
+  "Solo se permiten ajustes de memoria.": "Only memory settings are allowed.",
+  "La memoria compartida requiere un servidor compatible ya iniciado. No copia ni mezcla bases. El ejecutable privado guardado se conserva, pero no se usa en modo compartido. Aplicar y conectar memoria valida la selección y reconecta el agente sin cerrar la aplicación ni borrar el chat.": "Shared memory requires a compatible server already running. It does not copy or merge databases. The saved private executable is retained but unused in shared mode. Apply and connect memory validates the selection and reconnects the agent without closing the application or deleting the chat."
 }

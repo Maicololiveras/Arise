@@ -114,6 +114,8 @@ def build(expected):
     for name in ('package.json', 'package-lock.json'):
         shutil.copy2(ROOT / 'vendor' / name, node_root / name)
     run(npm, 'ci', '--prefix', node_root, '--ignore-scripts', '--no-audit', '--no-fund')
+    from scripts.patch_gentle import apply as patch_gentle
+    patch_gentle(node_root / 'node_modules/gentle-pi')
     npm_stage = ROOT / 'build/native-npm'
     run(npm, 'install', '--prefix', npm_stage, '--ignore-scripts', '--no-save', '--package-lock=false', '--no-audit', '--no-fund', 'npm@11.19.0')
     shutil.copytree(npm_stage / 'node_modules/npm', node_root / 'node_modules/npm')

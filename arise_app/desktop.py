@@ -270,17 +270,23 @@ class Settings(QDialog):
         self.fields['memory_mode'].setCurrentIndex(1 if config.get('memory_mode') == 'shared' else 0)
         self.fields['memory_mode'].setProperty('localizedItems', True)
         f.addRow('Memoria', self.fields['memory_mode'])
-        memory_help = QLabel('La memoria compartida requiere un servidor compatible ya iniciado. No copia ni mezcla bases. El ejecutable privado guardado se conserva, pero no se usa en modo compartido. Guardar desconecta Pi; Conectar verifica la nueva selección.')
+        memory_help = QLabel('La memoria compartida requiere un servidor compatible ya iniciado. No copia ni mezcla bases. El ejecutable privado guardado se conserva, pero no se usa en modo compartido. Aplicar y conectar memoria valida la selección y reconecta el agente sin cerrar la aplicación ni borrar el chat.')
         memory_help.setWordWrap(True); f.addRow(memory_help)
         self.memory_status = QLabel()
         f.addRow('Estado de memoria', self.memory_status)
         def refresh_memory():
             from .i18n import tr
             labels = {'configured':'Configurado', 'verifying':'Verificando', 'connected':'Conectado', 'error':'Error'}
-            state = getattr(self.runtime, 'memory_state', 'configured')
+            try:
+                state = self.runtime.status().get('memory', {}).get('state', 'configured') if getattr(self.runtime, 'is_remote', False) else getattr(self.runtime, 'memory_state', 'configured')
+            except Exception:
+                state = 'error'
             if self.fields['memory_mode'].currentData() != self.runtime.storage.config.get('memory_mode', 'private'):
                 state = 'configured'
             self.memory_status.setText(tr(labels.get(state, 'Error')))
+        self.memory_connect = QPushButton('Aplicar y conectar memoria')
+        self.memory_connect.clicked.connect(self.connect_memory)
+        f.addRow(self.memory_connect)
         self.memory_timer = QTimer(self); self.memory_timer.timeout.connect(refresh_memory)
         self.memory_timer.start(1000); refresh_memory()
         self.text_field(f, 'engram_bin', 'Ejecutable Engram (vacío: detectar instalación oficial)', config.get('engram_bin',''))
@@ -459,6 +465,22 @@ class Settings(QDialog):
 
     def test_voice(self):
         if self.save(): self.controller.wake("Saluda brevemente y confirma que escuchas.")
+
+    def connect_memory(self):
+        from .i18n import tr
+        changes = {"memory_mode": self.fields["memory_mode"].currentData(),
+                   "engram_bin": self.fields["engram_bin"].text().strip()}
+        self.memory_connect.setEnabled(False)
+        self.message.setText(tr("Verificando y conectando memoria…"))
+        def operation():
+            return self.runtime.connect_memory(changes)
+        def done(result):
+            self.memory_connect.setEnabled(True)
+            self.message.setText(tr("Selección de memoria aplicada. Agente conectado; el estado Conectado se confirma al usar una herramienta de memoria."))
+        def failed(error):
+            self.memory_connect.setEnabled(True)
+            self.message.setText(str(error))
+        self.controller.background(operation, done, failed)
 
     def connect_antigravity(self):
         self.fields["antigravity_enabled"].setChecked(True)

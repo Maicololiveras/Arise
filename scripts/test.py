@@ -8,6 +8,9 @@ import unittest
 from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 root=Path(__file__).resolve().parents[1];sys.path.insert(0,str(root))
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from scripts.patch_gentle import apply as patch_gentle
+patch_gentle(Path(__file__).resolve().parents[1]/'vendor/node_modules/gentle-pi')
 class Result(unittest.TextTestResult):
     def __init__(self,*args,**kwargs):super().__init__(*args,**kwargs);self.records=[]
     def addSuccess(self,test):super().addSuccess(test);self.records.append({"test":test.id(),"status":"passed"})

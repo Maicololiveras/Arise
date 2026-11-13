@@ -1,3 +1,10 @@
+# ARISE 0.4.45 — live memory connection and skill registry fixes
+
+- Apply private/shared local memory from Agent settings without restarting the desktop application. Preserve the chat and report validation or connection failures.
+- Backport reviewed Gentle Shell registry fixes, preserving tracked-file protections and handling missing Git in verified non-Git workspaces.
+- Discover existing Windows Git for the isolated child and recognize the real host home.
+- Apply the same fixes to the separate WEG edition.
+
 # ARISE 0.4.44 Preview
 
 - Add a dedicated Connect to Antigravity button in Agent settings, using the pinned bridge 1.3.1 inside the owned runtime.

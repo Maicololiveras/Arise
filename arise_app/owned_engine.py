@@ -101,7 +101,7 @@ def environment(source, config):
     for key in list(env):
         if key.startswith(('GENTLE_', 'ARISE_GENTLE_')) or key in ('PI_CODING_AGENT_DIR', 'NODE_OPTIONS', 'NODE_PATH'):
             env.pop(key, None)
-    env.update(HOME=str(home), USERPROFILE=str(home),
+    env.update(ARISE_REAL_HOME=real_home, HOME=str(home), USERPROFILE=str(home),
                PI_CODING_AGENT_DIR=config['gentle_agent_home'], GENTLE_PI_AGENT_HOME=config['gentle_agent_home'],
                GENTLE_PI_CONFIG_HOME=str(base/'gentle-ai'), GENTLE_SHELL_USER_PI_HOME=config['gentle_agent_home'],
                GENTLE_SHELL_NO_AUTO_SETUP='1', GENTLE_PI_SKIP_GENTLE_AI_INSTALL='1',
@@ -128,5 +128,7 @@ def environment(source, config):
     for key in list(env):
         if key.upper() == 'PATH':env.pop(key)
     env['PATH'] = node + os.pathsep + (paths[0] if paths else '')
+    from .git_runtime import with_git
+    env = with_git(env, source)
     from .antigravity import environment as antigravity_environment
     return antigravity_environment(env, config)

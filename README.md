@@ -353,3 +353,7 @@ respective licenses and attribution.
 ## Shared local memory (0.4.43 Preview)
 
 Choose private memory or an existing compatible local Engram server in Settings > Agent > Memory without changing the integrated engine. Private memory remains the default. See [setup, ownership and recovery](docs/shared-memory.md).
+
+### 0.4.45 Preview fixes
+
+Agent settings now includes **Apply and connect memory** for switching private/shared local memory without closing the application. See [memory connection](docs/shared-memory.md). The owned engine includes a [reviewed Gentle Shell registry backport](vendor/gentle-patches/README.md); tracked files remain protected.
