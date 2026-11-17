@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "channel": "qa",
-  "version": "0.4.46",
-  "notes": "# ARISE 0.4.46 Preview\n\n- Bundle Gentle Shell 4.8.0, Pi 1.5.2, Gentle AI 4.5.0, Engram 3.7.2 and gentle-engram 0.8.0.\n- Bundle pi-web-access 0.48.0 in the private agent home for web search and extraction.\n- Keep the upstream 4.8 registry implementation instead of applying the 4.7 backport.\n- Show a submitted message before waiting for a cold engine startup.\n- Separate Whisper transcription language from UI language; offer automatic detection.\n- Recognize greeting-scoped variants of Arise without changing ordinary \u201ca ra\u00edz\u201d text.\n- Document the JARVIS-inspired behavior targets and remaining acoustic/latency validation.\n",
-  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.46/ARISE-Setup.exe",
-  "asset_id": 757488485,
-  "sha256": "a95768f407f89f05005b6c7bdf3588603ece156ac5ccb2962e531444b914ed0d",
-  "size": 427944612,
-  "source_commit": "b2842a8702d672633fba2591cb18d70de719b916"
+  "version": "0.4.47",
+  "notes": "# ARISE 0.4.47 Preview\n\n- Add bounded, content-free local voice stage timings in runtime status.\n- Trim only excess endpoint silence while preserving the configured pause.\n- Reuse the Gonzalo bridge across response chunks and close it on exit.\n- Document future voice and cross-chat phases in docs/VOICE-ROADMAP.md.\n- Desktop microphone/provider latency acceptance is still required.\n\n# ARISE 0.4.46 \u2014 Engine, web tools and voice recognition\n\n- Bundle Gentle Shell 4.8.0, Pi 1.5.2, Gentle AI 4.5.0, Engram 3.7.2 and gentle-engram 0.8.0.\n- Bundle pi-web-access 0.48.0 in the private agent home for web search and extraction.\n- Keep the upstream 4.8 registry implementation instead of applying the 4.7 backport.\n- Show a submitted message before waiting for a cold engine startup.\n- Separate Whisper transcription language from UI language; offer automatic detection.\n- Recognize greeting-scoped variants of Arise without changing ordinary \u201ca ra\u00edz\u201d text.\n- Document the JARVIS-inspired behavior targets and remaining acoustic/latency validation.\n",
+  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.47/ARISE-Setup.exe",
+  "asset_id": 759416061,
+  "sha256": "0083b37db9a2e039003df4ebed9e881dbf7ea1353e674a03a37d111ad296a377",
+  "size": 427975486,
+  "source_commit": "efa6602c384f76a12eaded4ca453d3c37e2602dc"
 }
