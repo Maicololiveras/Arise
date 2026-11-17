@@ -35,7 +35,7 @@ flags=['--prerelease','--latest=false'] if channel=='qa' else ['--latest']
 assets=[str(setup),str(checksum)]
 if complete.stat().st_size < 2*1024**3: assets.append(str(complete))
 else:
-    with open('packaging/RELEASE-NOTES.md','a') as output:
+    with open('packaging/RELEASE-NOTES.md','a', encoding='utf-8') as output:
         output.write('\nComplete ZIP: https://github.com/'+REPO+'/actions/runs/'+os.environ['GITHUB_RUN_ID']+' (ARISE-Windows-Complete artifact).\n')
 gh('release','create',tag,*assets,'--repo',REPO,'--target',os.environ['GITHUB_SHA'],'--title',('ARISE Preview ' if channel == 'qa' else 'ARISE ')+__version__,'--notes-file','packaging/RELEASE-NOTES.md',*flags)
 release=json.loads(gh('api',f'repos/{REPO}/releases/tags/{tag}'))
