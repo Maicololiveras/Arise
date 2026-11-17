@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "channel": "qa",
-  "version": "0.4.47",
-  "notes": "# ARISE 0.4.47 Preview\n\n- Add bounded, content-free local voice stage timings in runtime status.\n- Trim only excess endpoint silence while preserving the configured pause.\n- Reuse the Gonzalo bridge across response chunks and close it on exit.\n- Document future voice and cross-chat phases in docs/VOICE-ROADMAP.md.\n- Desktop microphone/provider latency acceptance is still required.\n\n# ARISE 0.4.46 \u2014 Engine, web tools and voice recognition\n\n- Bundle Gentle Shell 4.8.0, Pi 1.5.2, Gentle AI 4.5.0, Engram 3.7.2 and gentle-engram 0.8.0.\n- Bundle pi-web-access 0.48.0 in the private agent home for web search and extraction.\n- Keep the upstream 4.8 registry implementation instead of applying the 4.7 backport.\n- Show a submitted message before waiting for a cold engine startup.\n- Separate Whisper transcription language from UI language; offer automatic detection.\n- Recognize greeting-scoped variants of Arise without changing ordinary \u201ca ra\u00edz\u201d text.\n- Document the JARVIS-inspired behavior targets and remaining acoustic/latency validation.\n",
-  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.47/ARISE-Setup.exe",
-  "asset_id": 759416061,
-  "sha256": "0083b37db9a2e039003df4ebed9e881dbf7ea1353e674a03a37d111ad296a377",
-  "size": 427975486,
-  "source_commit": "efa6602c384f76a12eaded4ca453d3c37e2602dc"
+  "version": "0.4.48",
+  "notes": "# ARISE 0.4.48 Preview\n\nRead-only Desktop RPC discovery, progressive reply preview, local vocabulary, conservative name correction, opt-in sentence playback and private transcription. See docs/VOICE-PREVIEW.md.\n\n# ARISE 0.4.47 \u2014 Local voice performance\n\n- Add bounded, content-free local voice stage timings in runtime status.\n- Trim only excess endpoint silence while preserving the configured pause.\n- Reuse the Gonzalo bridge across response chunks and close it on exit.\n- Document future voice and cross-chat phases in docs/VOICE-ROADMAP.md.\n- Desktop microphone/provider latency acceptance is still required.\n\n# ARISE 0.4.46 \u2014 Engine, web tools and voice recognition\n\n- Bundle Gentle Shell 4.8.0, Pi 1.5.2, Gentle AI 4.5.0, Engram 3.7.2 and gentle-engram 0.8.0.\n- Bundle pi-web-access 0.48.0 in the private agent home for web search and extraction.\n- Keep the upstream 4.8 registry implementation instead of applying the 4.7 backport.\n- Show a submitted message before waiting for a cold engine startup.\n- Separate Whisper transcription language from UI language; offer automatic detection.\n- Recognize greeting-scoped variants of Arise without changing ordinary \u201ca ra\u00edz\u201d text.\n- Document the JARVIS-inspired behavior targets and remaining acoustic/latency validation.\n",
+  "installer_url": "https://github.com/Maicololiveras/Arise/releases/download/qa-v0.4.48/ARISE-Setup.exe",
+  "asset_id": 760536109,
+  "sha256": "4e407e2625c0f4da1232ad33b116b7e9392bf24dc3aacbff2920fa982e64f0c3",
+  "size": 427997259,
+  "source_commit": "8036c0cf643587900dcbc59f6089f428257d8d5d"
 }
