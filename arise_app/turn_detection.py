@@ -20,5 +20,10 @@ class TurnDetector:
         if self.started:self.chunks.append(pcm);self.total_ms+=ms
         else:self.preroll.append(pcm)
         if self.started and (self.quiet_ms>=self.silence_ms or self.total_ms>=30000):
-            result=b''.join(self.chunks);self.reset();return began,result
+            result=b''.join(self.chunks)
+            self.last_capture_ms=len(result)/32
+            self.last_endpoint_ms=self.quiet_ms
+            trim=int(max(0,self.quiet_ms-200)*32)
+            if trim:result=result[:-trim]
+            self.reset();return began,result
         return began,None

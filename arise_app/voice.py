@@ -529,7 +529,11 @@ class VoiceService:
         from .hardware import local_profile
         stt_config={**c,'local_stt_engine':'vosk'} if local_profile(c)=='light' else c
         engine, model = resolve_stt(stt_config)
-        if self.whisper_name != (engine, model):
+        from .voice_metrics import VoiceTrace
+        setup_trace=VoiceTrace(self.runtime)
+        load_started=time.monotonic()
+        reused=self.whisper_name == (engine, model)
+        if not reused:
             if engine == "vosk":
                 from vosk import Model, KaldiRecognizer, SetLogLevel
                 SetLogLevel(-1); self.whisper = KaldiRecognizer(Model(model), 16000)
@@ -541,18 +545,22 @@ class VoiceService:
                 from faster_whisper import WhisperModel
                 self.whisper = WhisperModel(model, device="cpu", compute_type="int8")
             self.whisper_name = (engine, model)
+        setup_trace.record("model_ready",load_started,reused=reused)
         from .local_voice import LocalVoiceBridge
         self.local_bridge = bridge = LocalVoiceBridge(self.runtime,self.audio,self._speak_local,self.active,self.shutdown)
         self.runtime.orb.update("listening", microphone=True)
         utterances = queue.Queue(maxsize=3)
         def transcriber():
             while bridge.valid():
-                try: pcm = utterances.get(timeout=.1)
+                try: pcm,trace,enqueued = utterances.get(timeout=.1)
                 except queue.Empty: continue
                 try:
                     self.runtime.orb.update("transcribing",microphone=True)
+                    trace.record("stt_queue",enqueued)
+                    started=time.monotonic()
                     text = self.transcribe_local(pcm, engine)
-                    if bridge.valid() and text: bridge.submit(text)
+                    trace.record("transcription",started,audio_ms=round(len(pcm)/32,1),empty=not bool(text))
+                    if bridge.valid() and text: bridge.submit(text,trace)
                 except Exception as error: self.runtime.emit("error", {"text":str(error)[:300]})
         worker=threading.Thread(target=transcriber,daemon=True,name="arise-local-stt");worker.start()
         if initial: bridge.submit(initial)
@@ -577,7 +585,12 @@ class VoiceService:
                     if c.get("local_barge_in",True): bridge.interrupt()
                     self.runtime.orb.update("listening",microphone=True)
                 if turn:
-                    try: utterances.put_nowait(turn)
+                    trace=VoiceTrace(self.runtime)
+                    self.runtime.emit("voice_metrics",{"turn_id":trace.id,"stage":"capture",
+                        "duration_ms":round(detector.last_capture_ms,1),
+                        "endpoint_wait_ms":round(detector.last_endpoint_ms,1),
+                        "submitted_audio_ms":round(len(turn)/32,1)})
+                    try: utterances.put_nowait((turn,trace,time.monotonic()))
                     except queue.Full: self.runtime.emit("notice",{"text":"Estoy procesando la voz anterior. Espera un momento."})
         finally:
             bridge.close(); worker.join(timeout=1); self.local_bridge=None

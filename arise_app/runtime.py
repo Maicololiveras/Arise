@@ -62,6 +62,7 @@ class Runtime:
         self.desktop_layout = DesktopLayout(self)
         self.url = ""
         self.events = deque(maxlen=4000)
+        self.voice_metrics = deque(maxlen=120)
         from .activity import PublicActivity
         self.activity = PublicActivity()
         self.sequence = 0
@@ -107,8 +108,12 @@ class Runtime:
 
     def emit(self, kind, data):
         with self.lock:
+            if kind == "voice_metrics":self.voice_metrics.append(dict(data))
             self.sequence += 1
             self.events.append({"seq": self.sequence, "kind": kind, "data": data, "conversation": self.conversation})
+
+    def voice_timing_snapshot(self):
+        with self.lock:return list(self.voice_metrics)
 
     def events_after(self, after):
         with self.lock:
@@ -123,6 +128,7 @@ class Runtime:
             "memory": {"mode": config.get("memory_mode", "private"), "state": self.memory_state if self.memory_state == "error" or (self.pi and self.pi.process.poll() is None) else "configured"},
             "capabilities": self.capabilities(),
             "activity": self.activity.snapshot(),
+            "voice_metrics": self.voice_timing_snapshot(),
             "model_service": self.model_service.snapshot(),
             "pi": {"connected": bool(self.pi and self.pi.process.poll() is None),
                 "available": bool(shutil.which(pi_command[0]) or Path(pi_command[0]).is_file()),

@@ -20,7 +20,7 @@ class SpeechOutputTests(unittest.TestCase):
         audio=SimpleNamespace(speaking=False,play=lambda data,rate:spoken.append(data),interrupt=Mock())
         voice=SimpleNamespace(active=active,shutdown=threading.Event(),audio=audio,runtime=SimpleNamespace(storage=SimpleNamespace(config={}),orb=SimpleNamespace(update=Mock())))
         calls=[]
-        def synth(runtime,text,path,*args):
+        def synth(runtime,text,path,*args,**kwargs):
             calls.append(text)
             if len(calls)==2:raise RuntimeError('second phrase failed')
             path.write_bytes(b'mp3');return True

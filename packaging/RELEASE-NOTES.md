@@ -1,3 +1,11 @@
+# ARISE 0.4.47 — Local voice performance
+
+- Add bounded, content-free local voice stage timings in runtime status.
+- Trim only excess endpoint silence while preserving the configured pause.
+- Reuse the Gonzalo bridge across response chunks and close it on exit.
+- Document future voice and cross-chat phases in docs/VOICE-ROADMAP.md.
+- Desktop microphone/provider latency acceptance is still required.
+
 # ARISE 0.4.46 — Engine, web tools and voice recognition
 
 - Bundle Gentle Shell 4.8.0, Pi 1.5.2, Gentle AI 4.5.0, Engram 3.7.2 and gentle-engram 0.8.0.

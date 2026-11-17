@@ -16,6 +16,7 @@ class LocalVoiceBridge:
         self.conversation = runtime.conversation
         self.chat_generation = getattr(runtime,"chat_generation",0)
         self.closed = threading.Event(); self.lock = threading.RLock()
+        self.traces = {}
         self.generation = 0; self.cancel_speech = threading.Event(); self.interrupted = False
         self.commands = queue.Queue(maxsize=8); self.responses = queue.Queue(maxsize=8)
         self.asked = set(); self.front = None; self.front_attempted=False; self.front_retry_after=0; self.last_failure=""; self.waiting=set()
@@ -28,7 +29,7 @@ class LocalVoiceBridge:
         with self.lock:
             self.generation += 1; self.cancel_speech.set(); self.interrupted = True
         self.audio.interrupt()
-    def submit(self, text):
+    def submit(self, text, trace=None):
         if not self.valid() or not text.strip(): return
         from .voice_controls import dispatch
         def end():
@@ -37,16 +38,24 @@ class LocalVoiceBridge:
             if voice: voice.mute(True)
         if dispatch(self.runtime, text, self.conversation, self.chat_generation, self.interrupt, end): return
         self.interrupt()
+        from .voice_metrics import VoiceTrace
+        with self.lock:
+            self.traces = {self.generation: trace or VoiceTrace(self.runtime)}
         try: self.commands.put_nowait((text,self.generation))
         except queue.Full: self.runtime.emit('notice',{'text':'Hay demasiadas instrucciones de voz pendientes; espera un momento.'})
     def speak(self,text,epoch=None):
-        try: self.responses.put_nowait((text,self.generation if epoch is None else epoch))
+        epoch=self.generation if epoch is None else epoch
+        trace=self.traces.get(epoch)
+        if trace:trace.record("response_ready",getattr(trace,"agent_started",trace.started))
+        try: self.responses.put_nowait((text,epoch))
         except queue.Full: pass
     def _commands(self):
         while not self.closed.is_set():
             try: text,epoch = self.commands.get(timeout=.1)
             except queue.Empty: continue
             if not self.valid() or epoch != self.generation: continue
+            trace=self.traces.get(epoch)
+            if trace:trace.agent_started=time.monotonic()
             try:
                 if isinstance(text,dict):
                     if self.front:
@@ -158,7 +167,12 @@ class LocalVoiceBridge:
                 if not self.valid() or epoch != self.generation: continue
                 cancel=threading.Event(); self.cancel_speech=cancel
             self.runtime.emit('voice_transcript',{'role':'assistant','text':text})
-            try: self.say(text,cancel)
+            try:
+                trace=self.traces.get(epoch)
+                with trace.activate() if trace else nullcontext():
+                    started=time.monotonic()
+                    self.say(text,cancel)
+                    if trace:trace.record("speech_total",started,cancelled=cancel.is_set())
             except Exception as error:
                 message=str(error)[:300]
                 if message != self.last_failure:

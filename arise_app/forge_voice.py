@@ -111,7 +111,20 @@ def edge_bridge_command():
     return [str(node), "--use-system-ca", str(bridge), str(package.resolve())]
 
 
-def edge_audio(runtime, text, output, cancel, active, shutdown):
+class EdgeAudioSession:
+    """Single-response process owner; never shared across chats or concurrent replies."""
+    def __init__(self):
+        self.process = None
+    def acquire(self, command, **kwargs):
+        if self.process is None:self.process=JsonProcess(command,**kwargs)
+        return self.process
+    def close(self):
+        if self.process:self.process.close();self.process=None
+    def __enter__(self):return self
+    def __exit__(self,*args):self.close()
+
+
+def edge_audio(runtime, text, output, cancel, active, shutdown, *, session=None):
     """Use the bundled Edge adapter independently of the Forge MCP connection."""
     import concurrent.futures
     import shutil
@@ -131,7 +144,7 @@ def edge_audio(runtime, text, output, cancel, active, shutdown):
         env['ARISE_SPEECH_PROXY']=proxy
     env['NODE_TLS_REJECT_UNAUTHORIZED']='1'
     env.pop('NODE_OPTIONS',None)
-    process=JsonProcess(edge_bridge_command(),cwd=runtime.storage.config['workspace'],env=env)
+    process=(session.acquire if session is not None else JsonProcess)(edge_bridge_command(),cwd=runtime.storage.config['workspace'],env=env)
     pool=concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
         future=pool.submit(process.request,{'type':'synthesize_edge','text':text[:10000],
@@ -152,4 +165,6 @@ def edge_audio(runtime, text, output, cancel, active, shutdown):
         else:hint='Revisa Internet y el acceso a speech.platform.bing.com.'
         raise RuntimeError('No se pudo generar la voz Gonzalo. '+hint) from None
     finally:
-        process.close();pool.shutdown(wait=False,cancel_futures=True)
+        if session is None or cancel.is_set() or not active.is_set() or shutdown.is_set():
+            process.close()
+        pool.shutdown(wait=False,cancel_futures=True)

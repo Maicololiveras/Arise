@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import threading
 import wave
+import time
 from pathlib import Path
 
 
@@ -23,7 +24,9 @@ def speech_chunks(text,first=180,following=360):
 
 def render_edge(voice,text,cancel):
     from .bundle import application_root
-    from .forge_voice import edge_audio
+    from .forge_voice import edge_audio, EdgeAudioSession
+    from .voice_metrics import current_trace
+    trace=current_trace()
     from .platforms import bundled_executable
     ffmpeg=bundled_executable(application_root(),'bundle/media/ffmpeg')
     executable=str(ffmpeg) if ffmpeg.is_file() else shutil.which('ffmpeg')
@@ -38,15 +41,16 @@ def render_edge(voice,text,cancel):
         def is_set(self):return abort.is_set() or cancel.is_set()
     combined=Cancel()
     def stopped():return combined.is_set() or not voice.active.is_set() or voice.shutdown.is_set()
-    with tempfile.TemporaryDirectory() as temporary,concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+    with EdgeAudioSession() as session,tempfile.TemporaryDirectory() as temporary,concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
         def prepare(index):
             mp3=Path(temporary)/f'{index}.mp3';wavfile=mp3.with_suffix('.wav')
-            if stopped() or not edge_audio(voice.runtime,parts[index],mp3,combined,voice.active,voice.shutdown):return None
+            synthesis_started=time.monotonic()
+            if stopped() or not edge_audio(voice.runtime,parts[index],mp3,combined,voice.active,voice.shutdown,session=session):return None
+            if trace:trace.record("synthesis",synthesis_started,chunk=index)
             if miniaudio is not None:
                 decoded=miniaudio.decode_file(str(mp3),output_format=miniaudio.SampleFormat.SIGNED16,nchannels=1,sample_rate=24000)
                 return decoded.samples.tobytes(),24000
             process=subprocess.Popen([executable,'-y','-i',str(mp3),'-ac','1','-ar','24000',str(wavfile)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-            import time
             deadline=time.monotonic()+30
             try:
                 while process.poll() is None:
@@ -66,11 +70,14 @@ def render_edge(voice,text,cancel):
                 audio=future.result()
                 if stopped() or audio is None:return False
                 if index+1<len(parts):future=pool.submit(prepare,index+1)
+                playback_started=time.monotonic()
                 voice.audio.play(audio[0],rate=audio[1]);started=True
+                if trace and index==0:trace.record("first_playback",trace.started)
                 voice.runtime.orb.update('speaking',microphone=not getattr(voice,'preview_only',False))
                 while voice.audio.speaking:
                     if stopped():voice.audio.interrupt();return False
                     voice.shutdown.wait(.025)
+                if trace:trace.record("playback",playback_started,chunk=index)
             return True
         except Exception as error:
             error.audio_started=started
