@@ -649,7 +649,11 @@ class Settings(QDialog):
                     + "\nWord: crear y leer DOCX dentro de la carpeta.\nHerramientas Pi observadas: "
                     + (", ".join(cap["pi_tools_observed"]) or "Sin catálogo verificado")
                     + "\n\n" + cap["shell_scope"])
-            QMessageBox.information(self, "Capacidades del chat", text)
+            from .i18n import tr
+            rpc=cap.get("desktop_rpc",{})
+            for field,label in (("status","Desktop RPC"),("permission","Permiso de Gentle"),("profile","Perfil activo"),("jobs","Trabajos de Gentle")):
+                if field in rpc:text+="\n"+tr(label)+": "+str(rpc[field])
+            box=QMessageBox(self);box.setTextFormat(Qt.PlainText);box.setWindowTitle(tr("Capacidades del chat"));box.setText(text);box.exec()
         self.controller.background(operation, done)
 
 class Panel(QWidget):
@@ -678,11 +682,17 @@ class Panel(QWidget):
         activity_row.addWidget(self.activity_view,1)
         activity_row.addWidget(self.emergency,0,Qt.AlignTop)
         layout.addLayout(activity_row)
+        paging=QHBoxLayout()
+        self.older=QPushButton("Mensajes anteriores"); self.latest=QPushButton("Volver al presente")
+        self.older.clicked.connect(lambda:self.show_page(self.runtime.storage.message_page(self.current_chat,self.before),True))
+        self.latest.clicked.connect(lambda:self.reload())
+        paging.addWidget(self.older);paging.addWidget(self.latest);paging.addStretch();layout.addLayout(paging)
+        self.browsing=False
         self.history = ChatHistory(); self.history.setObjectName("chatHistory"); self.history.setOpenExternalLinks(False); layout.addWidget(self.history, 1)
         self.attachments=[]
         self.attachment_bar=QWidget(); self.attachment_layout=QHBoxLayout(self.attachment_bar)
         self.attachment_layout.setContentsMargins(0,0,0,0);layout.addWidget(self.attachment_bar);self.attachment_bar.hide()
-        self.live_reply=QLabel();self.live_reply.setTextFormat(Qt.PlainText);self.live_reply.setWordWrap(True);self.live_reply.setMaximumHeight(80);self.live_reply.hide();layout.addWidget(self.live_reply)
+        self.live_reply=QPlainTextEdit();self.live_reply.setReadOnly(True);self.live_reply.setUndoRedoEnabled(False);self.live_reply.setMaximumHeight(80);self.live_reply.hide();layout.addWidget(self.live_reply)
         self.history.anchorClicked.connect(self.open_link)
         self.input = ChatInput(); self.input.setAcceptRichText(False); self.input.setPlaceholderText("Escribe o pega una imagen con Ctrl+V…"); self.input.setFixedHeight(58)
         self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea · Alt+Q recupera el último mensaje"); self.input.submitted.connect(self.send); self.input.image_pasted.connect(self.add_image); layout.addWidget(self.input)
@@ -825,7 +835,20 @@ class Panel(QWidget):
         self.attachments.pop(index);self.refresh_attachments()
 
     def append(self, role, text, images=None):
-        self.history.append_message(role,text,images)
+        if not self.browsing:
+            self.history.append_message(role,text,images)
+            if len(self.history.entries)>80:
+                snapshot=self.runtime.desktop_snapshot()
+                if snapshot["chat"]==self.current_chat:
+                    self.show_page(snapshot["page"])
+                    self.history_watermark=snapshot["cursor"]
+
+    def show_page(self,page,browsing=False):
+        self.browsing=browsing;self.before=page["before"]
+        self.history.clear()
+        for m in page["messages"]:
+            self.history.append_message({"user":"Tú","voice_user":"Voz · Tú","voice_assistant":"Voz · ARISE"}.get(m["role"],"ARISE"),m["text"],m.get("images"))
+        self.older.setVisible(self.before is not None);self.latest.setVisible(browsing)
 
     def reload(self):
         self.controller.cancel_dictation()
@@ -838,9 +861,14 @@ class Panel(QWidget):
         snapshot = self.runtime.status()
         self.activity_view.set_activity(snapshot.get("activity", {}))
         if hasattr(self,"study_bar"): self.study_bar.setVisible(bool(snapshot.get("study",{}).get("active")))
-        for message in self.runtime.storage.messages(self.current_chat):
-            if message["role"] == "system": continue  # Retain diagnostic records without replaying notices as answers.
-            self.append({"user":"Tú","voice_user":"Voz · Tú","voice_assistant":"Voz · ARISE"}.get(message["role"],"ARISE"), message["text"], message.get("images"))
+        restored=self.runtime.desktop_snapshot()
+        if restored["chat"]!=self.current_chat:
+            QTimer.singleShot(0,self.reload);return
+        self.show_page(restored["page"])
+        self.live_reply.setPlainText(restored["partial"]);self.live_reply.setVisible(bool(restored["partial"]))
+        self.history_watermark=restored["cursor"]
+        self.controller.chat_watermark=restored["cursor"]
+        QTimer.singleShot(0,lambda:self.controller.restore_questions(restored))
         self.conversations.blockSignals(True); self.conversations.clear()
         for c in catalog["chats"]: self.conversations.addItem(c["title"], c["id"])
         self.conversations.setCurrentIndex(max(0, self.conversations.findData(self.current_chat))); self.conversations.blockSignals(False)
@@ -1320,7 +1348,9 @@ class Controller(QObject):
         except RuntimeError:
             self.panel.status.setText("Proceso residente desconectado")
             return
-        live=self.panel.live_reply.text(); dirty=False
+        if result.get("gap"):
+            self.close_dialogs();self.panel.reload();return
+        live=[];reset=False
         for event in result["events"]:
             kind, data = event["kind"], event["data"]
             if kind == 'shutdown_requested':
@@ -1348,13 +1378,18 @@ class Controller(QObject):
                             enabled.setChecked(spec.get('enabled',False)); command.setText(json.dumps(spec['command']))
                 continue
             if kind == "conversation_changed":
-                live="";dirty=True
+                live=[];reset=False
                 self.close_dialogs(); self.panel.reload(); continue
             if event.get("conversation") != self.panel.current_chat: continue
+            if event["seq"]<=getattr(self,"chat_watermark",-1) and kind in ("assistant_start","assistant_end","assistant_delta","user","voice_transcript","dialog","approval"):
+                continue
+            if kind in ("user","assistant_end","voice_transcript") and event["seq"]<=self.panel.history_watermark:
+                if kind=="assistant_end":live=[];reset=True
+                continue
             if kind=="assistant_delta":
-                live=(live+data.get("text",""))[-500:];dirty=True;continue
-            if kind in ("assistant_start","assistant_end","error","user"):
-                live="";dirty=True
+                live.append(data.get("text",""));continue
+            if kind in ("assistant_start","assistant_end","error","settled"):
+                live=[];reset=True
             if kind == "activity":
                 self.panel.activity_view.set_activity(data)
             elif kind == "orb":
@@ -1402,8 +1437,21 @@ class Controller(QObject):
                 dialog=self.pending_dialogs.pop(data['id'],None)
                 if dialog: dialog.setProperty('arise_cancelled',True); dialog.reject()
 
-        if dirty:
-            self.panel.live_reply.setText(live);self.panel.live_reply.setVisible(bool(live))
+        view=self.panel.live_reply
+        if reset:view.clear()
+        if live:
+            from PySide6.QtGui import QTextCursor
+            bar=view.verticalScrollBar();follow=bar.value()>=bar.maximum()-4
+            cursor=view.textCursor();cursor.movePosition(QTextCursor.End);cursor.insertText("".join(live))
+            if follow:bar.setValue(bar.maximum())
+        if reset or live:view.setVisible(not view.document().isEmpty())
+
+    def restore_questions(self,snapshot):
+        if self.panel.current_chat!=snapshot["chat"] or self.chat_watermark!=snapshot["cursor"]:return
+        for q in snapshot["dialogs"]:
+            if q["id"] not in self.pending_dialogs and (q.get("terminal_id") or not (self.runtime.storage.config["voice_provider"]=="local" and self.voice.active.is_set())):self.dialog(q)
+        for q in snapshot["approvals"]:
+            if q["id"] not in self.pending_dialogs:self.approval(q)
 
     def approval(self, data):
         # Nonmodal: stop hotkey, cancellation and microphone state keep updating.
@@ -1411,13 +1459,15 @@ class Controller(QObject):
         preview = data.get('preview', '')
         if not isinstance(preview, str): preview = json.dumps(preview, ensure_ascii=False, indent=2)
         box = TaskDialog({'method':'confirm', 'title':data.get('action','ARISE · Revisar'), 'message':preview}, self.panel)
-        box.finished.connect(lambda result: self.answer_approval(data['id'], result == QDialog.Accepted))
+        self.pending_dialogs[data["id"]]=box
+        box.finished.connect(lambda result: None if box.property("arise_cancelled") else self.answer_approval(data["id"],result==QDialog.Accepted))
+        box.finished.connect(lambda _:self.pending_dialogs.pop(data["id"],None))
         box.finished.connect(box.deleteLater)
         self.show_panel(); box.open()
 
     def answer_approval(self, identity, approved):
         try: self.runtime.approve(identity, approved)
-        except ValueError: pass
+        except (ValueError,RuntimeError): pass
 
     def dialog(self, data):
         origin = self.panel.current_chat

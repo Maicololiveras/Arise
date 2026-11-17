@@ -1,3 +1,7 @@
+# ARISE 0.4.49 — Recoverable desktop chat
+
+Read a full reply as it streams, browse older messages by page, and recover the active chat after the event buffer rolls over. Chat capabilities show the permission mode, profile and job count reported by compatible Gentle hosts. See [Desktop chat](../docs/DESKTOP-CHAT.md).
+
 # ARISE 0.4.48 — Progressive chat and optional voice controls
 
 Read-only Desktop RPC discovery, progressive reply preview, local vocabulary, conservative name correction, opt-in sentence playback and private transcription. See docs/VOICE-PREVIEW.md.

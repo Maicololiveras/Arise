@@ -11,6 +11,11 @@ class RemoteStorage:
     def save_config(self, config):
         self.remote.request("preferences", {key: config[key] for key in ("orb_position", "orb_size", "pinned", "reduced_motion") if key in config})
         self.config = self.remote.request("config")
+    def message_page(self, chat, before=None):
+        from urllib.parse import urlencode
+        query={"chat":chat}
+        if before is not None:query["before"]=before
+        return self.remote.request("messages/page?"+urlencode(query))
     def conversations(self): return self.remote.request("conversations")["conversations"]
     def messages(self, identity): return self.remote.request("messages")["messages"]
 
@@ -76,6 +81,7 @@ class RemoteAssistant:
     def busy(self): return self.status()["busy"]
     def status(self): return self.request("status")
     def emit(self, kind, data): return self.request("notice", {"kind": kind, "data": data})
+    def desktop_snapshot(self): return self.request("desktop/snapshot")
     def events_after(self, after): return self.request("events?after=" + str(after), timeout=1)
     def connect_pi(self): return self.request("connect", {}, timeout=120)
     def connect_memory(self, changes):

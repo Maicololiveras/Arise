@@ -51,6 +51,15 @@ def make_server(runtime, port=0):
                 elif parsed.path == "/api/config": value = runtime.storage.config
                 elif parsed.path == "/api/conversations": value = {"conversations": runtime.storage.conversations()}
                 elif parsed.path == "/api/projects": value = runtime.project_catalog()
+                elif parsed.path == "/api/desktop/snapshot":
+                    if not hmac.compare_digest(self.headers.get("X-Arise-Accounts",""),runtime.accounts_token):
+                        self.reply({"error":"Se requiere el cliente de escritorio"},403);return
+                    value=runtime.desktop_snapshot()
+                elif parsed.path == "/api/messages/page":
+                    q=urllib.parse.parse_qs(parsed.query)
+                    with runtime.transition_lock:
+                        if q.get("chat",[""])[0]!=runtime.conversation:raise ValueError("Conversación inactiva")
+                        value=runtime.storage.message_page(runtime.conversation,q.get("before",[None])[0])
                 elif parsed.path == "/api/messages": value = {"messages": runtime.storage.messages(runtime.conversation)}
                 elif parsed.path == "/api/voice/status": value = {"active": bool(runtime.voice_service and runtime.voice_service.active.is_set()), "muted": bool(runtime.voice_service and runtime.voice_service.muted)}
                 elif parsed.path == "/api/events": value = runtime.events_after(int(urllib.parse.parse_qs(parsed.query).get("after", [0])[0]))

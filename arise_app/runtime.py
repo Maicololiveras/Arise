@@ -117,7 +117,18 @@ class Runtime:
 
     def events_after(self, after):
         with self.lock:
-            return {"events": [e for e in self.events if e["seq"] > after], "cursor": self.sequence}
+            return {"events": [e for e in self.events if e["seq"] > after], "cursor": self.sequence,
+                    "gap": after > self.sequence or bool(self.events and after < self.events[0]["seq"]-1)}
+
+    def desktop_snapshot(self):
+        with self.transition_lock, self.lock:
+            return {"chat":self.conversation,"cursor":self.sequence,
+                    "page":self.storage.message_page(self.conversation),
+                    "partial":self.current_message if self.busy else "",
+                    "dialogs":list(self.dialogs.values()),
+                    "approvals":[{"id":k,"action":v["action"],"preview":v["preview"]}
+                         for k,v in getattr(self,"approvals",{}).items()
+                         if v["chat"]==self.conversation and not v["event"].is_set()]}
 
     def status(self):
         config = self.storage.config
@@ -402,6 +413,7 @@ class Runtime:
                 self.emit("assistant_delta", {"text": delta.get("delta", "")})
             # Thinking events never leave this process.
         elif kind == "message_end" and event.get("message", {}).get("role") == "assistant":
+            self.current_message = ""
             message = event["message"]
             text = "\n".join(b.get("text", "") for b in message.get("content", []) if b.get("type") == "text")
             if text:
@@ -444,6 +456,7 @@ class Runtime:
         activity_error=error
         with self.lock:
             self.busy = False
+            self.current_message = ""
             self.settled.set()
             if self.current_task:
                 task = self.tasks[self.current_task]
@@ -527,8 +540,9 @@ class Runtime:
         generation = getattr(self, "stop_generation", 0)
         try:
             # Acknowledge the submitted message before cold engine initialization.
-            self.storage.message(self.conversation, "user", text, images)
-            self.emit("user", {"text": text, "images":images})
+            with self.lock:
+                self.storage.message(self.conversation, "user", text, images)
+                self.emit("user", {"text": text, "images":images})
             self.connect_pi()
             if generation != getattr(self, "stop_generation", 0): raise RuntimeError("Task cancelled before submission.")
             command_name = text.split()[0][1:] if text.startswith("/") else ""

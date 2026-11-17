@@ -47,6 +47,7 @@ class Storage:
         self.db.executescript("""
         CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY,title TEXT,created REAL,pi_file TEXT);
         CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY,conversation TEXT,role TEXT,text TEXT,created REAL);
+        CREATE INDEX IF NOT EXISTS messages_chat ON messages(conversation);
         CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY,payload TEXT,created REAL);
         CREATE TABLE IF NOT EXISTS voice_turns(id INTEGER PRIMARY KEY AUTOINCREMENT,conversation TEXT,payload TEXT,created REAL);
         """)
@@ -82,6 +83,19 @@ class Storage:
     def messages(self, conversation):
         with self.lock:
             return [{**dict(r), "images":json.loads(r["images"])} for r in self.db.execute("SELECT * FROM messages WHERE conversation=? ORDER BY created,rowid", (conversation,))]
+
+    def message_page(self, chat, before=None, limit=40):
+        """Keyset pagination: exclude diagnostics before limiting, no offset drift."""
+        limit=max(1,min(80,int(limit)))
+        sql="SELECT rowid AS pos,* FROM messages WHERE conversation=? AND role!='system'"
+        args=[chat]
+        if before is not None:
+            sql+=" AND rowid<?";args.append(int(before))
+        with self.lock:
+            rows=self.db.execute(sql+" ORDER BY rowid DESC LIMIT ?", (*args,limit+1)).fetchall()
+        page=rows[:limit]
+        return {"messages":[{**dict(r),"images":json.loads(r["images"])} for r in reversed(page)],
+                "before":page[-1]["pos"] if len(rows)>limit else None}
 
     def message(self, conversation, role, text, images=None):
         identity = uuid.uuid4().hex
