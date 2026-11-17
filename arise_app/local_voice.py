@@ -152,12 +152,24 @@ class LocalVoiceBridge:
             self.closed.wait(.05)
 
     def _wait_result(self, identity, epoch):
+        spoken=""
         while self.valid() and epoch == self.generation:
             result = self.runtime.tasks.get(identity)
             if result and result['status'] != 'running':
                 reply=result.get('error') or result.get('output')
-                if reply: self.speak(reply,epoch)
+                if reply:
+                    prefix=spoken.rstrip()
+                    tail=reply[len(prefix):].strip() if prefix and reply.startswith(prefix) else reply
+                    if tail:self.speak(tail,epoch)
+
                 return
+            if result and self.runtime.storage.config.get("speech_stream") and self.responses.empty():
+                import re
+                partial=result.get("voice_partial","")
+                if partial.startswith(spoken):
+                    match=re.match(r".+?[.!?](?:\s+)",partial[len(spoken):],re.S)
+                    if match:
+                        chunk=match.group();self.speak(chunk.strip(),epoch);spoken+=chunk
             self.closed.wait(.05)
     def _responses(self):
         while not self.closed.is_set():

@@ -57,6 +57,7 @@ def wake_match(text, phrases):
         if len(expected) == 2 and expected[0] in ('oye', 'hey', 'hola', 'ok') and expected[1] == 'arise':
             variants += [[expected[0], 'a', 'raiz'], [expected[0], 'arais'], [expected[0], 'araiz']]
         for candidate in variants:
+            if candidate != expected and words[len(candidate):len(candidate)+1] == ['de']:continue
             if candidate and words[:len(candidate)] == candidate:
                 return text[tokens[len(candidate)-1].end():].lstrip(' .,!?¿¡'), True
     return '', False
@@ -558,7 +559,18 @@ class VoiceService:
                     self.runtime.orb.update("transcribing",microphone=True)
                     trace.record("stt_queue",enqueued)
                     started=time.monotonic()
-                    text = self.transcribe_local(pcm, engine)
+                    text = None
+                    if c.get('speech_private_server'):
+                        from .voice_preview import transcribe
+                        try:text=transcribe(pcm,os.environ.get('ARISE_STT_MODEL','Systran/faster-whisper-small'),c.get('speech_language','auto'))
+                        except Exception:
+                            self.runtime.emit('notice',{'text':'Transcripción privada no disponible; usando el modelo local.'})
+                    if text is None:text = self.transcribe_local(pcm, engine)
+                    if text and c.get('speech_correct_names'):
+                        from .voice_preview import clean_name
+                        original=text
+                        text=clean_name(text)
+                        if original!=text:self.runtime.emit('voice_correction',{'original':original,'text':text})
                     trace.record("transcription",started,audio_ms=round(len(pcm)/32,1),empty=not bool(text))
                     if bridge.valid() and text: bridge.submit(text,trace)
                 except Exception as error: self.runtime.emit("error", {"text":str(error)[:300]})
@@ -579,6 +591,7 @@ class VoiceService:
                 pcm=self.audio.read()
                 if not pcm: continue
                 threshold=int(c.get("voice_interrupt_threshold",800)) if self.local_speaking.is_set() else 300
+                if c.get("speech_stream") and self.audio.playback_echo(pcm):pcm=bytes(len(pcm))
                 began,turn=detector.feed(pcm,threshold)
                 if detector.started: deadline=time.monotonic()+int(c["voice_timeout"])
                 if began:
@@ -601,9 +614,10 @@ class VoiceService:
             return json.loads(self.whisper.FinalResult()).get("text", "").strip()
         import numpy as np
         samples = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768
+        vocabulary=self.runtime.storage.config.get("speech_vocabulary","").strip()[:240]
         if engine == "openai-whisper":
-            return self.whisper.transcribe(samples, language=(self.runtime.storage.config.get("speech_language", "auto") if self.runtime.storage.config.get("speech_language", "auto") != "auto" else None), fp16=False).get("text", "").strip()
-        segments, _ = self.whisper.transcribe(samples, language=(self.runtime.storage.config.get("speech_language", "auto") if self.runtime.storage.config.get("speech_language", "auto") != "auto" else None), vad_filter=True)
+            return self.whisper.transcribe(samples, language=(self.runtime.storage.config.get("speech_language", "auto") if self.runtime.storage.config.get("speech_language", "auto") != "auto" else None), fp16=False, **({"initial_prompt":vocabulary} if vocabulary else {})).get("text", "").strip()
+        segments, _ = self.whisper.transcribe(samples, language=(self.runtime.storage.config.get("speech_language", "auto") if self.runtime.storage.config.get("speech_language", "auto") != "auto" else None), vad_filter=True, **({"hotwords":vocabulary} if vocabulary else {}))
         return " ".join(s.text for s in segments).strip()
 
     def _local_task(self, text):

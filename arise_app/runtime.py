@@ -299,6 +299,7 @@ class Runtime:
             env = engine_environment(env, config)
             from .owned_engine import environment
             env = environment(env, config)
+            env.pop("ARISE_STT_TOKEN",None)
             if config.get("agent_provider") and config.get("agent_model"):
                 command += ["--provider", config["agent_provider"], "--model", config["agent_model"]]
             if config.get("thinking"):
@@ -320,6 +321,7 @@ class Runtime:
                 if env.get("ARISE_GENTLE_OWNED") == "1":
                     env["ARISE_GENTLE_RPC_EXTENSIONS"] = json.dumps(rpc_extensions)
                 command += ["--skill", str(gentle / "skills"), "--prompt-template", str(gentle / "prompts"), "--theme", str(gentle / "themes")]
+            self.desktop_probe = None
             self.pi = JsonProcess(command, cwd=config["workspace"], env=env,
                 on_event=lambda event: self.session_event(epoch, event))
             try:
@@ -332,6 +334,10 @@ class Runtime:
                     self.pi_state["gentleVerified"] = any(c.get("name") == "gentle:status" for c in commands)
                 except Exception:
                     self.pi_state["gentleVerified"] = False
+                if self.pi_state.get("gentleVerified") and "gentle:desktop" in self.pi_commands:
+                    from .desktop_probe import DesktopProbe
+                    self.desktop_probe=DesktopProbe(self.pi)
+                    self.desktop_probe.request("capabilities")
                 if self.pi_state.get("sessionFile"):
                     self.storage.set_pi_file(self.conversation, self.pi_state["sessionFile"])
                 self.last_prompt_language = config.get("ui_language","es")
@@ -364,6 +370,7 @@ class Runtime:
             "pi_tools_observed": self.pi_tools if connected else [],
             "subagents": "observed" if connected and "subagent_run" in self.pi_tools else "unverified",
             "gentle_verified": bool(connected and self.pi_state.get("gentleVerified")),
+            "desktop_rpc": dict(self.desktop_probe.state) if connected and getattr(self,"desktop_probe",None) else {"status":"unavailable"},
             "cross_chat_delegation": False,
             "desktop_authorized": self.desktop, "desktop_stopped": self.desktop_halted}
 
@@ -377,15 +384,21 @@ class Runtime:
             return
         if event.get("type") == "tool_execution_end" and event.get("toolName", "").startswith("mem_"):
             self.memory_state = "error" if event.get("isError") or self.memory_state == "error" else ("connected" if self.memory_state in ("verifying", "connected") else "configured")
+        if event.get("method")=="setWidget" and event.get("widgetKey")=="gentle-desktop-rpc":
+            if getattr(self,"desktop_probe",None):self.desktop_probe.widget(event)
+            return
         self.publish_activity(event)
         kind = event.get("type")
         if kind == "message_start" and event.get("message", {}).get("role") == "assistant":
             self.current_message = ""
+            if self.current_task in self.tasks:self.tasks[self.current_task].pop("voice_partial",None)
             self.emit("assistant_start", {})
         elif kind == "message_update":
             delta = event.get("assistantMessageEvent", {})
             if delta.get("type") == "text_delta":
                 self.current_message += delta.get("delta", "")
+                if self.current_task and self.current_task in self.tasks:
+                    self.tasks[self.current_task]["voice_partial"] = self.current_message[-16000:]
                 self.emit("assistant_delta", {"text": delta.get("delta", "")})
             # Thinking events never leave this process.
         elif kind == "message_end" and event.get("message", {}).get("role") == "assistant":
@@ -438,6 +451,7 @@ class Runtime:
                 task["status"] = "error" if activity_error else "done"
                 if error:
                     task["error"] = error
+                task.pop("voice_partial",None)
                 self.current_task = None
         self.publish_activity({"type":"finished", "error": bool(activity_error)})
         self.emit("settled", {})

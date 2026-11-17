@@ -1,0 +1,15 @@
+services:
+  speaches:
+    image: ${SPEACHES_IMAGE:-ghcr.io/speaches-ai/speaches:latest-cpu}
+    expose: ["8000"]
+    environment:
+      API_KEY: ${SPEACHES_API_KEY:?Set a strong API key in Coolify}
+      ENABLE_UI: "false"
+      LOG_LEVEL: warning
+      PRELOAD_MODELS: '["Systran/faster-whisper-small"]'
+      WHISPER__COMPUTE_TYPE: int8
+    volumes:
+      - models:/home/ubuntu/.cache/huggingface/hub
+    restart: unless-stopped
+volumes:
+  models:

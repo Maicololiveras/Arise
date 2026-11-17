@@ -226,6 +226,9 @@ class Settings(QDialog):
         self.check_field(f,"wake_open_panel","Abrir el panel al activar ARISE con la voz",config.get("wake_open_panel",True))
         self.text_field(f,"wake_reply","Respuesta al activar la voz local",config.get("wake_reply","Te escucho."))
         self.check_field(f,"voice_fluent","Voz fluida: preparar la siguiente frase mientras habla",config.get("voice_fluent",True))
+        self.text_field(f,"speech_vocabulary","Vocabulario para Whisper",config.get("speech_vocabulary",""))
+        for key,label in (("speech_correct_names","Corregir ARISE después de un saludo"),("speech_private_server","Enviar audio de conversación a mi servidor privado"),("speech_stream","Hablar por frases durante la respuesta")):
+            self.check_field(f,key,label,config.get(key,False))
         self.fields["speech_language"] = WheelSafeCombo()
         self.fields["speech_language"].addItems(["auto", "es", "en", "pt"])
         self.fields["speech_language"].setCurrentText(config.get("speech_language", "auto"))
@@ -679,6 +682,7 @@ class Panel(QWidget):
         self.attachments=[]
         self.attachment_bar=QWidget(); self.attachment_layout=QHBoxLayout(self.attachment_bar)
         self.attachment_layout.setContentsMargins(0,0,0,0);layout.addWidget(self.attachment_bar);self.attachment_bar.hide()
+        self.live_reply=QLabel();self.live_reply.setTextFormat(Qt.PlainText);self.live_reply.setWordWrap(True);self.live_reply.setMaximumHeight(80);self.live_reply.hide();layout.addWidget(self.live_reply)
         self.history.anchorClicked.connect(self.open_link)
         self.input = ChatInput(); self.input.setAcceptRichText(False); self.input.setPlaceholderText("Escribe o pega una imagen con Ctrl+V…"); self.input.setFixedHeight(58)
         self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea · Alt+Q recupera el último mensaje"); self.input.submitted.connect(self.send); self.input.image_pasted.connect(self.add_image); layout.addWidget(self.input)
@@ -1316,6 +1320,7 @@ class Controller(QObject):
         except RuntimeError:
             self.panel.status.setText("Proceso residente desconectado")
             return
+        live=self.panel.live_reply.text(); dirty=False
         for event in result["events"]:
             kind, data = event["kind"], event["data"]
             if kind == 'shutdown_requested':
@@ -1343,8 +1348,13 @@ class Controller(QObject):
                             enabled.setChecked(spec.get('enabled',False)); command.setText(json.dumps(spec['command']))
                 continue
             if kind == "conversation_changed":
+                live="";dirty=True
                 self.close_dialogs(); self.panel.reload(); continue
             if event.get("conversation") != self.panel.current_chat: continue
+            if kind=="assistant_delta":
+                live=(live+data.get("text",""))[-500:];dirty=True;continue
+            if kind in ("assistant_start","assistant_end","error","user"):
+                live="";dirty=True
             if kind == "activity":
                 self.panel.activity_view.set_activity(data)
             elif kind == "orb":
@@ -1391,6 +1401,9 @@ class Controller(QObject):
             elif kind == "dialog_resolved":
                 dialog=self.pending_dialogs.pop(data['id'],None)
                 if dialog: dialog.setProperty('arise_cancelled',True); dialog.reject()
+
+        if dirty:
+            self.panel.live_reply.setText(live);self.panel.live_reply.setVisible(bool(live))
 
     def approval(self, data):
         # Nonmodal: stop hotkey, cancellation and microphone state keep updating.

@@ -1,6 +1,6 @@
 # ARISE Assistant
 
-**QA development 0.4.47:** local voice performance instrumentation, endpoint-silence trimming and per-response Gonzalo bridge reuse. See the [voice roadmap and acceptance procedure](docs/VOICE-ROADMAP.md). Published download tables remain unchanged until CI publishes the installers.
+**QA development 0.4.48:** [Progressive chat and optional voice settings](docs/VOICE-PREVIEW.md). Previous release: local voice performance instrumentation, endpoint-silence trimming and per-response Gonzalo bridge reuse. See the [voice roadmap and acceptance procedure](docs/VOICE-ROADMAP.md). Published download tables remain unchanged until CI publishes the installers.
 
 **Stable 0.4.42** includes voice stop/exit controls, opt-in study assistance, live Spanish/English UI and guided phone setup. See [usage and acceptance](docs/VOICE-STUDY-LANGUAGE.md). **Preview 0.4.43** adds selection between private ARISE memory and an existing compatible local Engram server; see the [shared-memory guide](https://github.com/Maicololiveras/Arise/blob/qa/docs/shared-memory.md).
 

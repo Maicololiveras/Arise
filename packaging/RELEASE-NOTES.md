@@ -1,3 +1,7 @@
+# ARISE 0.4.48 — Progressive chat and optional voice controls
+
+Read-only Desktop RPC discovery, progressive reply preview, local vocabulary, conservative name correction, opt-in sentence playback and private transcription. See docs/VOICE-PREVIEW.md.
+
 # ARISE 0.4.47 — Local voice performance
 
 - Add bounded, content-free local voice stage timings in runtime status.

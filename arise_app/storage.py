@@ -12,7 +12,7 @@ from pathlib import Path
 DEFAULTS = {
     "engine_mode": "bundled",
     "antigravity_enabled": False, "owned_engine_root": "",
-    "ui_language": "es", "speech_language": "auto", "preferred_name": "", "workspace": "", "pi_command": ["pi"], "pi_extra_args": [],
+    "ui_language": "es", "speech_vocabulary": "", "speech_correct_names": False, "speech_private_server": False, "speech_stream": False, "speech_language": "auto", "preferred_name": "", "workspace": "", "pi_command": ["pi"], "pi_extra_args": [],
     "forge_voice":"es-CO-GonzaloNeural", "forge_rate":"+5%", "voice_silence_ms":1400,
     "voice_model": "local", "voice": "Windows default", "voice_provider": "local",
     "code_enabled": False, "agent_provider": "", "agent_model": "", "thinking": "medium", "gentle_path": "",

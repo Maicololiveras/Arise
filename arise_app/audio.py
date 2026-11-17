@@ -1,4 +1,5 @@
 """Bounded native PCM capture/playback. No microphone opened by construction."""
+import time
 import queue
 import threading
 from collections import deque
@@ -28,6 +29,7 @@ class Audio:
         self.input_device, self.output_device = input_device, output_device
         self.incoming = queue.Queue(maxsize=150)  # 3 seconds; never accumulate idle audio
         self.buffers = deque()
+        self.output_reference=deque(maxlen=10)
         self.lock = threading.RLock()
         self.capture = self.playback = None
         self.played = 0
@@ -118,9 +120,24 @@ class Audio:
                 result.extend(chunk[:take])
                 if take < len(chunk):
                     self.buffers.appendleft(chunk[take:])
+            if result:self.output_reference.append((time.monotonic(),bytes(result)))
             self.played += len(result) // 2
             self.speaking = bool(self.buffers)
         out[:] = bytes(result) + b"\0" * (needed - len(result))
+
+    def playback_echo(self, pcm):
+        """Reject only highly correlated speaker leakage; unrelated speech passes."""
+        now=time.monotonic()
+        with self.lock:blocks=[data for stamp,data in self.output_reference if now-stamp<.25]
+        if not blocks or len(pcm)<320:return False
+        ref=np.frombuffer(resample(b"".join(blocks),self.output_rate,16000),dtype="<i2").astype(np.float32)
+        mic=np.frombuffer(pcm,dtype="<i2").astype(np.float32)
+        if len(ref)<len(mic) or np.std(mic)<50:return False
+        mic-=mic.mean()
+        corr=np.correlate(ref,mic,mode="valid")
+        energy=np.r_[0.,np.cumsum(ref.astype(np.float64)**2)]
+        denom=np.sqrt(np.maximum(1.,energy[len(mic):]-energy[:-len(mic)])*np.dot(mic,mic))
+        return bool(np.max(np.abs(corr)/denom)>.90)
 
     def interrupt(self):
         with self.lock:

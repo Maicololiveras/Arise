@@ -57,7 +57,7 @@ Automated tests cover trimming, preserved pauses, no-speech input, max-duration
 turns, process reuse/cancellation, metrics and existing speech behavior. No real
 microphone/provider latency improvement is claimed before desktop acceptance.
 
-## Future phases — not implemented
+## Acceptance roadmap — see [Preview 0.4.48](VOICE-PREVIEW.md) for the initial scope of phases 2–5; phase 6 remains deferred
 
 | Phase | Planned work | Acceptance gate |
 | --- | --- | --- |

@@ -316,7 +316,8 @@ class Assistant(Runtime):
             raise ValueError('Motor de voz local no compatible.')
         if changes.get("thinking", self.storage.config["thinking"]) not in ("off", "minimal", "low", "medium", "high", "xhigh"):
             raise ValueError("Esfuerzo inválido.")
-        for key in ("wake_enabled", "pinned", "reduced_motion", "onboarding_complete", "local_barge_in", "local_dialogue_enabled", "voice_windows_fallback", "voice_fluent", "wake_open_panel", "desktop_auto_clear"):
+        if "speech_vocabulary" in changes and (not isinstance(changes["speech_vocabulary"],str) or len(changes["speech_vocabulary"])>240):raise ValueError("Máximo 240 caracteres de vocabulario.")
+        for key in ("speech_correct_names","speech_private_server","speech_stream","wake_enabled", "pinned", "reduced_motion", "onboarding_complete", "local_barge_in", "local_dialogue_enabled", "voice_windows_fallback", "voice_fluent", "wake_open_panel", "desktop_auto_clear"):
             if key in changes and not isinstance(changes[key], bool):
                 raise ValueError(f"{key} debe ser booleano")
         if 'wake_phrases' in changes and (not isinstance(changes['wake_phrases'],list) or not 1<=len(changes['wake_phrases'])<=10 or not all(isinstance(p,str) and 2<=len(p.strip())<=80 for p in changes['wake_phrases'])):
