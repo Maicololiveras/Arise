@@ -24,10 +24,11 @@ try {
   await assert.rejects(registry.automaticWriteWarning(root,['.atl/skill-registry.md']),/Cannot verify Git/);
   const child=join(root,'nested');await mkdir(child);
   await assert.rejects(registry.automaticWriteWarning(child,['.atl/skill-registry.md']),/Cannot verify Git/);
-  // A positively non-Git workspace still supports skills without a global Git install.
+  // Upstream 4.8 requires working Git to positively verify a non-Git workspace.
   await rm(join(root,'.git'),{recursive:true,force:true});
-  assert.equal(await registry.automaticWriteWarning(root,['.atl/skill-registry.md']),undefined);
+  await assert.rejects(registry.automaticWriteWarning(root,['.atl/skill-registry.md']),/Cannot verify Git/);
   process.env.PATH=previous;
+  assert.equal(await registry.automaticWriteWarning(root,['.atl/skill-registry.md']),undefined);
   const skills=join(root,'.agents/skills/demo');await mkdir(skills,{recursive:true});
   await writeFile(join(skills,'SKILL.md'),'---\nname: demo\ndescription: Synthetic local skill\n---\nTest only.\n');
   await registry.__testing.regenerateRegistry(root,true);

@@ -48,7 +48,7 @@ then connect your account. Back up your profile before upgrading.
 ### Before you install
 
 Choose the desktop installer that matches your operating system and CPU. Desktop packages include
-ARISE's own Gentle Shell 4.7.0, Pi, Node, Gentle AI and Engram; no separate
+ARISE's own Gentle Shell 4.8.0, Pi, Node, Gentle AI and Engram; no separate
 Gentle installation is required. Sizes below are approximate decimal MB.
 
 <a id="install-windows"></a>
@@ -257,11 +257,11 @@ you intend to remove your settings, conversations and memory.
 
 | Component | Pinned version |
 | --- | --- |
-| Gentle Shell | 4.7.0 |
-| Pi | 1.5.0 |
-| Gentle AI | 4.4.0 |
-| Engram | 3.7.0 |
-| gentle-engram | 0.7.0 |
+| Gentle Shell | 4.8.0 |
+| Pi | 1.5.2 |
+| Gentle AI | 4.5.0 |
+| Engram | 3.7.2 |
+| gentle-engram | 0.8.0 |
 | Bundled Node | 24.21.0 |
 
 The engine owns its agent settings, SDK credentials and memory store. Updates
@@ -357,3 +357,7 @@ Choose private memory or an existing compatible local Engram server in Settings 
 ### 0.4.45 Preview fixes
 
 Agent settings now includes **Apply and connect memory** for switching private/shared local memory without closing the application. See [memory connection](docs/shared-memory.md). The owned engine includes a [reviewed Gentle Shell registry backport](vendor/gentle-patches/README.md); tracked files remain protected.
+
+## Assistant evolution (source 0.4.46)
+
+The current source integrates the 4.8 engine, bundled web tools, immediate message acknowledgement and separate Whisper language selection. See [behavior, validation limits and research](docs/ASSISTANT-EVOLUTION.md). Download tables above continue to describe published artifacts until CI publishes the new release.

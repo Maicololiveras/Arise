@@ -69,10 +69,17 @@ def prepare(runtime, bundle, manifest):
     value = json.loads(settings.read_text(encoding='utf-8-sig')) if settings.exists() else {'theme':'gentleman'}
     packages = value.get('packages', [])
     if not isinstance(packages, list): raise RuntimeError('La lista de paquetes del agente integrado es inválida.')
-    packages = [p for p in packages if p != previous.get('memory_package') and p != previous.get('gentle_package')]
+    packages = [p for p in packages if p != previous.get('memory_package') and p != previous.get('gentle_package') and p != previous.get('web_package')]
     declaration = {'source': str(gentle), 'extensions': []}
     if declaration not in packages: packages.append(declaration)
     if str(memory) not in packages: packages.append(str(memory))
+    web = artifact(manifest['web_package']) if manifest.get('web_package') else gentle.parent / 'pi-web-access'
+    if manifest.get('web_package'):
+        web_meta = json.loads((web / 'package.json').read_text(encoding='utf-8'))
+        if web_meta.get('name') != 'pi-web-access' or web_meta.get('version') != '0.48.0':
+            raise RuntimeError('Bundled web tools do not match this ARISE release.')
+    if (web / 'package.json').is_file() and str(web) not in packages:
+        packages.append(str(web))
     value['packages'] = packages
     atomic_json(settings, value)
     marker = base/'selection-backup.json'
@@ -84,7 +91,7 @@ def prepare(runtime, bundle, manifest):
     selected_binary = Path(config.get('engram_bin') or '/missing').resolve()
     if not selected_binary.is_file() or not selected_binary.is_relative_to(runtime.storage.root.resolve()) or str(selected_binary) == previous.get('engram_bin'):
         desired['engram_bin'] = str(binary)
-    atomic_json(state_path, {'memory_package':str(memory), 'gentle_package':declaration, 'engram_bin':str(binary), 'versions':manifest['versions']})
+    atomic_json(state_path, {'memory_package':str(memory), 'web_package':str(web), 'gentle_package':declaration, 'engram_bin':str(binary), 'versions':manifest['versions']})
     return {k:v for k,v in desired.items() if config.get(k) != v}
 
 

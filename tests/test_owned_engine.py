@@ -77,6 +77,19 @@ class OwnedEngineTests(unittest.TestCase):
             self.assertEqual(env['ARISE_TERMINAL_TASK'],'mailbox')
             self.assertEqual([k for k in env if k.upper()=='PATH'],['PATH'])
 
+    def test_bundled_web_tools_are_registered_once_and_verified(self):
+        with tempfile.TemporaryDirectory() as t:
+            r,b,m=self.fixture(Path(t))
+            web=b/'node/node_modules/pi-web-access';web.mkdir()
+            (web/'package.json').write_text(json.dumps({'name':'pi-web-access','version':'0.48.0'}))
+            m['web_package']='@bundle/node/node_modules/pi-web-access'
+            r.storage.config.update(prepare(r,b,m))
+            prepare(r,b,m)
+            settings=json.loads((Path(r.storage.config['gentle_agent_home'])/'settings.json').read_text())
+            self.assertEqual(settings['packages'].count(str(web.resolve())),1)
+            (web/'package.json').write_text(json.dumps({'name':'unexpected','version':'0.48.0'}))
+            with self.assertRaises(RuntimeError):prepare(r,b,m)
+
     def test_manifest_cannot_escape_bundle(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);r,b,m=self.fixture(root);m['gentle_path']='@bundle/../../foreign'

@@ -11,6 +11,8 @@ SOURCE = ROOT / 'vendor/gentle-patches/skill-registry.ts'
 def apply(package):
     package = Path(package)
     metadata = json.loads((package / 'package.json').read_text(encoding='utf-8'))
+    if metadata.get('name') == 'gentle-pi' and metadata.get('version') == '4.8.0':
+        return  # Upstream includes the registry fix; never replace newer source.
     if metadata.get('name') != 'gentle-pi' or metadata.get('version') != '4.7.0':
         raise RuntimeError('Registry backport requires gentle-pi 4.7.0; review before upgrading')
     source = SOURCE.read_bytes()

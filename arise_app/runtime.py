@@ -506,10 +506,11 @@ class Runtime:
                 self.tasks.pop(next(iter(self.tasks)))
         generation = getattr(self, "stop_generation", 0)
         try:
-            self.connect_pi()
-            if generation != getattr(self, "stop_generation", 0): raise RuntimeError("Task cancelled before submission.")
+            # Acknowledge the submitted message before cold engine initialization.
             self.storage.message(self.conversation, "user", text, images)
             self.emit("user", {"text": text, "images":images})
+            self.connect_pi()
+            if generation != getattr(self, "stop_generation", 0): raise RuntimeError("Task cancelled before submission.")
             command_name = text.split()[0][1:] if text.startswith("/") else ""
             registered = command_name in self.pi_commands
             process, epoch = self.pi, self.pi_epoch

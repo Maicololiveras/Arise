@@ -17,12 +17,12 @@ from arise_app.platforms import target
 from arise_app.https import open_https
 
 HASHES = {
-    'macos-x64': '0dfced7ee702ab5ab06a7bf419f10833f531a60152bf02fd0662f64cb44f2042',
-    'macos-arm64': '22df56a58fb96ba301b9e7b76d542c40d3c50a3d61e43c3fc914d3c5bc8b1a0c',
-    'linux-x64': '3426c49b76632fd800f93faaed32e7c6f00624572423008efd4ecd59d62a5dce',
-    'linux-arm64': '65c4aed21a6bd3a46b8416aa7e723cf1b3903c3a69f198c446610c30d0cd4945',
-    'windows-x64': '0798d5805e7128c52bd4121bdef0a25c8712b7edf55129fb9f8789c1c0ec2013',
-    'windows-arm64': 'fd0aaa5a5cf6868f21f14a244664ede13082e8cbee4f762b92e888f189470d36',
+    'macos-x64': 'd35623443a5d85e8f78338cda5d0bb73b2f7ec6217a57e4abb71904a3e0d6287',
+    'macos-arm64': 'f96e08db8f47ca49ebc034eba30e468db81eb56df98f9bf21a73366b510695e4',
+    'linux-x64': '8db9d5db1c1574b8b830aac4ffbe86c024014aed6b9a3f0406ac3361a152cdf0',
+    'linux-arm64': 'cdbbcb68d3e842d3e52e27edccef55e6fe98ce3cdbc90cd79894323b029efb50',
+    'windows-x64': '515a716ce966202058d4b9f310626fde72583cfc64ccefbf0dcc81456260089c',
+    'windows-arm64': '01e4f5dab2f941cf810d1373e7c6998c014499bee9c2d5783e34da94c70ac7f2',
 }
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -52,8 +52,8 @@ def stage_engram(bundle, identity):
     upstream = {'macos': 'darwin'}.get(system, system)
     cpu = {'x64': 'amd64'}.get(arch, arch)
     extension = 'zip' if system == 'windows' else 'tar.gz'
-    name = f'engram_3.7.0_{upstream}_{cpu}.{extension}'
-    url = f'https://github.com/Gentleman-Programming/engram/releases/download/v3.7.0/{name}'
+    name = f'engram_3.7.2_{upstream}_{cpu}.{extension}'
+    url = f'https://github.com/Gentleman-Programming/engram/releases/download/v3.7.2/{name}'
     with open_https(url, timeout=120) as response:
         data = response.read(64 * 1024**2 + 1)
     if len(data) > 64 * 1024**2 or hashlib.sha256(data).hexdigest() != HASHES[identity]:
@@ -75,7 +75,7 @@ def stage_engram(bundle, identity):
     directory = bundle / 'engram'; directory.mkdir()
     binary = directory / executable; binary.write_bytes(content); binary.chmod(0o755)
     result = run(binary, '--version', capture_output=True, text=True)
-    if result.stdout.strip() != 'engram 3.7.0':
+    if result.stdout.strip() != 'engram 3.7.2':
         raise RuntimeError('Engram version mismatch')
 
 
@@ -133,9 +133,10 @@ def build(expected):
         'owned_engine': 1, 'target': identity,
         'gentle_ai_bin': relative(native), 'engram_bin': '@bundle/engram/engram' + suffix,
         'memory_package': '@bundle/node/node_modules/gentle-engram',
+        'web_package': '@bundle/node/node_modules/pi-web-access',
         'pi_command': ['@bundle/node/node' + suffix, '@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js'],
         'gentle_path': '@bundle/node/node_modules/gentle-pi', 'mcp': {},
-        'versions': {'arise': __version__, 'pi': '1.5.0', 'gentle': '4.7.0', 'gentle_ai': '4.4.0', 'engram': '3.7.0', 'gentle_engram': '0.7.0'},
+        'versions': {'arise': __version__, 'pi': '1.5.2', 'gentle': '4.8.0', 'gentle_ai': '4.5.0', 'engram': '3.7.2', 'gentle_engram': '0.8.0'},
         'capabilities': {'desktop_tools_bundled': False, 'offline_models_bundled': False, 'automatic_updates': False},
     }
     (bundle / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')

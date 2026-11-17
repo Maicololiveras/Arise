@@ -9,9 +9,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from arise_app.https import open_https
 from arise_app.engram_setup import verified_executable
 
-VERSION = '3.7.0'
+VERSION = '3.7.2'
 NAME = f'engram_{VERSION}_windows_amd64.zip'
-SHA256 = '0798d5805e7128c52bd4121bdef0a25c8712b7edf55129fb9f8789c1c0ec2013'
+SHA256 = '515a716ce966202058d4b9f310626fde72583cfc64ccefbf0dcc81456260089c'
 URL = f'https://github.com/Gentleman-Programming/engram/releases/download/v{VERSION}/{NAME}'
 
 

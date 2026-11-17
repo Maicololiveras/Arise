@@ -35,10 +35,10 @@ class LocalModelTests(unittest.TestCase):
         service.whisper.AcceptWaveform.assert_called_once_with(pcm)
         service.whisper=Mock(); service.whisper.transcribe.return_value={'text':' texto pt '}
         self.assertEqual(service.transcribe_local(pcm,'openai-whisper'),'texto pt')
-        self.assertEqual(service.whisper.transcribe.call_args.kwargs, {'language':'es','fp16':False})
+        self.assertEqual(service.whisper.transcribe.call_args.kwargs, {'language':None,'fp16':False})
         service.whisper=Mock(); service.whisper.transcribe.return_value=([SimpleNamespace(text='hola'),SimpleNamespace(text='modelo')],None)
         self.assertEqual(service.transcribe_local(pcm,'faster-whisper'),'hola modelo')
 
-        runtime.storage.config['ui_language']='en'
+        runtime.storage.config['speech_language']='en'
         service.transcribe_local(pcm,'faster-whisper')
         self.assertEqual(service.whisper.transcribe.call_args.kwargs, {'language':'en','vad_filter':True})

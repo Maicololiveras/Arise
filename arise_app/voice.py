@@ -15,7 +15,7 @@ from pathlib import Path
 from .audio import Audio, AudioDeviceError, resample
 from .processes import executable_argv
 
-INSTRUCTIONS = """Eres ARISE. Habla español de forma natural y breve. Para realizar tareas usa
+INSTRUCTIONS = """Eres ARISE. Responde de forma natural y breve en el idioma del usuario. Para realizar tareas usa
  delegate_task: Gentle Shell ejecuta las herramientas con los permisos del chat. La aceptación no es
  finalización. Puedes seguir conversando mientras trabaja. Usa task_status para consultar, steer_task
  con task_id para corregir y cancel_task con task_id para cancelar. No conviertas una petición nueva
@@ -42,12 +42,24 @@ TOOLS = [
 
 
 def wake_match(text, phrases):
-    clean = text.lower().strip().strip(".,!?¿¡")
+    import re
+    import unicodedata
+    def normalize(value):
+        value = ''.join(c for c in unicodedata.normalize('NFD', value.lower()) if not unicodedata.combining(c))
+        return re.sub(r'[^\w\s]', ' ', value).split()
+    tokens = list(re.finditer(r"\w+", text))
+    words = [normalize(token.group())[0] for token in tokens]
     for phrase in sorted(phrases, key=len, reverse=True):
-        phrase = phrase.lower().strip()
-        if phrase and (clean == phrase or clean.startswith(phrase + " ")):
-            return clean[len(phrase):].strip(), True
-    return "", False
+        expected = normalize(phrase)
+        variants = [expected]
+        # Only accept a Spanish ASR alias after an explicit greeting.
+        # Bare “a raíz de…” in ordinary speech must not wake the assistant.
+        if len(expected) == 2 and expected[0] in ('oye', 'hey', 'hola', 'ok') and expected[1] == 'arise':
+            variants += [[expected[0], 'a', 'raiz'], [expected[0], 'arais'], [expected[0], 'araiz']]
+        for candidate in variants:
+            if candidate and words[:len(candidate)] == candidate:
+                return text[tokens[len(candidate)-1].end():].lstrip(' .,!?¿¡'), True
+    return '', False
 
 
 class VoiceSession:
@@ -577,8 +589,8 @@ class VoiceService:
         import numpy as np
         samples = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768
         if engine == "openai-whisper":
-            return self.whisper.transcribe(samples, language=self.runtime.storage.config.get("ui_language","es"), fp16=False).get("text", "").strip()
-        segments, _ = self.whisper.transcribe(samples, language=self.runtime.storage.config.get("ui_language","es"), vad_filter=True)
+            return self.whisper.transcribe(samples, language=(self.runtime.storage.config.get("speech_language", "auto") if self.runtime.storage.config.get("speech_language", "auto") != "auto" else None), fp16=False).get("text", "").strip()
+        segments, _ = self.whisper.transcribe(samples, language=(self.runtime.storage.config.get("speech_language", "auto") if self.runtime.storage.config.get("speech_language", "auto") != "auto" else None), vad_filter=True)
         return " ".join(s.text for s in segments).strip()
 
     def _local_task(self, text):
