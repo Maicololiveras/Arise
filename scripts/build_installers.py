@@ -12,6 +12,7 @@ import plistlib
 import shutil
 import subprocess
 import sys
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -21,6 +22,21 @@ from arise_app.platforms import target, data_directory
 
 def run(*args):
     subprocess.run([str(a) for a in args], check=True, cwd=ROOT)
+
+
+def verify_install(system, command):
+    if system != "macos":
+        return run(*command)
+    argv = list(map(str, command))
+    for attempt in range(3):
+        result = subprocess.run(argv, cwd=ROOT, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True, errors="replace")
+        print(result.stdout, flush=True)
+        if result.returncode == 0:
+            return
+        if attempt == 2 or "error occurred connecting to the installation service" not in result.stdout.lower():
+            result.check_returncode()
+        time.sleep(5 * (attempt + 1))
 
 
 def write(path, content, mode=None):
@@ -125,9 +141,9 @@ Categories=Utility;
         with marker.open('x', encoding='utf-8') as stream:
             stream.write('ARISE installer must preserve user data\n')
         expected = marker.read_bytes()
-        run(*install)
+        verify_install(system, install)
         run(sys.executable, ROOT / 'scripts/smoke_native.py', application, identity)
-        run(*install)  # Reinstall/upgrade path must preserve the profile.
+        verify_install(system, install)  # Reinstall/upgrade path must preserve the profile.
         if marker.read_bytes() != expected:
             raise RuntimeError('Reinstall changed user data')
         run(*uninstall)

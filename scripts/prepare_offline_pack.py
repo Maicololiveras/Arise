@@ -47,13 +47,17 @@ def prepare(root, output):
     licenses = {
         'PIPER-LICENSE.txt': 'https://raw.githubusercontent.com/rhasspy/piper/2023.11.14-2/LICENSE.md',
         'ESPEAK-NG-COPYING.txt': 'https://raw.githubusercontent.com/espeak-ng/espeak-ng/1.51/COPYING',
-        'ONNXRUNTIME-LICENSE.txt': 'https://raw.githubusercontent.com/microsoft/onnxruntime/v1.14.1/LICENSE',
         'PIPER-PHONEMIZE-LICENSE.txt': 'https://raw.githubusercontent.com/rhasspy/piper-phonemize/2023.11.14-2/LICENSE.md',
         'QWEN-LICENSE.txt': f'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/{QWEN_REV}/LICENSE',
         'WHISPER-LICENSE.txt': 'https://raw.githubusercontent.com/openai/whisper/v20250625/LICENSE',
         'LLAMA-LICENSE.txt': 'https://raw.githubusercontent.com/ggml-org/llama.cpp/b10991/LICENSE',
     }
     for name,url in licenses.items(): download(url,root/'licenses'/name)
+    # Extracted from onnxruntime/LICENSE in the official PyPI Windows wheel:
+    # onnxruntime-1.14.1-cp310-cp310-win_amd64.whl
+    # SHA-256: 96a4059dbab162fe5cdb6750f8c70b2106ef2de5d49a7f72085171937d0e36d3
+    shutil.copyfile(Path(__file__).resolve().parents[1]/'packaging/licenses/ONNXRUNTIME-1.14.1.txt',
+                    root/'licenses/ONNXRUNTIME-LICENSE.txt')
     shutil.copy2(Path(__file__).resolve().parents[1]/'arise_app/resources/VOSK-LICENSE.txt',root/'licenses/VOSK-LICENSE.txt')
     files = {p.relative_to(root).as_posix(): digest(p) for directory in ('models','server','licenses','tts') for p in sorted((root/directory).rglob('*')) if p.is_file()}
     manifest = {'format':'arise-offline-pack-v1', 'platform':'windows-x64', 'files':files,
