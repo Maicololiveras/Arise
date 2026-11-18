@@ -958,6 +958,7 @@ class Panel(QWidget):
         self.controller.background(lambda: self.runtime.set_desktop(enabled))
 
 class Controller(QObject):
+    feed_received = Signal(object,object,object)
     wake_requested = Signal(str)
     stop_requested = Signal()
     def __init__(self, app, runtime, orb, start_voice=True):
@@ -988,7 +989,11 @@ class Controller(QObject):
         self.idle_timer = QTimer(self); self.idle_timer.setInterval(1000); self.idle_timer.timeout.connect(self.hide_if_idle); self.idle_timer.start()
         self.position_timer = QTimer(self); self.position_timer.setSingleShot(True); self.position_timer.setInterval(250); self.position_timer.timeout.connect(self.save_position)
         app.installEventFilter(self)
-        self.timer = QTimer(self); self.timer.timeout.connect(self.poll); self.timer.start(80)
+        self.feed_stop=threading.Event()
+        self.feed_received.connect(self.consume_feed,Qt.QueuedConnection)
+        self.timer = QTimer(self); self.timer.timeout.connect(self.poll)
+        if getattr(runtime,"is_remote",False):self.start_feed()
+        else:self.timer.start(80)
         self.hotkeys = Hotkeys(self.wake, self.stop)
         if os.name == "nt" and not getattr(runtime, "is_remote", False) and not self.hotkeys.start(): self.runtime.emit("notice", {"text": "Algún atajo está ocupado; usa el orbe o la bandeja."})
         app.aboutToQuit.connect(self.close)
@@ -1341,13 +1346,40 @@ class Controller(QObject):
             self.layout_pending.discard(identifier)
             if not self.layout_pending:self.orb.show()
 
+    def start_feed(self):
+        from .desktop_feed import receive
+        self.feed_stop.set()
+        stop=self.feed_stop=threading.Event()
+        runtime=self.runtime
+        def deliver(batch):
+            ack=threading.Event()
+            self.feed_received.emit(runtime,batch,ack)
+            while not ack.wait(.1):
+                if stop.is_set():return False
+            return not stop.is_set()
+        def disconnected():
+            if not stop.is_set():self.feed_received.emit(runtime,None,None)
+        threading.Thread(target=receive,args=(runtime,self.cursor,stop,deliver,disconnected),daemon=True).start()
+
+    def consume_feed(self,runtime,batch,ack):
+        try:
+            if self.closed or runtime is not self.runtime:return
+            if batch is None:self.panel.status.setText("Proceso residente desconectado");return
+            self.consume_batch(batch)
+        finally:
+            if ack is not None:ack.set()
+
     def poll(self):
         if not getattr(self.runtime,"is_remote",False):self.runtime.desktop_layout.heartbeat()
         try:
-            result = self.runtime.events_after(self.cursor); self.cursor = result["cursor"]
+            result = self.runtime.events_after(self.cursor)
         except RuntimeError:
             self.panel.status.setText("Proceso residente desconectado")
             return
+        self.consume_batch(result)
+
+    def consume_batch(self,result):
+        self.cursor=result["cursor"]
         if result.get("gap"):
             self.close_dialogs();self.panel.reload();return
         live=[];reset=False
@@ -1511,6 +1543,7 @@ class Controller(QObject):
             from .remote import RemoteAssistant
             self.runtime = RemoteAssistant(descriptor, root); self.voice = self.runtime.voice_service
             self.panel.runtime = self.runtime; self.cursor = 0
+            self.start_feed()
             if self.settings_window: self.settings_window.close(); self.settings_window.deleteLater(); self.settings_window = None
             self.panel.reload(); self.reconfigure()
         self.background(operation, complete)
@@ -1536,7 +1569,7 @@ class Controller(QObject):
     def close(self):
         if self.closed: return
         muted = self.dictation_restore_mute
-        self.closed = True; self.dictation.close()
+        self.closed = True; self.feed_stop.set(); self.dictation.close()
         if hasattr(self,"translator"): self.translator.close()
         if muted is not None:
             try: self.voice.mute(muted)

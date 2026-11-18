@@ -67,6 +67,7 @@ class Runtime:
         self.activity = PublicActivity()
         self.sequence = 0
         self.lock = threading.RLock()
+        self.event_ready = threading.Condition(self.lock)
         self.connect_lock = threading.Lock()
         self.tool_lock = threading.Lock()
         self.mcp = {}
@@ -111,6 +112,20 @@ class Runtime:
             if kind == "voice_metrics":self.voice_metrics.append(dict(data))
             self.sequence += 1
             self.events.append({"seq": self.sequence, "kind": kind, "data": data, "conversation": self.conversation})
+
+            self.event_ready.notify_all()
+
+    def desktop_events(self, after):
+        """A level-triggered wait: there is no gap between checking and waiting."""
+        from itertools import islice
+        with self.event_ready:
+            self.event_ready.wait_for(lambda:self.sequence!=after, timeout=1)
+            if after>self.sequence or (self.events and after<self.events[0]["seq"]-1):
+                return {"cursor":self.sequence,"events":[],"gap":True}
+            count=min(self.sequence-after,128)
+            start=len(self.events)-(self.sequence-after)
+            batch=list(islice(self.events,start,start+count)) if count else []
+            return {"cursor":batch[-1]["seq"] if batch else after,"events":batch,"gap":False}
 
     def voice_timing_snapshot(self):
         with self.lock:return list(self.voice_metrics)
@@ -572,6 +587,13 @@ class Runtime:
         payload = {"type": "prompt", "message": prefix + text}
         if images: payload["images"] = images
         result = process.request(payload, timeout=600 if registered else 30)
+        if epoch != self.pi_epoch:return
+        disposition=result.get("data",{}).get("disposition")
+        # A known session file survives normal prompts. Commands may switch
+        # sessions; consult the engine there and on first materialization.
+        if not registered and self.pi_state.get("sessionFile"):
+            if disposition=="handled" and self.current_task==identity:self.finish_task()
+            return
         state = process.request({"type": "get_state"}).get("data", {})
         if epoch != self.pi_epoch: return
         state["gentleVerified"] = self.pi_state.get("gentleVerified", False)

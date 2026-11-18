@@ -88,6 +88,7 @@ class VoicePerformanceTests(unittest.TestCase):
         runtime=Runtime.__new__(Runtime)
         runtime.lock=threading.RLock();runtime.sequence=0
         runtime.events=deque(maxlen=4000);runtime.voice_metrics=deque(maxlen=120)
+        runtime.event_ready=threading.Condition(runtime.lock)
         runtime.conversation='test'
         for number in range(150):
             runtime.emit('voice_metrics',{'turn_id':str(number),'stage':'transcription','duration_ms':1})

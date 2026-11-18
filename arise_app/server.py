@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 def make_server(runtime, port=0):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.0"
+        disable_nagle_algorithm = True
         def log_message(self, *_): pass
 
         def reply(self, value, code=200):
@@ -43,6 +44,19 @@ def make_server(runtime, port=0):
             if not self.authorize(): return
             parsed = urllib.parse.urlparse(self.path)
             try:
+                if parsed.path == "/api/desktop/events":
+                    if not hmac.compare_digest(self.headers.get("X-Arise-Accounts",""),runtime.accounts_token):
+                        self.reply({"error":"Se requiere el cliente de escritorio"},403);return
+                    after=int(urllib.parse.parse_qs(parsed.query).get("after",[0])[0])
+                    if after<0:raise ValueError("Cursor inválido")
+                    # Only this bounded, read-only route keeps the socket open.
+                    self.connection.settimeout(8)
+                    self.close_connection=False
+                    value=runtime.desktop_events(after)
+                    self.send_response(200);payload=json.dumps(value,ensure_ascii=False).encode()
+                    self.send_header("Connection","keep-alive");self.send_header("Content-Type","application/json; charset=utf-8")
+                    self.send_header("Cache-Control","no-store");self.send_header("Content-Length",str(len(payload)))
+                    self.end_headers();self.wfile.write(payload);return
                 if parsed.path == "/api/status": value = runtime.status()
                 elif parsed.path == '/api/connections': value = {'connections': runtime.connections.status()}
                 elif parsed.path == '/api/reminders': value = {'reminders': runtime.reminders.list(runtime.conversation)}

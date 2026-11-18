@@ -45,8 +45,23 @@ class JsonProcess:
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), start_new_session=os.name != "nt",
         )
+        # Only Pi has unsolicited UI/session events. Its callbacks can touch
+        # SQLite and tools; keep them off the response-correlation thread.
+        self.incoming = queue.Queue(maxsize=1024) if on_event else None
+        if self.incoming is not None:
+            threading.Thread(target=self._dispatch, daemon=True).start()
         threading.Thread(target=self._read, daemon=True).start()
         threading.Thread(target=self._drain_error, daemon=True).start()
+
+    def _dispatch(self):
+        while True:
+            event = self.incoming.get()
+            if event is None:return
+            if not self.closed:
+                try:self.on_event(event)
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).exception("RPC event handler failed")
 
     def _drain_error(self):
         self.diagnostics.drain(self.process.stderr)
@@ -67,8 +82,8 @@ class JsonProcess:
                     target = self.pending.get(event.get("id"))
                 if target and (event.get("type") == "response" or "result" in event or "error" in event):
                     target.put(event)
-                else:
-                    self.on_event(event)
+                elif self.incoming is not None:
+                    self.incoming.put(event)
         finally:
             self.diagnostics.done.wait(.5)
             try: code = self.process.wait(timeout=.5)
@@ -77,8 +92,9 @@ class JsonProcess:
             with self.lock:
                 for target in self.pending.values():
                     target.put({"error": {"message": detail}})
-            if not self.closed:
-                self.on_event({"type": "process_closed", "exit_code": code, "diagnostic": detail})
+            if self.incoming is not None:
+                if not self.closed:self.incoming.put({"type":"process_closed","exit_code":code,"diagnostic":detail})
+                self.incoming.put(None)
 
     def send(self, record):
         with self.write_lock:

@@ -1,3 +1,7 @@
+# ARISE 0.4.50 — Resident desktop event connection
+
+A dedicated reader delivers engine events over a reusable authenticated loopback socket. Ordinary prompts reuse known session state. See [Desktop transport](../docs/DESKTOP-TRANSPORT.md).
+
 # ARISE 0.4.49 — Recoverable desktop chat
 
 Read a full reply as it streams, browse older messages by page, and recover the active chat after the event buffer rolls over. Chat capabilities show the permission mode, profile and job count reported by compatible Gentle hosts. See [Desktop chat](../docs/DESKTOP-CHAT.md).
