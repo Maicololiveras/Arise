@@ -15,7 +15,7 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QImage, QDesktopServ
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import (QPlainTextEdit, QApplication, QWidget, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QPushButton, QLineEdit, QTextBrowser, QTextEdit, QComboBox, QCheckBox, QTabWidget,
-    QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QSpinBox, QDialogButtonBox, QInputDialog, QWidgetAction, QScrollArea, QProgressDialog, QSizePolicy)
+    QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QSpinBox, QDialogButtonBox, QInputDialog, QWidgetAction, QScrollArea, QProgressDialog, QSizePolicy, QStackedWidget)
 from .orb import build_orb
 from .assistant import Assistant
 from .audio import Audio
@@ -254,6 +254,9 @@ class Settings(QDialog):
         self.text_field(f, "preferred_name", "Cómo llamarte (vacío: usuario del PC)", config.get("preferred_name", ""))
         self.fields["preferred_name"].setMaxLength(80)
         self.fields["engine_mode"].setProperty("localizedItems", True)
+        self.check_field(f, "light_mode", "Modo ligero", config.get("light_mode",False))
+        minutes = WheelSafeSpin(); minutes.setRange(1,120); minutes.setValue(config.get("light_idle_minutes",10))
+        self.fields["light_idle_minutes"] = minutes; f.addRow("Minutos antes de liberar el motor inactivo", minutes)
         advanced_agent = QCheckBox("Mostrar configuración manual")
         f.addRow(advanced_agent)
         for key, label in (("workspace", "Carpeta de trabajo"), ("pi_command", "Comando Pi (lista JSON)"), ("gentle_path", "Carpeta Gentle Shell"), ("agent_provider", "Proveedor del agente"), ("agent_model", "Modelo del agente")):
@@ -679,6 +682,7 @@ class Panel(QWidget):
         menu = QMenu(self.agent_button)
         for label, kind in (("Cambiar perfil…","profile"), ("Elegir modelo…","model"), ("Elegir esfuerzo…","effort")):
             menu.addAction(label, lambda checked=False,k=kind: self.pick_agent(k))
+        menu.addAction("Comandos de Gentle Shell · /option", lambda: self.refresh_commands(True))
         menu.addSeparator()
         menu.addAction("Conectar cuenta…", self.open_agent_accounts)
         self.agent_button.setMenu(menu); header.addWidget(self.agent_button)
@@ -710,7 +714,7 @@ class Panel(QWidget):
         self.latest.clicked.connect(lambda:self.reload())
         paging.addWidget(self.older);paging.addWidget(self.latest);paging.addStretch();layout.addLayout(paging)
         self.browsing=False
-        self.history = ChatHistory(); self.history.setObjectName("chatHistory"); self.history.setOpenExternalLinks(False); layout.addWidget(self.history, 1)
+        self.history = ChatHistory(); self.history.setObjectName("chatHistory"); self.history.setOpenExternalLinks(False); self.pages = QStackedWidget(); self.pages.addWidget(self.history); layout.addWidget(self.pages, 1)
         self.attachments=[]
         self.attachment_bar=QWidget(); self.attachment_layout=QHBoxLayout(self.attachment_bar)
         self.attachment_layout.setContentsMargins(0,0,0,0);layout.addWidget(self.attachment_bar);self.attachment_bar.hide()
@@ -824,12 +828,26 @@ class Panel(QWidget):
             if QMessageBox.question(self,'Abrir enlace',url.toString()) == QMessageBox.Yes:
                 QDesktopServices.openUrl(url)
 
+    def embed(self, page):
+        # QDialog provides result signals; Qt.Widget keeps the view inside the chat.
+        page.setWindowFlags(Qt.Widget)
+        page.setMinimumSize(0, 0)
+        self.pages.addWidget(page)
+        self.pages.setCurrentWidget(page)
+        def finished(_):
+            self.pages.removeWidget(page)
+            self.pages.setCurrentIndex(self.pages.count()-1)
+            page.deleteLater()
+        page.finished.connect(finished)
+        page.show()
+
     def open_agent_accounts(self):
         from .accounts_widget import AccountsDialog
-        AccountsDialog(self.runtime, self).exec()
+        self.embed(AccountsDialog(self.runtime, self))
 
     def pick_agent(self, kind):
         from .i18n import tr
+        from .task_dialog import TaskDialog
         chat = self.current_chat
         def display(value):
             return " / ".join(value) if isinstance(value, list) else str(value or "")
@@ -837,17 +855,18 @@ class Panel(QWidget):
             if self.current_chat != chat or kind == "profile": return
             options = data["options"]
             if not options:
-                QMessageBox.information(self, tr("Agente"), tr("No hay opciones disponibles. Revisa la cuenta y el modelo."))
-                return
+                self.connection_notice.set_notice(tr("No hay opciones disponibles. Revisa la cuenta y el modelo.")); return
             title = tr("Elegir modelo…" if kind == "model" else "Elegir esfuerzo…")
-            dialog = QInputDialog(self); dialog.setWindowTitle(title); dialog.setLabelText(title)
-            dialog.setComboBoxItems([display(v) for v in options])
-            dialog.setTextValue(display(data["current"]) if data["current"] in options else display(options[0]))
-            if not dialog.exec() or self.current_chat != chat: return
-            choice = options[[display(v) for v in options].index(dialog.textValue())]
-            def applied(result):
-                if self.current_chat == chat: self.connection_notice.set_notice(title.rstrip("…") + ": " + display(result["current"]))
-            self.controller.background(lambda: self.runtime.agent_picker(chat, kind, choice), applied)
+            dialog = TaskDialog({"method":"select","title":title,"options":[display(v) for v in options]}, self)
+            if data["current"] in options: dialog.input.setCurrentIndex(options.index(data["current"]))
+            def apply(result):
+                if result != QDialog.Accepted or self.current_chat != chat: return
+                choice = options[dialog.input.currentIndex()]
+                def applied(result):
+                    if self.current_chat == chat: self.connection_notice.set_notice(title.rstrip("…") + ": " + display(result["current"]))
+                self.controller.background(lambda: self.runtime.agent_picker(chat, kind, choice), applied)
+            dialog.finished.connect(apply)
+            self.embed(dialog)
         self.controller.background(lambda: self.runtime.agent_picker(chat, kind), show)
 
     def choose_files(self):
@@ -932,11 +951,13 @@ class Panel(QWidget):
     def reload(self):
         self.controller.cancel_dictation()
         if getattr(self, 'command_dialog', None):
-            self.command_dialog.close()
+            self.command_dialog.reject()
             self.command_dialog = None
         catalog = self.runtime.project_catalog(); next_chat = catalog["active"]["conversation"]
         previous = getattr(self, "current_chat", None)
         if previous and previous != next_chat:
+            for page in [self.pages.widget(i) for i in range(1,self.pages.count())]:
+                page.setProperty("arise_cancelled", True); page.reject()
             if not self.input.isReadOnly():
                 self.chat_drafts[previous] = (self.input.toPlainText(), list(self.attachments))
             draft, images = self.chat_drafts.pop(next_chat, ("", []))
@@ -969,32 +990,42 @@ class Panel(QWidget):
         self.folder_button.setToolTip("Carpeta: " + catalog["active"]["workspace"])
         self.navigation.setToolTip(active_project["name"] + " · " + self.conversations.currentText())
 
-    def refresh_commands(self):
+    def refresh_commands(self, gentle_only=False):
         from .command_picker import CommandPicker
         if self.command_dialog:
-            self.command_dialog.close()
+            self.command_dialog.reject()
         chat = self.current_chat
         def selected(command):
-            if self.current_chat == chat and self.command_dialog is dialog:
+            if self.current_chat == chat:
                 self.run_command(command)
         dialog = CommandPicker(self, selected)
         self.command_dialog = dialog
-        dialog.show()
+        dialog.finished.connect(lambda _: setattr(self, "command_dialog", None) if self.command_dialog is dialog else None)
+        self.embed(dialog); dialog.search.setFocus()
         def operation():
             self.runtime.connect_pi()
             return self.runtime.pi.request({"type":"get_commands"}).get("data", {}).get("commands", [])
         def done(commands):
-            if chat == self.current_chat and self.command_dialog is dialog and dialog.isVisible():
-                dialog.set_commands(commands)
+            if chat == self.current_chat and self.command_dialog is dialog:
+                dialog.set_commands([c for c in commands if str(c.get("name","")).startswith("gentle:")] if gentle_only else commands)
         def failed(_):
-            if self.command_dialog is dialog and dialog.isVisible():
+            if self.command_dialog is dialog:
                 dialog.status.setText("No se pudieron cargar los comandos. Cierra y vuelve a abrir para reintentar.")
         self.controller.background(operation, done, failed=failed)
 
     def run_command(self, text):
+        if text.strip().casefold() == "/option":
+            self.refresh_commands(True); return
         if text == "/gentle:customize":
-            self.controller.show_settings(); return
-        self.controller.background(lambda:self.runtime.session_command(text))
+            from .task_dialog import TaskDialog
+            from .i18n import tr
+            options = ["Cambiar perfil…", "Elegir modelo…", "Elegir esfuerzo…", "Conectar cuenta…", "Comandos de Gentle Shell · /option"]
+            actions = [lambda:self.pick_agent("profile"), lambda:self.pick_agent("model"), lambda:self.pick_agent("effort"), self.open_agent_accounts, lambda:self.refresh_commands(True)]
+            box = TaskDialog({"method":"select","title":tr("Configurar el agente"),"options":[tr(v) for v in options]}, self)
+            box.finished.connect(lambda result: QTimer.singleShot(0, actions[box.input.currentIndex()]) if result == QDialog.Accepted else None)
+            self.embed(box); return
+        chat = self.current_chat
+        self.controller.background(lambda:self.runtime.session_command(text, chat))
 
     def open_project(self):
         path = QFileDialog.getExistingDirectory(self, "Elegir carpeta del proyecto")
@@ -1025,6 +1056,7 @@ class Panel(QWidget):
                 QMessageBox.warning(self,'Imágenes','Envía las imágenes con un mensaje, sin comando /.');return
             self.input.clear();self.run_command(text);return
         chat = self.current_chat
+        self.connection_notice.set_notice("Enviando mensaje…")
         self.last_submission=(chat,text,images)
         self.send_button.setEnabled(False);self.input.setReadOnly(True)
         def done(_):
@@ -1266,12 +1298,16 @@ class Controller(QObject):
 
     def show_panel(self):
         self.last_interaction = time.monotonic(); self.anchor_panel()
+        opening = not self.panel.isVisible()
         self.panel.show(); self.panel.raise_(); self.panel.activateWindow(); self.orb.raise_()
+        if opening and not self.runtime.storage.config.get("light_mode") and not self.pending_dialogs and not getattr(self, "_warming", False) and self.runtime.storage.config.get("gentle_path"):
+            self._warming = True
+            self.background(self.runtime.connect_pi, lambda _:setattr(self,"_warming",False), lambda _:setattr(self,"_warming",False))
 
     def hide_panel(self): self.panel.hide()
 
     def hide_if_idle(self):
-        if not self.dictation.active and self.panel.isVisible() and time.monotonic() - self.last_interaction >= 60:
+        if self.panel.pages.currentWidget() is self.panel.history and not self.dictation.active and self.panel.isVisible() and time.monotonic() - self.last_interaction >= 60:
             self.hide_panel()
 
     def anchor_panel(self):
@@ -1509,7 +1545,16 @@ class Controller(QObject):
             if kind in ("user","assistant_end","voice_transcript") and event["seq"]<=self.panel.history_watermark:
                 if kind=="assistant_end":live=[];reset=True
                 continue
+            if kind=="engine_phase":
+                from .i18n import tr
+                self.panel.connection_notice.set_notice(tr(data["text"]))
+                continue
+            if kind=="settled" and self.panel.connection_notice.full_text in ("Respondiendo…","Responding…","Esperando respuesta del agente…","Waiting for the agent…"):
+                self.panel.connection_notice.set_notice("")
             if kind=="assistant_delta":
+                if not self.panel.live_reply.isVisible() and not live:
+                    from .i18n import tr
+                    self.panel.connection_notice.set_notice(tr("Respondiendo…"))
                 live.append(data.get("text",""));continue
             if kind in ("assistant_start","assistant_end","error","settled"):
                 live=[];reset=True
@@ -1586,7 +1631,7 @@ class Controller(QObject):
         box.finished.connect(lambda result: None if box.property("arise_cancelled") else self.answer_approval(data["id"],result==QDialog.Accepted))
         box.finished.connect(lambda _:self.pending_dialogs.pop(data["id"],None))
         box.finished.connect(box.deleteLater)
-        self.show_panel(); box.open()
+        self.show_panel(); self.panel.embed(box)
 
     def answer_approval(self, identity, approved):
         try: self.runtime.approve(identity, approved)
@@ -1604,7 +1649,7 @@ class Controller(QObject):
             dialog.finished.connect(dialog.deleteLater)
             if data.get("timeoutMs"):
                 timer=QTimer(dialog); timer.setSingleShot(True); timer.timeout.connect(dialog.reject); timer.start(max(1,int(data["timeoutMs"])))
-            dialog.open()
+            self.show_panel(); self.panel.embed(dialog)
         from .task_dialog import TaskDialog
         dialog = TaskDialog(data, self.panel)
         dialog.finished.connect(lambda result: submit(

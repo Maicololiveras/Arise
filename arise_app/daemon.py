@@ -134,10 +134,17 @@ def main():
                 runtime.emit('notice', {'text': str(error)[:300]})
         threading.Thread(target=warm_local_model, daemon=True).start()
     runtime.reminders.start()
+    idle_stop = threading.Event()
+    def watch_engine():
+        while not idle_stop.wait(15):
+            try: runtime.release_idle_engine()
+            except (OSError, RuntimeError, TimeoutError): pass  # Unknown state: keep the session.
+    idle_worker = threading.Thread(target=watch_engine, daemon=True)
+    idle_worker.start()
     try: server.serve_forever(poll_interval=.1)
     except KeyboardInterrupt: pass
     finally:
-        voice.close(); hotkeys.close(); runtime.close(); server.server_close(); runtime.storage.db.close()
+        idle_stop.set(); idle_worker.join(); voice.close(); hotkeys.close(); runtime.close(); server.server_close(); runtime.storage.db.close()
         descriptor_path(root).unlink(missing_ok=True); lock.close()
     return 0
 

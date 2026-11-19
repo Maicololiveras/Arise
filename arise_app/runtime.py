@@ -78,6 +78,7 @@ class Runtime:
         self.pi_commands = set()
         self.pi_tools = []
         self.pi_has_children = False
+        self.engine_last_use = time.monotonic()
         self.pi_epoch = 0
         self.pi_retry_after = 0.0
         self.pi_failure = ""
@@ -176,6 +177,8 @@ class Runtime:
         for key in config:
             if key in changes:
                 config[key] = changes[key]
+        if type(config.get("light_mode")) is not bool or type(config.get("light_idle_minutes")) is not int or not 1 <= config["light_idle_minutes"] <= 120:
+            raise ValueError("Intervalo del modo ligero inválido.")
         if config.get("engine_mode") not in ("bundled", "external"):
             raise ValueError("Selecciona motor integrado o externo.")
         if not isinstance(config.get("preferred_name", ""), str) or len(config.get("preferred_name", "")) > 80:
@@ -273,6 +276,7 @@ class Runtime:
         if self.accounts.active:
             raise RuntimeError("Termina o cancela el inicio de sesión en Ajustes > Cuentas.")
         with self.transition_lock, self.connect_lock:
+            self.engine_last_use = time.monotonic()
             if self.accounts.active:
                 raise RuntimeError("Termina o cancela el inicio de sesión en Ajustes > Cuentas.")
             if self.pi and self.pi.process.poll() is None:
@@ -475,6 +479,7 @@ class Runtime:
         activity_error=error
         with self.lock:
             self.busy = False
+            self.engine_last_use = time.monotonic()
             self.current_message = ""
             self.settled.set()
             if self.current_task:
@@ -562,7 +567,10 @@ class Runtime:
             with self.lock:
                 self.storage.message(self.conversation, "user", text, images)
                 self.emit("user", {"text": text, "images":images})
+            if not self.pi or self.pi.process.poll() is not None:
+                self.emit("engine_phase", {"text":"Mensaje recibido · Preparando Gentle Shell…"})
             self.connect_pi()
+            self.emit("engine_phase", {"text":"Esperando respuesta del agente…"})
             if generation != getattr(self, "stop_generation", 0): raise RuntimeError("Task cancelled before submission.")
             command_name = text.split()[0][1:] if text.startswith("/") else ""
             registered = command_name in self.pi_commands
@@ -768,10 +776,12 @@ class Runtime:
                 self.sessions.save_preferences(chat)
             return {"options": options, "current": current}
 
-    def session_command(self, command):
+    def session_command(self, command, expected_chat=None):
         if not isinstance(command, str) or not command.startswith("/") or len(command) > 500:
             raise ValueError("Escribe un comando de la sesión, por ejemplo /gentle:profiles")
         with self.transition_lock:
+            if expected_chat is not None and expected_chat != self.conversation:
+                raise ValueError("El chat cambió o está ocupado.")
             self.connect_pi()
             name = command.split()[0][1:]
             if name not in self.pi_commands:
@@ -863,6 +873,36 @@ class Runtime:
             raise ValueError("Conecta el MCP desde Herramientas para descubrir su catálogo.")
         self.emit("tool", {"name": name, "status": "done"})
         return {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}], "isError": False}
+
+    def release_idle_engine(self):
+        """Only release a verified idle engine; leave UI, memory selection and reminders alone."""
+        with self.transition_lock:
+            cfg = self.storage.config
+            if not self.pi or not cfg.get("light_mode") or time.monotonic()-self.engine_last_use < 60*cfg["light_idle_minutes"]:
+                return False
+            def protected():
+                probe = getattr(self, "desktop_probe", None)
+                voice = getattr(self, "voice_service", None)
+                return (self.busy or self.current_task or self.desktop or self.pi_has_children or
+                        self.dialogs or getattr(self,"approvals",{}) or self.accounts.active or
+                        getattr(getattr(self,"study",None),"active",False) or (voice and voice.active.is_set()) or
+                        not probe or probe.state.get("status") != "ready" or probe.state.get("jobs") != 0 or
+                        any(job["process"].poll() is None for job in self.terminals.jobs.values()))
+            if protected(): return False
+            state = self.pi.request({"type":"get_state"},timeout=3).get("data",{})
+            if (state.get("isStreaming") is not False or state.get("isCompacting") is not False or
+                    state.get("pendingMessageCount") != 0 or protected()): return False
+            session = state.get("sessionFile")
+            if state.get("messageCount",0) and (not session or not Path(session).is_file()): return False
+            if session: self.storage.set_pi_file(self.conversation,session)
+            model=state.get("model") or {}
+            if model.get("provider") and model.get("id"):
+                self.storage.config.update(agent_provider=model["provider"],agent_model=model["id"])
+            if state.get("thinkingLevel"): self.storage.config["thinking"]=state["thinkingLevel"]
+            self.sessions.save_preferences(self.conversation)
+            self.disconnect_pi()
+            self.emit("notice",{"text":"Modo ligero: motor en reposo. El chat se conserva."})
+            return True
 
     def disconnect_pi(self):
         self.memory_state = "configured"

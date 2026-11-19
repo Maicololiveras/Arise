@@ -1,3 +1,7 @@
+# ARISE 0.4.56 — Embedded command palette and optional idle suspension
+
+Use /option to search registered Gentle Shell commands inside the desktop chat. Configuration questions and approvals appear in the same panel. In Settings → Agent, enable low-memory mode and choose an idle timeout. Reminders continue in the resident service.
+
 # ARISE 0.4.55 — Agent controls in the chat header
 
 Choose profiles, models, reasoning effort or account sign-in from the desktop chat. Model and effort choices come from the active Gentle session and persist per chat. Manual engine fields are collapsed in Settings.

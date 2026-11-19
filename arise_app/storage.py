@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 
 DEFAULTS = {
-    "engine_mode": "bundled",
+    "engine_mode": "bundled", "light_mode": False, "light_idle_minutes": 10,
     "antigravity_enabled": False, "owned_engine_root": "",
     "ui_language": "es", "speech_vocabulary": "", "speech_correct_names": False, "speech_private_server": False, "speech_stream": False, "speech_language": "auto", "preferred_name": "", "workspace": "", "pi_command": ["pi"], "pi_extra_args": [],
     "forge_voice":"es-CO-GonzaloNeural", "forge_rate":"+5%", "voice_silence_ms":1400,

@@ -29,6 +29,8 @@ class CommandPicker(QDialog):
         self.results.setTextElideMode(Qt.ElideRight)
         layout.addWidget(self.results, 1)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        self.execute = buttons.addButton("Ejecutar", QDialogButtonBox.ActionRole)
+        self.execute.setAutoDefault(False); self.execute.setEnabled(False); self.execute.clicked.connect(self.choose)
         buttons.button(QDialogButtonBox.Close).setText('Cerrar')
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -59,6 +61,7 @@ class CommandPicker(QDialog):
             item.setData(Qt.AccessibleDescriptionRole, description)
             self.results.addItem(item)
         count = self.results.count()
+        self.execute.setEnabled(count > 0)
         self.status.setText(f'{count} de {len(self.commands)} comandos · Enter para ejecutar · Esc para cerrar' if count else 'Sin comandos que coincidan con la búsqueda.')
         if count:
             self.results.setCurrentRow(0)

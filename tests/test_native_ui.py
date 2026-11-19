@@ -135,11 +135,24 @@ class NativeTests(unittest.TestCase):
             panel.input.setFocus();QTest.keyClick(panel.input,Qt.Key_Q,Qt.AltModifier);QTest.qWait(20);send.assert_not_called()
         self.assertEqual(panel.input.toPlainText(),'Mi borrador')
 
+    def test_option_opens_embedded_filtered_palette_without_submitting_prompt(self):
+        panel=self.c.panel; panel.show()
+        with patch.object(self.c,"background",side_effect=lambda operation,done,failed:done([
+                {"name":"gentle:profiles","source":"extension"},
+                {"name":"demo","source":"extension"}])),patch.object(self.r,"steer") as send:
+            panel.input.setPlainText("/option"); panel.send()
+            picker=panel.command_dialog
+            self.assertEqual(picker.results.count(),1)
+            self.assertFalse(picker.isWindow())
+            self.assertIs(panel.pages.currentWidget(),picker)
+            picker.reject(); self.assertIs(panel.pages.currentWidget(),panel.history)
+            send.assert_not_called()
+
     def test_rpc_editor_returns_multiline_text_and_chat_change_closes_dialog(self):
         answers=[]
         with patch.object(self.r,'answer_dialog',side_effect=lambda record:answers.append(record)):
             self.c.dialog({'id':'edit-fixture','method':'editor','title':'Perfil JSON','prefill':'uno\ndos'})
-            dialog=self.c.pending_dialogs['edit-fixture']; dialog.input.setPlainText('modelo\nesfuerzo')
+            dialog=self.c.pending_dialogs['edit-fixture']; self.assertFalse(dialog.isWindow()); dialog.input.setPlainText('modelo\nesfuerzo')
             dialog.accept(); QTest.qWait(80)
             self.assertEqual(answers[0]['value'],'modelo\nesfuerzo')
             self.assertFalse(answers[0]['cancelled'])

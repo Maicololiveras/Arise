@@ -1,6 +1,6 @@
 """Scrollable agent questions with persistent response and cancellation controls."""
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QTextBrowser, QLineEdit,
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QTextBrowser, QLineEdit,
     QComboBox, QPlainTextEdit, QDialogButtonBox)
 
 
@@ -10,6 +10,9 @@ class TaskDialog(QDialog):
         self.method = data['method']
         self.setWindowTitle(str(data.get('title', 'ARISE'))[:160])
         layout = QVBoxLayout(self)
+        self.heading = QLabel(self.windowTitle()); self.heading.setTextFormat(Qt.PlainText)
+        self.heading.setWordWrap(True); self.heading.setObjectName("chatTitle")
+        layout.addWidget(self.heading)
         self.details = QTextBrowser()
         self.details.setPlainText(str(data.get('message') or data.get('title') or 'Tu respuesta'))
         self.details.setOpenExternalLinks(False)

@@ -227,7 +227,7 @@ def make_server(runtime, port=0):
                 elif route == "/api/session/close":
                     with runtime.transition_lock: runtime.suspend_chat()
                     value = {"ok": True}
-                elif route == "/api/session/command": value = runtime.session_command(data["command"])
+                elif route == "/api/session/command": value = runtime.session_command(data["command"], data.get("chat"))
                 elif route == "/api/dialog": value = runtime.answer_dialog(data)
                 elif route == "/api/approval": runtime.approve(data["id"], data.get("approved")); value = {"ok": True}
                 elif route == "/api/desktop": value = runtime.set_desktop(data.get("enabled") is True)
