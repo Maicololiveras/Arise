@@ -2,7 +2,7 @@
 // Keep Pi in this process so stopping ARISE never leaves a detached engine.
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { resolve, join } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 const [cli, ...args] = process.argv.slice(2);
 if (!cli) throw new Error('gentle-shell requires the configured Pi CLI path');
@@ -11,6 +11,8 @@ let piArgs = [resolve(cli), ...args];
 const bridgeExtension = process.env.ARISE_AGY_ROOT ? fileURLToPath(new URL('./antigravity.mjs', import.meta.url)) : null;
 const root = process.env.ARISE_GENTLE_ROOT;
 const home = process.env.ARISE_GENTLE_HOME;
+const delegated = Boolean(process.env.ARISE_TERMINAL_TASK);
+if (delegated && (!root || !home)) throw new Error('Delegación cancelada: falta Gentle Shell.');
 if (root && home && process.env.ARISE_GENTLE_PREFIX) {
   const managed = await import(pathToFileURL(join(root,'scripts/bundled-install.mjs')).href);
   const layout = managed.prefixLayout({platform:process.platform, env:process.env, home:homedir(), root:process.env.ARISE_GENTLE_PREFIX});
@@ -50,11 +52,28 @@ if (root && home) {
     passthrough:args,baseEnv:process.env,homedir:homedir(),cwd:process.cwd(),
   });
   piArgs = invocation.args;
-  if (process.env.ARISE_GENTLE_OWNED === '1') {
+  if (delegated && process.env.ARISE_GENTLE_OWNED === '1') {
+    // The owned RPC home deliberately has an empty package extension list.
+    // A local TUI needs original, unpatched entry files and its own child injection.
+    const dir = join(root, 'extensions');
+    const entries = readdirSync(dir, {withFileTypes:true}).flatMap(e => {
+      const file = join(dir, e.name);
+      if (e.isFile() && /\.(ts|m?js)$/.test(e.name) && !e.name.endsWith('.d.ts')) return [file];
+      if (!e.isDirectory()) return [];
+      const index = ['index.ts','index.js','index.mjs'].map(n => join(file,n)).find(existsSync);
+      return index ? [index] : [];
+    }).sort();
+    if (!entries.includes(join(dir,'gentle-shell.ts'))) throw new Error('Gentle Shell integrado incompleto.');
+    for (const entry of entries) piArgs.push('--extension', entry);
+    const injection = await import(pathToFileURL(join(root,'runtime/child-package-injection.mjs')).href);
+    invocation.env[injection.CHILD_PACKAGE_INJECTION_ENV] = injection.encodeChildPackageInjection({
+      noExtensions:false, extensionPaths:[...entries, ...(bridgeExtension ? [bridgeExtension] : [])],
+    });
+  } else if (process.env.ARISE_GENTLE_OWNED === '1') {
     const injection = await import(pathToFileURL(join(root, 'runtime/child-package-injection.mjs')).href);
     const rpcExtensions = process.env.ARISE_GENTLE_RPC_EXTENSIONS;
     if (!rpcExtensions) {
-      // Interactive login/delegated terminals use upstream's complete package.
+      // Interactive login sessions use upstream's complete package.
       piArgs.push('--extension', root);
     }
     invocation.env[injection.CHILD_PACKAGE_INJECTION_ENV] = injection.encodeChildPackageInjection({

@@ -127,7 +127,7 @@ class TerminalTests(unittest.TestCase):
             script='''import extension from EXTENSION;
 import {readFileSync} from 'node:fs';import {join} from 'node:path';
 const hooks={},sent=[],tools={};let closed=0;
-extension({on:(name,fn)=>hooks[name]=fn,sendUserMessage:t=>sent.push(t),registerTool:t=>tools[t.name]=t});
+extension({getCommands:()=>['gentle:customize','gentle:profiles'].map(name=>({name,source:'extension'})),on:(name,fn)=>hooks[name]=fn,sendUserMessage:t=>sent.push(t),registerTool:t=>tools[t.name]=t});
 const ctx={ui:{notify(){}},shutdown(){closed++}};
 hooks.session_start({},ctx);hooks.session_start({},ctx);
 if(sent.length!==1)throw Error('duplicated task');
@@ -143,6 +143,19 @@ console.log(result.status);
             p=subprocess.run(['node','--input-type=module','-e',script],env={**os.environ,'ARISE_TERMINAL_TASK':temp},capture_output=True,text=True)
             self.assertEqual(p.returncode,0,p.stderr);self.assertEqual(p.stdout.strip(),'completed')
 
+    def test_bare_pi_never_receives_local_task(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            extension = (Path(__file__).resolve().parents[1]/'arise_app/resources/terminal-task.mjs').as_uri()
+            script = f"""import ext from {json.dumps(extension)};
+const hooks={{}}; let closed=false;
+ext({{on:(k,f)=>hooks[k]=f, registerTool(){{}},getCommands:()=>[],sendUserMessage(){{throw Error('task leaked')}}}});
+hooks.session_start({{}},{{ui:{{notify(){{}}}},shutdown(){{closed=true}}}});
+if(!closed) throw Error('plain Pi stayed open');"""
+            subprocess.run(['node','--input-type=module','-e',script],check=True,
+                           env={**os.environ,'ARISE_TERMINAL_TASK':temp}, timeout=10)
+            self.assertEqual(json.loads((root/'result.json').read_text())['status'],'failed')
+
     def test_extension_question_roundtrip_and_ordered_instructions(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);(root/'task.json').write_text(json.dumps({'task':'Task'}))
@@ -150,7 +163,7 @@ console.log(result.status);
             script="""import extension from EXTENSION;
 import {readFileSync,writeFileSync} from 'node:fs';import {join} from 'node:path';
 const hooks={},tools={},sent=[];const root=process.env.ARISE_TERMINAL_TASK;
-extension({on:(n,f)=>hooks[n]=f,registerTool:t=>tools[t.name]=t,sendUserMessage:(t,o)=>sent.push([t,o])});
+extension({getCommands:()=>['gentle:customize','gentle:profiles'].map(name=>({name,source:'extension'})),on:(n,f)=>hooks[n]=f,registerTool:t=>tools[t.name]=t,sendUserMessage:(t,o)=>sent.push([t,o])});
 const ctx={ui:{notify(){}},isIdle:()=>false,shutdown(){throw Error('premature close')}};
 hooks.session_start({},ctx);
 const pending=tools.arise_ask_user.execute('q',{question:'Choose folder'});

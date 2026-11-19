@@ -1,3 +1,7 @@
+# ARISE 0.4.53 — Verified Gentle Shell delegation
+
+Local Windows delegations load the integrated Gentle Shell extensions and verify the command catalog before sending the task. The parent chat receives an error if Gentle Shell did not load.
+
 # ARISE 0.4.52 — Workspace attachments
 
 Copy files from the desktop composer into the active workspace, review their paths before sending, and keep drafts separate when switching chats.

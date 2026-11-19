@@ -58,8 +58,14 @@ export default function terminalTask(pi) {
   },200);timer.unref();
   pi.on('session_start',(_event,ctx)=>{
     if(started)return;started=true;context=ctx;
+    const commands = new Set((pi.getCommands?.() || []).filter(c => c.source === 'extension').map(c => c.name));
+    if (!commands.has('gentle:customize') || !commands.has('gentle:profiles')) {
+      const text = 'No se cargaron los comandos de Gentle Shell. Repara el motor integrado de ARISE. La tarea no se envió.';
+      finished=true; clearInterval(timer); atomic('result',{status:'failed',text});
+      ctx.ui.notify(text,'error'); ctx.shutdown(); return;
+    }
     const {task}=JSON.parse(readFileSync(join(directory,'task.json'),'utf8'));
-    ctx.ui.notify('ARISE delegation: questions and new instructions stay linked to the originating chat. Stop or switch chat to end it.','info');
+    ctx.ui.notify('Gentle Shell · ARISE delegation: questions and new instructions stay linked to the originating chat. Stop or switch chat to end it.','info');
     state('running');pi.sendUserMessage(task);
   });
   pi.on('agent_end',(event,ctx)=>{

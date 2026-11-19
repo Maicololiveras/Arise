@@ -1,6 +1,8 @@
 # ARISE Assistant
 
-**QA development 0.4.52 · Desktop chat:** use **+ → Copy files to workspace** to copy up to 16 files (128 MB total) into the current chat workspace. Their relative paths appear in the draft; add your instructions and press Send. Removing a path from the draft does not delete the copy. For visual analysis, choose **Send image to model** instead.
+**QA development 0.4.53 · Local delegation:** local terminal tasks verify that the Gentle Shell interface and profile commands are loaded before submitting a task. If the runtime opens with plain Pi, the task is not sent.
+
+**Desktop chat:** use **+ → Copy files to workspace** to copy up to 16 files (128 MB total) into the current chat workspace. Their relative paths appear in the draft; add your instructions and press Send. Removing a path from the draft does not delete the copy. For visual analysis, choose **Send image to model** instead.
 
 
 **Previous QA changes (0.4.48):** [Progressive chat and optional voice settings](docs/VOICE-PREVIEW.md). Previous release: local voice performance instrumentation, endpoint-silence trimming and per-response Gonzalo bridge reuse. See the [voice roadmap and acceptance procedure](docs/VOICE-ROADMAP.md). Published download tables remain unchanged until CI publishes the installers.
