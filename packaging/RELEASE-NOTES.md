@@ -1,3 +1,7 @@
+# ARISE 0.4.54 — Gentle Shell required for the main chat
+
+The main chat verifies the extension commands for Gentle status, customization and profiles before accepting prompts. If verification fails the process is closed and ARISE directs the user to repair the integrated engine. The ARISE identity and chat-scoped permissions remain active.
+
 # ARISE 0.4.53 — Verified Gentle Shell delegation
 
 Local Windows delegations load the integrated Gentle Shell extensions and verify the command catalog before sending the task. The parent chat receives an error if Gentle Shell did not load.

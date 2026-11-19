@@ -1,6 +1,8 @@
 # ARISE Assistant
 
-**QA development 0.4.53 · Local delegation:** local terminal tasks verify that the Gentle Shell interface and profile commands are loaded before submitting a task. If the runtime opens with plain Pi, the task is not sent.
+**QA development 0.4.54 · Chat engine:** ARISE requires an active Gentle Shell session for its main desktop chat. Pi supplies the underlying RPC protocol. Gentle Shell supplies its installed extensions; ARISE adds its own personality, reminders and desktop tools. Check the active session in Settings → Agent → Chat capabilities. A bare Pi process cannot start a chat turn.
+
+**Local delegation:** local terminal tasks verify that the Gentle Shell interface and profile commands are loaded before submitting a task. If the runtime opens with plain Pi, the task is not sent.
 
 **Desktop chat:** use **+ → Copy files to workspace** to copy up to 16 files (128 MB total) into the current chat workspace. Their relative paths appear in the draft; add your instructions and press Send. Removing a path from the draft does not delete the copy. For visual analysis, choose **Send image to model** instead.
 

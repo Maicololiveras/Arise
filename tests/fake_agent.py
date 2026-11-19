@@ -41,6 +41,8 @@ for line in sys.stdin.buffer:
         continue
     kind = record["type"]
     data = {"model": {"id": "fixture", "provider": "test"}, "isStreaming": False} if kind == "get_state" else {}
+    if kind == "get_commands":
+        data = {"commands": [{"source": "extension", "name": name} for name in ("gentle:status", "gentle:customize", "gentle:profiles")]}
     if kind == "prompt":
         data = {"disposition": "started"}
     if kind == "abort":

@@ -16,6 +16,22 @@ class ChatCapabilitiesTests(unittest.TestCase):
         self.r.storage.config.update(pi_command=[sys.executable,str(Path(__file__).parent/'fake_agent.py'),'--pi'],mcp={})
     def tearDown(self):
         self.r.close(); self.r.storage.db.close(); self.tmp.cleanup()
+    def test_main_chat_rejects_plain_pi_before_submitting_a_prompt(self):
+        from arise_app.processes import JsonProcess
+        request = JsonProcess.request
+        calls = []
+        def plain(proc, record, **options):
+            calls.append(record['type'])
+            if record['type'] == 'get_commands':
+                return {'data': {'commands': [{'source':'prompt','name':'gentle:status'}]}}
+            return request(proc, record, **options)
+        with patch.object(JsonProcess, 'request', plain):
+            with self.assertRaisesRegex(RuntimeError, 'Gentle Shell no está listo'):
+                self.r.prompt('no enviar')
+        self.assertNotIn('prompt', calls)
+        self.assertIsNone(self.r.pi)
+        self.assertIsNone(self.r.capabilities()['engine'])
+
     def test_two_messages_voice_settings_and_stop_retain_process(self):
         r=self.r
         r.prompt('primero'); self.assertTrue(r.settled.wait(5)); process=r.pi.process
