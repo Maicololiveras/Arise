@@ -1,6 +1,8 @@
 # ARISE Assistant
 
-**QA development 0.4.54 · Chat engine:** ARISE requires an active Gentle Shell session for its main desktop chat. Pi supplies the underlying RPC protocol. Gentle Shell supplies its installed extensions; ARISE adds its own personality, reminders and desktop tools. Check the active session in Settings → Agent → Chat capabilities. A bare Pi process cannot start a chat turn.
+**QA development 0.4.55 · Agent menu:** In the desktop chat header, choose **Agent** to open Gentle Shell profiles, pick an available model or reasoning effort, or sign in. Model and effort changes apply to the idle chat without restarting its engine. Manual paths and identifiers are under Settings → Agent → Show manual configuration.
+
+**Chat engine:** ARISE requires an active Gentle Shell session for its main desktop chat. Pi supplies the underlying RPC protocol. Gentle Shell supplies its installed extensions; ARISE adds its own personality, reminders and desktop tools. Check the active session in Settings → Agent → Chat capabilities. A bare Pi process cannot start a chat turn.
 
 **Local delegation:** local terminal tasks verify that the Gentle Shell interface and profile commands are loaded before submitting a task. If the runtime opens with plain Pi, the task is not sent.
 

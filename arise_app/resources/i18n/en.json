@@ -1,4 +1,12 @@
 {
+  "Cambiar perfil…": "Change profile…",
+  "Elegir modelo…": "Choose model…",
+  "Elegir esfuerzo…": "Choose reasoning effort…",
+  "Conectar cuenta…": "Connect account…",
+  "No hay opciones disponibles. Revisa la cuenta y el modelo.": "No options available. Check your account and model.",
+  "Mostrar configuración manual": "Show manual configuration",
+  "El chat cambió o está ocupado.": "The chat changed or is busy.",
+  "La opción ya no está disponible.": "This option is no longer available.",
   "ARISE conectado a Gentle Shell.": "ARISE connected to Gentle Shell.",
   "Gentle Shell no está listo. En Ajustes, selecciona Configurar / reparar Gentle integrado y vuelve a conectar.": "Gentle Shell is not ready. In Settings, choose Configure / repair integrated Gentle and reconnect.",
   "Escribe un mensaje o adjunta archivos con +…": "Write a message or attach files with +…",

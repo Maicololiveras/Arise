@@ -732,6 +732,42 @@ class Runtime:
             self.sessions.attach(identity, project, isolated=False)
             return self.switch_conversation(identity)
 
+    def agent_picker(self, chat, kind, selection=None):
+        """Read or change one choice on the same live Gentle session."""
+        with self.transition_lock:
+            if chat != self.conversation or self.busy:
+                raise RuntimeError("El chat cambió o está ocupado.")
+            if kind not in ("model", "effort", "profile"):
+                raise ValueError("Opción desconocida.")
+            if kind == "profile":
+                return self.session_command("/gentle:profiles")
+            self.connect_pi()
+            def rpc(method, **params):
+                return self.pi.request({"type": method, **params}).get("data", {})
+            if kind == "model":
+                options = [[m["provider"], m["id"]] for m in rpc("get_available_models").get("models", [])]
+            else:
+                options = rpc("get_available_thinking_levels").get("levels", [])
+            if selection is not None:
+                if selection not in options:
+                    raise ValueError("La opción ya no está disponible.")
+                if kind == "model":
+                    rpc("set_model", provider=selection[0], modelId=selection[1])
+                else:
+                    rpc("set_thinking_level", level=selection)
+            state = rpc("get_state")
+            model = state.get("model") or {}
+            current = [model.get("provider"), model.get("id")] if kind == "model" else state.get("thinkingLevel")
+            if selection is not None:
+                changes = {}
+                if model.get("provider") and model.get("id"):
+                    changes.update(agent_provider=model["provider"], agent_model=model["id"])
+                if state.get("thinkingLevel"): changes["thinking"] = state["thinkingLevel"]
+                self.pi_state.update(state)
+                self.storage.save_config({**self.storage.config, **changes})
+                self.sessions.save_preferences(chat)
+            return {"options": options, "current": current}
+
     def session_command(self, command):
         if not isinstance(command, str) or not command.startswith("/") or len(command) > 500:
             raise ValueError("Escribe un comando de la sesión, por ejemplo /gentle:profiles")

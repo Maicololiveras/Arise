@@ -254,9 +254,15 @@ class Settings(QDialog):
         self.text_field(f, "preferred_name", "Cómo llamarte (vacío: usuario del PC)", config.get("preferred_name", ""))
         self.fields["preferred_name"].setMaxLength(80)
         self.fields["engine_mode"].setProperty("localizedItems", True)
+        advanced_agent = QCheckBox("Mostrar configuración manual")
+        f.addRow(advanced_agent)
         for key, label in (("workspace", "Carpeta de trabajo"), ("pi_command", "Comando Pi (lista JSON)"), ("gentle_path", "Carpeta Gentle Shell"), ("agent_provider", "Proveedor del agente"), ("agent_model", "Modelo del agente")):
             value = json.dumps(config[key]) if key == "pi_command" else config[key]
             self.text_field(f, key, label, value)
+        for key in ("pi_command", "gentle_path", "agent_provider", "agent_model"):
+            field = self.fields[key]
+            f.setRowVisible(field, False)
+            advanced_agent.toggled.connect(lambda visible, form=f, w=field: form.setRowVisible(w, visible))
         self.fields["thinking"] = WheelSafeCombo(); self.fields["thinking"].addItems(["off", "minimal", "low", "medium", "high", "xhigh"])
         self.fields["thinking"].setCurrentText(config["thinking"]); f.addRow("Esfuerzo", self.fields["thinking"])
         self.check_field(f, "code_enabled", "Autorizar ejecución local en este chat", config["code_enabled"])
@@ -669,6 +675,13 @@ class Panel(QWidget):
         self.workspace_label = QLabel(); self.workspace_label.setObjectName("chatStatus")
         self.workspace_label.setTextFormat(Qt.PlainText)
         self.workspace_label.setMaximumWidth(165); header.addWidget(self.workspace_label)
+        self.agent_button = QPushButton("Agente")
+        menu = QMenu(self.agent_button)
+        for label, kind in (("Cambiar perfil…","profile"), ("Elegir modelo…","model"), ("Elegir esfuerzo…","effort")):
+            menu.addAction(label, lambda checked=False,k=kind: self.pick_agent(k))
+        menu.addSeparator()
+        menu.addAction("Conectar cuenta…", self.open_agent_accounts)
+        self.agent_button.setMenu(menu); header.addWidget(self.agent_button)
         layout.addLayout(header)
         self.chat_drafts = {}
         self.importing_chats = set()
@@ -810,6 +823,32 @@ class Panel(QWidget):
         if url.scheme() in ('https','http'):
             if QMessageBox.question(self,'Abrir enlace',url.toString()) == QMessageBox.Yes:
                 QDesktopServices.openUrl(url)
+
+    def open_agent_accounts(self):
+        from .accounts_widget import AccountsDialog
+        AccountsDialog(self.runtime, self).exec()
+
+    def pick_agent(self, kind):
+        from .i18n import tr
+        chat = self.current_chat
+        def display(value):
+            return " / ".join(value) if isinstance(value, list) else str(value or "")
+        def show(data):
+            if self.current_chat != chat or kind == "profile": return
+            options = data["options"]
+            if not options:
+                QMessageBox.information(self, tr("Agente"), tr("No hay opciones disponibles. Revisa la cuenta y el modelo."))
+                return
+            title = tr("Elegir modelo…" if kind == "model" else "Elegir esfuerzo…")
+            dialog = QInputDialog(self); dialog.setWindowTitle(title); dialog.setLabelText(title)
+            dialog.setComboBoxItems([display(v) for v in options])
+            dialog.setTextValue(display(data["current"]) if data["current"] in options else display(options[0]))
+            if not dialog.exec() or self.current_chat != chat: return
+            choice = options[[display(v) for v in options].index(dialog.textValue())]
+            def applied(result):
+                if self.current_chat == chat: self.connection_notice.set_notice(title.rstrip("…") + ": " + display(result["current"]))
+            self.controller.background(lambda: self.runtime.agent_picker(chat, kind, choice), applied)
+        self.controller.background(lambda: self.runtime.agent_picker(chat, kind), show)
 
     def choose_files(self):
         from .attachments import import_workspace_files

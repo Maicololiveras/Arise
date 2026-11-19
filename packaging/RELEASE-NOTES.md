@@ -1,3 +1,7 @@
+# ARISE 0.4.55 — Agent controls in the chat header
+
+Choose profiles, models, reasoning effort or account sign-in from the desktop chat. Model and effort choices come from the active Gentle session and persist per chat. Manual engine fields are collapsed in Settings.
+
 # ARISE 0.4.54 — Gentle Shell required for the main chat
 
 The main chat verifies the extension commands for Gentle status, customization and profiles before accepting prompts. If verification fails the process is closed and ARISE directs the user to repair the integrated engine. The ARISE identity and chat-scoped permissions remain active.

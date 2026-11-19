@@ -100,6 +100,10 @@ def make_server(runtime, port=0):
                 route = urllib.parse.urlparse(self.path).path
                 if route.startswith('/api/accounts/'):
                     value=runtime.accounts.call(route.rsplit('/',1)[1],data)
+                elif route == '/api/desktop/agent-picker':
+                    if not hmac.compare_digest(self.headers.get("X-Arise-Accounts", ""), runtime.accounts_token):
+                        self.reply({"error": "Desktop only"}, 403); return
+                    value = runtime.agent_picker(data.get('chat'), data.get('kind'), data.get('selection'))
                 elif route == '/api/desktop/layout-ack':
                     value=runtime.desktop_layout.acknowledge(data.get('id'))
                 elif route == '/api/connections/token':

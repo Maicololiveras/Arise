@@ -83,6 +83,11 @@ class RemoteAssistant:
     def emit(self, kind, data): return self.request("notice", {"kind": kind, "data": data})
     def desktop_snapshot(self): return self.request("desktop/snapshot")
     def events_after(self, after): return self.request("events?after=" + str(after), timeout=1)
+    def agent_picker(self, chat, kind, selection=None):
+        result = self.request("desktop/agent-picker", dict(chat=chat, kind=kind, selection=selection), timeout=120)
+        if selection is not None: self.storage.config = self.request("config")
+        return result
+
     def connect_pi(self): return self.request("connect", {}, timeout=120)
     def connect_memory(self, changes):
         try:
