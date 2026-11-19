@@ -1,10 +1,12 @@
-"""Exercise ARISE's wrapper with the real pinned Gentle 4.7 launcher."""
+"""Exercise ARISE's wrapper with the real pinned Gentle 4.9 launcher."""
 import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from arise_app.gentle_ui import extension_for_rpc
+from scripts.patch_gentle import apply
 from arise_app.gentle_compat import require_compatible_pi
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -13,9 +15,22 @@ GENTLE=ROOT/'vendor/node_modules/gentle-pi'
 class Gentle43Tests(unittest.TestCase):
     def test_real_package_floor(self):
         package=json.loads((GENTLE/'package.json').read_text())
-        self.assertEqual(package['version'],'4.8.0')
+        self.assertEqual(package['version'],'4.9.0')
         require_compatible_pi(package,'1.2.0')
         with self.assertRaises(RuntimeError):require_compatible_pi(package,'1.1.0')
+
+    def test_rpc_panels_match_the_pinned_upstream_sources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for relative in ('gentle-ai.ts', 'gentle-shell.ts', 'gentle-agents.ts', 'gentle-stats.ts', 'history/index.ts'):
+                with self.subTest(relative=relative):
+                    source = GENTLE/'extensions'/relative
+                    adapted = extension_for_rpc(GENTLE, Path(tmp), source)
+                    self.assertNotEqual(adapted, source)
+                    self.assertTrue(adapted.is_file())
+            registry = GENTLE/'extensions/skill-registry.ts'
+            before = registry.read_bytes()
+            apply(GENTLE)
+            self.assertEqual(registry.read_bytes(), before)
 
     def test_wrapper_preserves_isolated_linked_and_custom_homes(self):
         with tempfile.TemporaryDirectory() as temp:

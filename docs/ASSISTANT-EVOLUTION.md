@@ -2,7 +2,7 @@
 
 ## Implemented in this revision
 
-The owned engine pins Gentle Shell 4.8.0, Pi 1.5.2, Gentle AI 4.5.0,
+The owned engine pins Gentle Shell 4.9.0, Pi 1.5.2, Gentle AI 4.6.0,
 Engram 3.7.2 and gentle-engram 0.8.0. Installer archives retain their
 platform-specific SHA-256 validation. The 4.7 registry backport is not applied
 to 4.8. Git must be available to verify automatic registry writes; an unknown Git state is not treated as permission to overwrite. Installed extensions retain their own tool definitions and permissions.
@@ -52,7 +52,7 @@ unit tests. Do not globally rewrite “a raíz” in user documents or dictation
 
 ## Sources reviewed
 
-- [Gentle Shell 4.8.0 release](https://github.com/Gentleman-Programming/gentle-shell/releases/tag/v4.8.0): desktop RPC, tool/context changes and pinned runtime.
+- [Gentle Shell 4.9.0 release](https://github.com/Gentleman-Programming/gentle-shell/releases/tag/v4.9.0): desktop RPC, tool/context changes and pinned runtime.
 - [Pi Web Access](https://www.npmjs.com/package/pi-web-access): installed 0.48.0 README and package metadata.
 - [Whisper transcription](https://github.com/openai/whisper/blob/main/whisper/transcribe.py): automatic language detection.
 - [Faster Whisper transcription](https://github.com/SYSTRAN/faster-whisper/blob/master/faster_whisper/transcribe.py): language selection and vocabulary hints.

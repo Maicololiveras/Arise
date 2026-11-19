@@ -48,7 +48,7 @@ then connect your account. Back up your profile before upgrading.
 ### Before you install
 
 Choose the desktop installer that matches your operating system and CPU. Desktop packages include
-ARISE's own Gentle Shell 4.8.0, Pi, Node, Gentle AI and Engram; no separate
+ARISE's own Gentle Shell 4.9.0, Pi, Node, Gentle AI and Engram; no separate
 Gentle installation is required. Sizes below are approximate decimal MB.
 
 <a id="install-windows"></a>
@@ -257,9 +257,9 @@ you intend to remove your settings, conversations and memory.
 
 | Component | Pinned version |
 | --- | --- |
-| Gentle Shell | 4.8.0 |
+| Gentle Shell | 4.9.0 |
 | Pi | 1.5.2 |
-| Gentle AI | 4.5.0 |
+| Gentle AI | 4.6.0 |
 | Engram | 3.7.2 |
 | gentle-engram | 0.8.0 |
 | Bundled Node | 24.21.0 |
