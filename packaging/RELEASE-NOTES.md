@@ -1,3 +1,7 @@
+# ARISE 0.4.51 — Gentle Shell 4.9.0
+
+The integrated agent uses Gentle Shell 4.9.0, Pi 1.5.2 and Gentle AI 4.6.0.
+
 # ARISE 0.4.50 — Resident desktop event connection
 
 A dedicated reader delivers engine events over a reusable authenticated loopback socket. Ordinary prompts reuse known session state. See [Desktop transport](../docs/DESKTOP-TRANSPORT.md).
