@@ -60,7 +60,9 @@ QPushButton:hover {background:#205368;} QPushButton:disabled {color:#7292A8;}
 QLabel#title {font-size:24px;font-weight:700;color:#74F6FF;}
 QLabel#chatTitle {font-size:18px;font-weight:600;color:#EDF8FF;}
 QLabel#chatStatus,QLabel#chatPrivacy {font-size:11px;color:#9DB3C7;}
-QTextBrowser#chatHistory {background:transparent;border:0;padding:6px;font-size:15px;}
+QTextBrowser#chatHistory {background:#0D2032;border:1px solid #203C51;border-radius:12px;padding:10px;font-size:15px;}
+QTextEdit#chatComposer {background:#112C40;border:1px solid #34576D;border-radius:12px;padding:9px;}
+QTextEdit#chatComposer:focus {border-color:#63CEDB;}
 QPushButton#iconButton {padding:6px;border:0;background:transparent;border-radius:8px;}
 QPushButton#iconButton:hover {background:#17364C;}
 QPushButton#iconButton:checked {background:#205368;border:1px solid #74F6FF;}
@@ -662,7 +664,14 @@ class Panel(QWidget):
         self.setWindowTitle(application_name()); self.setWindowIcon(icon()); self.resize(420, 680); self.setMinimumSize(320, 400); self.setMaximumWidth(900); self.setStyleSheet(STYLE)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 12, 14, 10); layout.setSpacing(7)
-        title = QLabel(application_name()); title.setObjectName("chatTitle"); title.hide()
+        title = QLabel(application_name()); title.setObjectName("chatTitle")
+        header = QHBoxLayout(); header.addWidget(title); header.addStretch()
+        self.workspace_label = QLabel(); self.workspace_label.setObjectName("chatStatus")
+        self.workspace_label.setTextFormat(Qt.PlainText)
+        self.workspace_label.setMaximumWidth(165); header.addWidget(self.workspace_label)
+        layout.addLayout(header)
+        self.chat_drafts = {}
+        self.importing_chats = set()
         self.status = QLabel("Listo para ayudarte"); self.status.setObjectName("chatStatus"); self.status.hide()
         self.privacy = QLabel("Micrófono apagado · Pantalla apagada · Control apagado"); self.privacy.setObjectName("chatPrivacy"); self.privacy.setWordWrap(True); self.privacy.hide()
         from .chat_content import ChatHistory
@@ -694,7 +703,7 @@ class Panel(QWidget):
         self.attachment_layout.setContentsMargins(0,0,0,0);layout.addWidget(self.attachment_bar);self.attachment_bar.hide()
         self.live_reply=QPlainTextEdit();self.live_reply.setReadOnly(True);self.live_reply.setUndoRedoEnabled(False);self.live_reply.setMaximumHeight(80);self.live_reply.hide();layout.addWidget(self.live_reply)
         self.history.anchorClicked.connect(self.open_link)
-        self.input = ChatInput(); self.input.setAcceptRichText(False); self.input.setPlaceholderText("Escribe o pega una imagen con Ctrl+V…"); self.input.setFixedHeight(58)
+        self.input = ChatInput(); self.input.setObjectName("chatComposer"); self.input.setAcceptRichText(False); self.input.setPlaceholderText("Escribe un mensaje o adjunta archivos con +…"); self.input.setFixedHeight(58)
         self.input.setToolTip("Enter para enviar · Shift+Enter para otra línea · Alt+Q recupera el último mensaje"); self.input.submitted.connect(self.send); self.input.image_pasted.connect(self.add_image); layout.addWidget(self.input)
         self.dictation_label = QLabel(); self.dictation_label.setWordWrap(True); self.dictation_label.hide(); layout.addWidget(self.dictation_label)
         self.study_bar = QWidget(); study_row = QHBoxLayout(self.study_bar); study_row.setContentsMargins(0,0,0,0)
@@ -726,7 +735,11 @@ class Panel(QWidget):
         permission = QWidgetAction(self.navigation_menu); permission.setDefaultWidget(self.control); self.navigation_menu.addAction(permission)
         self.navigation.setMenu(self.navigation_menu)
         self.folder_button = self.icon_button(row, "folder", "Elegir carpeta del proyecto", self.open_project)
-        self.icon_button(row, "plus", "Adjuntar imagen", self.choose_image)
+        self.attach_button = self.icon_button(row, "plus", "Adjuntar archivos o imágenes")
+        attach_menu = QMenu(self.attach_button)
+        attach_menu.addAction("Copiar archivos al espacio de trabajo…", self.choose_files)
+        attach_menu.addAction("Enviar imagen al modelo…", self.choose_image)
+        self.attach_button.setMenu(attach_menu)
         self.icon_button(row, "settings", "Ajustes", controller.show_settings)
         self.mic_button = self.icon_button(row, "mic", "Dictar al borrador · Parakeet · micrófono predeterminado", self.toggle_voice)
         self.mic_button.setCheckable(True)
@@ -798,6 +811,33 @@ class Panel(QWidget):
             if QMessageBox.question(self,'Abrir enlace',url.toString()) == QMessageBox.Yes:
                 QDesktopServices.openUrl(url)
 
+    def choose_files(self):
+        from .attachments import import_workspace_files
+        from .i18n import tr
+        if self.input.isReadOnly(): return
+        chat = self.current_chat
+        if chat in self.importing_chats: return
+        workspace = self.chat_workspace
+        paths, _ = QFileDialog.getOpenFileNames(self, tr("Copiar archivos al espacio de trabajo…"))
+        if not paths: return
+        self.importing_chats.add(chat)
+        self.connection_notice.set_notice(tr("Copiando archivos…"))
+        def imported(refs):
+            self.importing_chats.discard(chat)
+            # Keep a finished import with its original chat, even after navigation.
+            block = "\n".join(refs)
+            if self.current_chat == chat and not self.input.isReadOnly():
+                cursor = self.input.textCursor()
+                from PySide6.QtGui import QTextCursor
+                cursor.movePosition(QTextCursor.End)
+                cursor.insertText(("\n" if self.input.toPlainText() else "") + block + "\n")
+                self.input.setTextCursor(cursor); self.input.setFocus()
+                self.connection_notice.set_notice(tr("Archivos copiados. Añade tus instrucciones y pulsa Enviar."))
+            else:
+                text, images = self.chat_drafts.get(chat, ("", []))
+                self.chat_drafts[chat] = ((text + "\n" + block).strip() + "\n", images)
+        self.controller.background(lambda: import_workspace_files(workspace, paths), imported, lambda _: self.importing_chats.discard(chat))
+
     def choose_image(self):
         path,_=QFileDialog.getOpenFileName(self,'Adjuntar imagen',filter='Imágenes (*.png *.jpg *.jpeg *.webp)')
         if path:
@@ -855,7 +895,15 @@ class Panel(QWidget):
         if getattr(self, 'command_dialog', None):
             self.command_dialog.close()
             self.command_dialog = None
-        catalog = self.runtime.project_catalog(); self.current_chat = catalog["active"]["conversation"]
+        catalog = self.runtime.project_catalog(); next_chat = catalog["active"]["conversation"]
+        previous = getattr(self, "current_chat", None)
+        if previous and previous != next_chat:
+            if not self.input.isReadOnly():
+                self.chat_drafts[previous] = (self.input.toPlainText(), list(self.attachments))
+            draft, images = self.chat_drafts.pop(next_chat, ("", []))
+            self.input.setPlainText(draft); self.attachments = images; self.refresh_attachments()
+        self.current_chat = next_chat
+        self.chat_workspace = catalog["active"]["workspace"]
         self.history.clear()
         self.connection_notice.set_notice('')
         snapshot = self.runtime.status()
@@ -876,6 +924,8 @@ class Panel(QWidget):
         for p in catalog["projects"]: self.projects.addItem(p["name"], p["path"])
         active_project = next(p for p in catalog["projects"] if p["id"] == catalog["active"]["project"])
         self.projects.setCurrentIndex(self.projects.findData(active_project["path"])); self.projects.blockSignals(False)
+        self.workspace_label.setText(self.workspace_label.fontMetrics().elidedText(active_project["name"], Qt.ElideMiddle, 160))
+        self.workspace_label.setToolTip(catalog["active"]["workspace"])
         self.projects.setToolTip(catalog["active"]["workspace"])
         self.folder_button.setToolTip("Carpeta: " + catalog["active"]["workspace"])
         self.navigation.setToolTip(active_project["name"] + " · " + self.conversations.currentText())
@@ -928,17 +978,19 @@ class Panel(QWidget):
         self.status.setText('Borrador recuperado; no se ha reenviado.')
 
     def send(self):
-        if self.controller.dictation.active: return
+        if self.controller.dictation.active or self.current_chat in self.importing_chats: return
         text=self.input.toPlainText().strip();images=list(self.attachments)
         if self.input.isReadOnly() or (not text and not images):return
         if text.startswith('/'):
             if images:
                 QMessageBox.warning(self,'Imágenes','Envía las imágenes con un mensaje, sin comando /.');return
             self.input.clear();self.run_command(text);return
-        self.last_submission=(self.current_chat,text,images)
+        chat = self.current_chat
+        self.last_submission=(chat,text,images)
         self.send_button.setEnabled(False);self.input.setReadOnly(True)
         def done(_):
-            self.input.clear();self.attachments.clear();self.refresh_attachments()
+            if self.current_chat == chat:
+                self.input.clear();self.attachments.clear();self.refresh_attachments()
             self.send_button.setEnabled(True);self.input.setReadOnly(False);self.input.setFocus()
         def failed(_):
             self.send_button.setEnabled(True);self.input.setReadOnly(False)

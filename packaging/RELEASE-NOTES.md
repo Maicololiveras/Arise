@@ -1,3 +1,7 @@
+# ARISE 0.4.52 — Workspace attachments
+
+Copy files from the desktop composer into the active workspace, review their paths before sending, and keep drafts separate when switching chats.
+
 # ARISE 0.4.51 — Gentle Shell 4.9.0
 
 The integrated agent uses Gentle Shell 4.9.0, Pi 1.5.2 and Gentle AI 4.6.0.

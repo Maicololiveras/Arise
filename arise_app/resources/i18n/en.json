@@ -1,4 +1,13 @@
 {
+  "Escribe un mensaje o adjunta archivos con +…": "Write a message or attach files with +…",
+  "Adjuntar archivos o imágenes": "Attach files or images",
+  "Copiar archivos al espacio de trabajo…": "Copy files to workspace…",
+  "Enviar imagen al modelo…": "Send image to model…",
+  "Copiando archivos…": "Copying files…",
+  "Archivos copiados. Añade tus instrucciones y pulsa Enviar.": "Files copied. Add your instructions and press Send.",
+  "Selecciona entre 1 y 16 archivos.": "Select between 1 and 16 files.",
+  "Selecciona solo archivos.": "Select files only.",
+  "Los adjuntos superan 128 MB en total.": "Attachments exceed 128 MB in total.",
   "Permiso de Gentle": "Gentle permission",
   "Perfil activo": "Active profile",
   "Trabajos de Gentle": "Gentle jobs",
