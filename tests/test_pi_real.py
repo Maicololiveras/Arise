@@ -123,6 +123,25 @@ class RealPiTests(unittest.TestCase):
                 model_files = list((Path(root)/"gentle-config").rglob("*profiles*.json"))
                 self.assertTrue(any('arise-test/arise-test' in p.read_text() and '"off"' in p.read_text() for p in model_files))
 
+                task = runtime.session_command("/gentle:profiles")
+                answer_next("Modo de orquestación")
+                answer_next("full-delegation")
+                answer_next("Cerrar")
+                self.assertTrue(runtime.settled.wait(10))
+                self.assertTrue(any("full-delegation" in p.read_text() for p in model_files))
+
+                for method, params, field in (("get_config", {"store":"profiles"}, "value"),
+                                              ("list_agent_definitions", {}, "agents"),
+                                              ("list_subagents", {}, "agents")):
+                    reply = runtime.shell_control(original, method, params)
+                    self.assertTrue(reply["supported"], method)
+                    self.assertIn(field, reply["data"])
+                task = runtime.session_command("/gentle:customize")
+                dialog = answer_next("\x1b", "arise-component:")
+                self.assertTrue(dialog["placeholder"].strip())
+                self.assertTrue(runtime.settled.wait(10), "El componente de personalización quedó abierto")
+                self.assertEqual(runtime.tasks[task["task_id"]]["status"], "done")
+
                 for command, choices in (("/gentle:commands", ["Cerrar"]), ("/gentle:agents", ["Cerrar"]),
                                          ("/gentle:stats", ["7d", "project"]), ("/gentle:vim", ["status"]),
                                          ("/gentle:background-subagents", ["status"])):

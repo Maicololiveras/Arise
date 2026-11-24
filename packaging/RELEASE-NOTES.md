@@ -1,3 +1,7 @@
+# ARISE 0.4.57 — Gentle Shell 5 desktop controls
+
+Open Settings → Agent to manage profiles, choose models and orchestration modes, inspect subagent activity or cancel a subagent. Use /option for the live command catalog. Interactive components appear inside the chat. Gentle Voice uses local dictation. Gentle Music on Windows is deferred. The integrated engine uses Gentle Shell 5.0.0, Gentle AI 5.0.0 and Pi 1.6.0.
+
 # ARISE 0.4.56 — Embedded command palette and optional idle suspension
 
 Use /option to search registered Gentle Shell commands inside the desktop chat. Configuration questions and approvals appear in the same panel. In Settings → Agent, enable low-memory mode and choose an idle timeout. Reminders continue in the resident service.

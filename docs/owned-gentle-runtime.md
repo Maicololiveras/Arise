@@ -1,7 +1,7 @@
 # ARISE-owned Gentle runtime (introduced in 0.4.36)
 
-ARISE now ships Gentle Shell 4.9.0 and Pi 1.5.2. Node, pinned native
-Gentle AI 4.6.0, Engram 3.7.2 and gentle-engram 0.8.0 travel in the application
+ARISE now ships Gentle Shell 5.0.0 and Pi 1.6.0. Node, pinned native
+Gentle AI 5.0.0, Engram 3.7.2 and gentle-engram 0.8.0 travel in the application
 bundle. Users do not install Gentle Shell, Node, npm or Go separately to use
 this engine. Git and other project-specific build tools remain optional external
 dependencies for tasks that need them.
@@ -75,7 +75,7 @@ engine with a restricted PATH and invalid inherited Gentle overrides. Physical
 clean-PC acceptance remains a separate QA check.
 
 References:
-- [Gentle Shell v4.9.0](https://github.com/Gentleman-Programming/gentle-shell/tree/v4.9.0)
+- [Gentle Shell v5.0.0](https://github.com/Gentleman-Programming/gentle-shell/tree/v5.0.0)
 - [Gentle Dot daemon](https://github.com/Gentleman-Programming/gentle-dot/tree/b141d30/packages/daemon)
 - [Engram v3.7.2](https://github.com/Gentleman-Programming/engram/releases/tag/v3.7.2)
 

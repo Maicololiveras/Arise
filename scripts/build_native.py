@@ -136,7 +136,7 @@ def build(expected):
         'web_package': '@bundle/node/node_modules/pi-web-access',
         'pi_command': ['@bundle/node/node' + suffix, '@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js'],
         'gentle_path': '@bundle/node/node_modules/gentle-pi', 'mcp': {},
-        'versions': {'arise': __version__, 'pi': '1.5.2', 'gentle': '4.9.0', 'gentle_ai': '4.6.0', 'engram': '3.7.2', 'gentle_engram': '0.8.0'},
+        'versions': {'arise': __version__, 'pi': '1.6.0', 'gentle': '5.0.0', 'gentle_ai': '5.0.0', 'engram': '3.7.2', 'gentle_engram': '0.8.0'},
         'capabilities': {'desktop_tools_bundled': False, 'offline_models_bundled': False, 'automatic_updates': False},
     }
     (bundle / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')

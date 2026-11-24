@@ -15,7 +15,7 @@ GENTLE=ROOT/'vendor/node_modules/gentle-pi'
 class Gentle43Tests(unittest.TestCase):
     def test_real_package_floor(self):
         package=json.loads((GENTLE/'package.json').read_text())
-        self.assertEqual(package['version'],'4.9.0')
+        self.assertEqual(package['version'],'5.0.0')
         require_compatible_pi(package,'1.2.0')
         with self.assertRaises(RuntimeError):require_compatible_pi(package,'1.1.0')
 

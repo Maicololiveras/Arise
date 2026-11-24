@@ -272,6 +272,7 @@ class Settings(QDialog):
         note = QLabel("Incluye shell y subagentes de Gentle. La carpeta es el directorio inicial, no una sandbox. "
                       "Cada chat nuevo requiere autorización propia. Ocultar el panel o terminar la voz conserva la sesión.")
         note.setWordWrap(True); f.addRow(note)
+        self.button(f, "Configurar Gentle Shell en el chat", self.open_shell_controls)
         self.button(f, "Ver capacidades reales", self.show_capabilities)
         self.button(f, "Elegir carpeta de trabajo", lambda: self.pick("workspace", True))
         self.button(f, "Elegir Gentle Shell", lambda: self.pick("gentle_path", True))
@@ -649,6 +650,11 @@ class Settings(QDialog):
                 try: winreg.DeleteValue(key, "ARISE")
                 except FileNotFoundError: pass
 
+    def open_shell_controls(self):
+        self.hide()
+        self.controller.show_panel()
+        self.controller.panel.open_shell_controls()
+
     def show_capabilities(self):
         def operation():
             self.runtime.connect_pi()
@@ -682,6 +688,7 @@ class Panel(QWidget):
         menu = QMenu(self.agent_button)
         for label, kind in (("Cambiar perfil…","profile"), ("Elegir modelo…","model"), ("Elegir esfuerzo…","effort")):
             menu.addAction(label, lambda checked=False,k=kind: self.pick_agent(k))
+        menu.addAction("Configurar Gentle Shell…", self.open_shell_controls)
         menu.addAction("Comandos de Gentle Shell · /option", lambda: self.refresh_commands(True))
         menu.addSeparator()
         menu.addAction("Conectar cuenta…", self.open_agent_accounts)
@@ -784,7 +791,7 @@ class Panel(QWidget):
         view = QPlainTextEdit(); view.setReadOnly(True)
         view.setPlainText(self.controller.dictation.history_text()); layout.addWidget(view)
         close = QPushButton("Cerrar"); close.clicked.connect(dialog.accept); layout.addWidget(close)
-        dialog.resize(580, 420); dialog.exec()
+        dialog.resize(580, 420); self.embed(dialog)
 
     def toggle_voice(self):
         if self.controller.dictation.state == 'recording':
@@ -1013,17 +1020,41 @@ class Panel(QWidget):
                 dialog.status.setText("No se pudieron cargar los comandos. Cierra y vuelve a abrir para reintentar.")
         self.controller.background(operation, done, failed=failed)
 
+    def open_shell_controls(self):
+        from .shell_controls import ShellControls
+        page = ShellControls(self)
+        self.embed(page)
+        page.refresh()
+
+    def media_command(self, title, options, action):
+        from .task_dialog import TaskDialog
+        chat = self.current_chat
+        box = TaskDialog({'method':'select', 'title':title, 'options':list(options)}, self)
+        box.accepted.connect(lambda: action(options[box.value()]) if self.current_chat == chat else None)
+        self.embed(box)
+
     def run_command(self, text):
         if text.strip().casefold() == "/option":
             self.refresh_commands(True); return
-        if text == "/gentle:customize":
-            from .task_dialog import TaskDialog
-            from .i18n import tr
-            options = ["Cambiar perfil…", "Elegir modelo…", "Elegir esfuerzo…", "Conectar cuenta…", "Comandos de Gentle Shell · /option"]
-            actions = [lambda:self.pick_agent("profile"), lambda:self.pick_agent("model"), lambda:self.pick_agent("effort"), self.open_agent_accounts, lambda:self.refresh_commands(True)]
-            box = TaskDialog({"method":"select","title":tr("Configurar el agente"),"options":[tr(v) for v in options]}, self)
-            box.finished.connect(lambda result: QTimer.singleShot(0, actions[box.input.currentIndex()]) if result == QDialog.Accepted else None)
-            self.embed(box); return
+        command, _, argument = text.strip().partition(" ")
+        if command == "/gentle:voice" and not argument:
+            actions = {"Dictar al borrador": self.toggle_voice, "Reparar modelo local": lambda: self.controller.start_dictation(repair=True),
+                       "Ver historial y estado": self.show_dictation_history}
+            self.media_command("Gentle Voice · Parakeet", actions, lambda selected: selected())
+            return
+        if command == "/gentle:music":
+            if os.name == "nt":
+                self.connection_notice.set_notice("Gentle Music está pendiente en Windows.")
+                return
+            from .shell_controls import music_control
+            def music(action):
+                self.controller.background(lambda: music_control(action), self.connection_notice.set_notice)
+            choices = {"Reproducir":"start", "Pausar / continuar":"toggle", "Siguiente":"next", "Detener":"stop", "Estado":"status"}
+            if argument:
+                music(argument.strip())
+            else:
+                self.media_command("Gentle Music", choices, music)
+            return
         chat = self.current_chat
         self.controller.background(lambda:self.runtime.session_command(text, chat))
 
@@ -1601,6 +1632,10 @@ class Controller(QObject):
             elif kind == "approval": self.approval(data)
             elif kind == "dialog":
                 if data.get('terminal_id') or not (self.runtime.storage.config['voice_provider']=='local' and self.voice.active.is_set()): self.dialog(data)
+            elif kind == 'component_frame':
+                page = self.pending_dialogs.get(data['id'])
+                if hasattr(page, 'update_frame'):
+                    page.update_frame(data['text'])
             elif kind == "dialog_resolved":
                 dialog=self.pending_dialogs.pop(data['id'],None)
                 if dialog: dialog.setProperty('arise_cancelled',True); dialog.reject()
@@ -1651,10 +1686,16 @@ class Controller(QObject):
                 timer=QTimer(dialog); timer.setSingleShot(True); timer.timeout.connect(dialog.reject); timer.start(max(1,int(data["timeoutMs"])))
             self.show_panel(); self.panel.embed(dialog)
         from .task_dialog import TaskDialog
-        dialog = TaskDialog(data, self.panel)
+        component = data['method'] == 'input' and str(data.get('title', '')).startswith('arise-component:')
+        if component:
+            from .component_view import ComponentView
+            dialog = ComponentView(data, self.panel)
+        else:
+            dialog = TaskDialog(data, self.panel)
         dialog.finished.connect(lambda result: submit(
             dialog, result, dialog.value(), data['method'] == 'confirm' and result == QDialog.Accepted))
         track(dialog)
+        if component: dialog.setFocus()
 
     def open_pi(self):
         # Retained for older menu callers; authentication always stays in the panel.

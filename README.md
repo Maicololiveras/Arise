@@ -1,6 +1,6 @@
 # ARISE Assistant
 
-**QA development 0.4.56:** Type `/option` and press Enter to search the active Gentle Shell commands without opening a new window. Select a command to open its supported RPC controls in the chat. In **Settings → Agent**, low-memory mode skips prewarming and releases a confirmed idle session after 1–120 minutes (default 10). Pending work keeps the engine running.
+**QA development 0.4.57:** Type `/option` and press Enter to search the active Gentle Shell commands without opening a new window. Select a command to open its supported RPC controls in the chat. In **Settings → Agent**, low-memory mode skips prewarming and releases a confirmed idle session after 1–120 minutes (default 10). Pending work keeps the engine running.
 
 **Agent menu:** In the desktop chat header, choose **Agent** to open Gentle Shell profiles, pick an available model or reasoning effort, or sign in. Model and effort changes apply to the idle chat without restarting its engine. Manual paths and identifiers are under Settings → Agent → Show manual configuration.
 
@@ -59,7 +59,7 @@ then connect your account. Back up your profile before upgrading.
 ### Before you install
 
 Choose the desktop installer that matches your operating system and CPU. Desktop packages include
-ARISE's own Gentle Shell 4.9.0, Pi, Node, Gentle AI and Engram; no separate
+ARISE's own Gentle Shell 5.0.0, Pi, Node, Gentle AI and Engram; no separate
 Gentle installation is required. Sizes below are approximate decimal MB.
 
 <a id="install-windows"></a>
@@ -268,9 +268,9 @@ you intend to remove your settings, conversations and memory.
 
 | Component | Pinned version |
 | --- | --- |
-| Gentle Shell | 4.9.0 |
-| Pi | 1.5.2 |
-| Gentle AI | 4.6.0 |
+| Gentle Shell | 5.0.0 |
+| Pi | 1.6.0 |
+| Gentle AI | 5.0.0 |
 | Engram | 3.7.2 |
 | gentle-engram | 0.8.0 |
 | Bundled Node | 24.21.0 |

@@ -421,6 +421,18 @@ class Runtime:
         if event.get("method")=="setWidget" and event.get("widgetKey")=="gentle-desktop-rpc":
             if getattr(self,"desktop_probe",None):self.desktop_probe.widget(event)
             return
+        if event.get("method") == "setWidget" and str(event.get("widgetKey", "")).startswith("arise-component:"):
+            key = event["widgetKey"]
+            lines = event.get("widgetLines") or []
+            for identity, dialog in list(self.dialogs.items()):
+                if dialog.get('title') == key and dialog.get('method') == 'input':
+                    if lines:
+                        dialog['placeholder'] = str(lines[0])[:64000]
+                        self.emit('component_frame', {'id':identity, 'text':dialog['placeholder']})
+                    else:
+                        self.dialogs.pop(identity, None)
+                        self.emit('dialog_resolved', {'id':identity})
+            return
         self.publish_activity(event)
         kind = event.get("type")
         if kind == "message_start" and event.get("message", {}).get("role") == "assistant":
@@ -739,6 +751,33 @@ class Runtime:
             identity = self.storage.create_conversation()
             self.sessions.attach(identity, project, isolated=False)
             return self.switch_conversation(identity)
+
+    def shell_control(self, chat, method, params):
+        allowed = {"capabilities", "list_agent_definitions", "list_subagents", "get_subagent_thread",
+                   "cancel_subagent", "get_config", "apply_profile", "get_profile_binding"}
+        if method not in allowed or not isinstance(params, dict):
+            raise ValueError("Operación de Gentle no disponible.")
+        if method == "get_config" and params != {"store": "profiles"}:
+            raise ValueError("Selecciona el catálogo de perfiles.")
+        if method == "apply_profile" and params.get("mode") != "session":
+            raise ValueError("Selecciona un perfil para la sesión actual.")
+        with self.transition_lock:
+            if self.conversation != chat:
+                raise RuntimeError("El chat cambió.")
+            if self.busy:
+                if method == "apply_profile" or not self.pi or self.pi.process.poll() is not None:
+                    raise RuntimeError("Espera a que termine la tarea de este chat.")
+            else:
+                self.connect_pi()
+            probe = self.desktop_probe
+            if not probe:
+                return {"supported": False}
+            methods = probe.state.get("methods")
+            if methods is None:
+                methods = probe.call("capabilities", {}).get("methods", [])
+            if method not in methods:
+                return {"supported": False}
+            return {"supported": True, "data": probe.call(method, params)}
 
     def agent_picker(self, chat, kind, selection=None):
         """Read or change one choice on the same live Gentle session."""

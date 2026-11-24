@@ -29,14 +29,14 @@ if($GentlePath){
 Check-Exit 'Engram integrado verificado'
 $manifest=@{
     owned_engine=1
-    gentle_ai_bin=($gentle+'/.gentle-ai/v4.6.0/gentle-ai.exe')
+    gentle_ai_bin=($gentle+'/.gentle-ai/v5.0.0/gentle-ai.exe')
     engram_bin='@bundle/engram/engram.exe'
     memory_package='@bundle/node/node_modules/gentle-engram'
     web_package='@bundle/node/node_modules/pi-web-access'
     pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     gentle_path=$gentle
     wake_model='@bundle/models/vosk-model-small-es-0.42'
-    versions=@{pi='1.5.2';gentle='4.9.0';gentle_ai='4.6.0';engram='3.7.2';gentle_engram='0.8.0';arise='0.4.56';vosk='small-es-0.42'}
+    versions=@{pi='1.6.0';gentle='5.0.0';gentle_ai='5.0.0';engram='3.7.2';gentle_engram='0.8.0';arise='0.4.57';vosk='small-es-0.42'}
     mcp=@{}
 }
 & python (Join-Path $PSScriptRoot 'prepare_voice_pack.py') --destination $bundle --output (Join-Path (Split-Path $Target -Parent) 'ARISE-Voice-Models-es.zip')

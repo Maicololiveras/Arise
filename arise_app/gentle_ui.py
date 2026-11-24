@@ -151,30 +151,57 @@ ROUTING45 = '''
 def extension_for_rpc(gentle, cache, source=None):
     gentle=Path(gentle).resolve();source=Path(source or gentle/'extensions/gentle-ai.ts')
     package=json.loads((gentle/'package.json').read_text(encoding='utf-8'))
-    if package.get('name')!='gentle-pi' or package.get('version') not in ('3.3.0', '4.0.0', '4.2.0', '4.3.0', '4.5.0', '4.7.0','4.8.0','4.9.0'):return source
+    if package.get('name')!='gentle-pi' or package.get('version') not in ('3.3.0', '4.0.0', '4.2.0', '4.3.0', '4.5.0', '4.7.0','4.8.0','4.9.0','5.0.0'):return source
     original=source.read_text(encoding='utf-8');text=original;patterns=[]
-    if package['version'] in ('4.5.0','4.7.0','4.8.0','4.9.0') and source.name == 'gentle-ai.ts':
-        patterns=[(r'(async function showRoutingTablePanel\([\s\S]*?\): Promise<RoutingTableResult> \{)',ROUTING45)]
+    if package['version'] in ('4.5.0','4.7.0','4.8.0','4.9.0','5.0.0') and source.name == 'gentle-ai.ts':
+        routing = ROUTING45
+        if package['version'] == '5.0.0':
+            routing = routing.replace('"Editar modelos",', '"Editar modelos", "Modo de orquestación",', 1)
+            routing = routing.replace('        const types =', """        if (action === "Modo de orquestación") {
+            const current = readProfileWorkflow(request.file, request.name).orchestratorMode;
+            const mode = await ctx.ui.select("Modo de orquestación · " + current, ["organic", "full-delegation"]);
+            return mode ? {type:"save",name:request.name,config:cloneModelConfig(request.config),orchestratorMode:mode as OrchestratorMode} : {type:"close"};
+        }
+        const types =""")
+        patterns=[(r'(async function showRoutingTablePanel\([\s\S]*?\): Promise<RoutingTableResult> \{)',routing)]
     elif source.name == 'gentle-ai.ts':
-        profiles = PROFILES.replace('ARISE_PIN_ACTIONS', '["Fijar perfil en este clon", "Fijar perfil en el repositorio"]' if package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0','4.7.0','4.8.0','4.9.0') else '[]')
+        profiles = PROFILES.replace('ARISE_PIN_ACTIONS', '["Fijar perfil en este clon", "Fijar perfil en el repositorio"]' if package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0','4.7.0','4.8.0','4.9.0','5.0.0') else '[]')
         patterns=[(r'(async function showProfilesPanel\([\s\S]*?\): Promise<ProfilesPanelResult> \{)',profiles),
                   (r'(async function showSddModelPanel\([\s\S]*?\): Promise<ModelPanelResult> \{)',MODELS)]
-    elif package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0','4.7.0','4.8.0','4.9.0') and source.name == 'gentle-shell.ts':
+    elif package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0','4.7.0','4.8.0','4.9.0','5.0.0') and source.name == 'gentle-shell.ts':
         patterns=[(r'(async function showCommandPalette\([^\n]+\): Promise<void> \{)',PALETTE),
                   (r'(async function showChangesOverlay\([^\n]+\): Promise<void> \{)',CHANGES)]
         text,count=re.subn(r'const openUsage = \(ctx: ExtensionContext\) =>', 'const openUsage = '+USAGE, text, count=1)
         if count != 1: raise RuntimeError('El panel de uso de Gentle cambió; revisa el adaptador.')
         text,count=re.subn(r'(\n\tpi.registerCommand\(USAGE_COMMAND_NAME,)', '\n\t};\\1', text, count=1)
         if count != 1: raise RuntimeError('No se pudo adaptar el panel de uso de Gentle.')
-    elif package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0','4.7.0','4.8.0','4.9.0') and source.name in ('gentle-agents.ts','gentle-stats.ts'):
+    elif package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0','4.7.0','4.8.0','4.9.0','5.0.0') and source.name in ('gentle-agents.ts','gentle-stats.ts'):
         patterns=[(r'(const openOverlay = async \(ctx: ExtensionContext\) => \{)', AGENTS if source.name=='gentle-agents.ts' else STATS)]
         if source.name=='gentle-stats.ts': text=text.replace('createStatsLoader, currentSessionStats,', 'aggregateStats, createStatsLoader, currentSessionStats,')
-    elif package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0','4.7.0','4.8.0','4.9.0') and source.name == 'index.ts' and source.parent.name == 'history':
+    elif package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0','4.7.0','4.8.0','4.9.0','5.0.0') and source.name == 'index.ts' and source.parent.name == 'history':
         patterns=[(r'(async function runPromptHistorySelection\([\s\S]*?\): Promise<PromptRecord \| null> \{)', HISTORY)]
-    else: return source
+    elif package['version'] != '5.0.0' or 'ctx.ui.custom' not in text:
+        return source
     for pattern,body in patterns:
         text,count=re.subn(pattern,lambda match:match.group(1)+body,text,count=1)
         if count!=1:raise RuntimeError('La versión de Gentle no coincide con el adaptador de paneles nativos')
+    if package['version'] == '5.0.0' and 'ctx.ui.custom' in text and source.name != 'gentle-music.ts':
+        # Fullscreen components have no implementation in Pi RPC. Keep their
+        # upstream handlers and use the ARISE panel for the display and keyboard.
+        helper = (Path(__file__).parent / 'resources/gentle-component.mjs').resolve().as_posix()
+        text = 'import { componentHost } from ' + json.dumps(helper) + ';\n' + text.replace(
+            'ctx.ui.custom', 'componentHost(ctx, ' + json.dumps(gentle.as_posix()) + ')')
+        # Only broaden presentation checks; host/permission checks for tools
+        # such as foreign-repository delegation stay with their upstream owner.
+        if source.name == 'gentle-guide.ts':
+            text = text.replace('if (ctx.mode !== "tui") return ctx.ui.notify("The guided tour',
+                                'if (ctx.mode !== "tui" && ctx.mode !== "rpc") return ctx.ui.notify("The guided tour')
+        if source.name == 'gentle-agents.ts':
+            text = text.replace('if (ctx.mode !== "tui") {\n\t\t\t\tctx.ui.notify("The jobs',
+                                'if (ctx.mode !== "tui" && ctx.mode !== "rpc") {\n\t\t\t\tctx.ui.notify("The jobs')
+        if source.name == 'gentle-shell.ts':
+            text = text.replace('if (ctx.mode !== "tui" || !ctx.hasUI)', 'if ((ctx.mode !== "tui" && ctx.mode !== "rpc") || !ctx.hasUI)')
+            text = text.replace('customizeGeneration === generation && ctx.mode === "tui"', 'customizeGeneration === generation && (ctx.mode === "tui" || ctx.mode === "rpc")')
     # Resolve original assets and relative modules without modifying the installed package.
     text=re.sub(r'from\s+(["\'])(\.\.?/[^"\']+)\1',lambda match:'from '+json.dumps(str((source.parent/match.group(2)).resolve()).replace('\\','/')),text)
     text=text.replace('import.meta.url',json.dumps(source.as_uri()))

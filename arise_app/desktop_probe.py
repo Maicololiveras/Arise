@@ -1,5 +1,7 @@
 """Read-only Gentle Desktop RPC discovery, scoped to one Pi process."""
 import json
+import queue
+import threading
 from uuid import uuid4
 
 SCHEMA="gentle-shell.desktop-rpc/v1"
@@ -8,6 +10,8 @@ class DesktopProbe:
     def __init__(self, process):
         self.process=process
         self.pending={}
+        self.waiters = {}
+        self.waiter_lock = threading.Lock()
         self.state={"status":"loading"}
 
     def request(self, method):
@@ -18,6 +22,25 @@ class DesktopProbe:
         except (RuntimeError,OSError):
             self.pending.pop(key,None);self.state["status"]="unavailable"
 
+    def call(self, method, params):
+        key = uuid4().hex
+        waiting = queue.Queue(maxsize=1)
+        with self.waiter_lock:
+            self.waiters[key] = waiting
+        try:
+            message = json.dumps(dict(schema=SCHEMA, requestId=key, method=method, params=params))
+            self.process.send({"type": "prompt", "id": uuid4().hex, "message": "/gentle:desktop " + message})
+            try:
+                reply = waiting.get(timeout=12)
+            except queue.Empty:
+                raise RuntimeError("Gentle no confirmó la operación. Actualiza el estado antes de repetirla.") from None
+            if reply.get("ok") is not True:
+                raise RuntimeError(reply.get("error", {}).get("message", "Gentle rechazó la operación."))
+            return reply.get("data", {})
+        finally:
+            with self.waiter_lock:
+                self.waiters.pop(key, None)
+
     def refresh(self):
         for method in ("get_snapshot","get_permission_mode","get_config","list_jobs"):
             if method in self.state.get("methods",[]) and method not in self.pending.values():
@@ -25,7 +48,7 @@ class DesktopProbe:
 
     def widget(self,event):
         lines=event.get("widgetLines")
-        if not isinstance(lines,list) or len(lines)!=1 or not isinstance(lines[0],str) or len(lines[0])>65536:return
+        if not isinstance(lines,list) or len(lines)!=1 or not isinstance(lines[0],str) or len(lines[0])>2_000_000:return
         try:r=json.loads(lines[0])
         except ValueError:return
         if not isinstance(r,dict) or r.get("schema")!=SCHEMA:return
@@ -43,6 +66,11 @@ class DesktopProbe:
         if r.get("kind")!="response":return
         key=r.get("requestId")
         if not isinstance(key,str):return
+        with self.waiter_lock:
+            waiting = self.waiters.pop(key, None)
+        if waiting is not None:
+            waiting.put_nowait(r)
+            return
         method=self.pending.pop(key,None)
         if not method:return
         data=r.get("data")

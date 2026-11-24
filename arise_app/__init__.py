@@ -1,2 +1,2 @@
 """ARISE Assistant."""
-__version__ = "0.4.56"
+__version__ = "0.4.57"

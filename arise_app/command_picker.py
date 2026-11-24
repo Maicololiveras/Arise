@@ -28,6 +28,11 @@ class CommandPicker(QDialog):
         self.results.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.results.setTextElideMode(Qt.ElideRight)
         layout.addWidget(self.results, 1)
+        self.arguments = QLineEdit()
+        self.arguments.setPlaceholderText('Argumentos del comando (opcional)')
+        self.arguments.setMaxLength(400)
+        layout.addWidget(self.arguments)
+        self.arguments.returnPressed.connect(self.choose)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
         self.execute = buttons.addButton("Ejecutar", QDialogButtonBox.ActionRole)
         self.execute.setAutoDefault(False); self.execute.setEnabled(False); self.execute.clicked.connect(self.choose)
@@ -72,4 +77,5 @@ class CommandPicker(QDialog):
             return
         command = item.data(Qt.UserRole)
         self.accept()
-        self.selected(command)
+        args = self.arguments.text().strip()
+        self.selected(command + (" " + args if args else ""))
