@@ -2,6 +2,7 @@ import http.client
 import json
 import os
 import struct
+from contextlib import ExitStack
 import tempfile
 import threading
 import unittest
@@ -16,9 +17,9 @@ from arise_app.storage import Storage
 
 class MobilePipeTests(unittest.TestCase):
     def test_paired_phone_resolves_desktop_approval_and_revocation_takes_effect(self):
-        with tempfile.TemporaryDirectory() as root:
+        with tempfile.TemporaryDirectory() as root, ExitStack() as cleanup:
             storage = Storage(root)
-            self.addCleanup(storage.db.close)
+            cleanup.callback(storage.db.close)
             chat = storage.create_conversation()
             gate = threading.Event()
             pending = dict(event=gate, approved=False, generation=0, chat=chat, action='create', preview='proposal')

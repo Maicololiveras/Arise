@@ -2,6 +2,7 @@ from pathlib import Path
 import base64
 import copy
 import io
+from contextlib import ExitStack
 import tempfile
 import time
 import unittest
@@ -128,9 +129,9 @@ class MobileChannelTests(unittest.TestCase):
     def test_same_storage_and_peer_do_not_share_any_channel_credential(self):
         from arise_app.mobile_channel import MobileChannel
         from arise_app.companion import Devices
-        with tempfile.TemporaryDirectory() as root:
+        with tempfile.TemporaryDirectory() as root, ExitStack() as cleanup:
             storage = Storage(root)
-            self.addCleanup(storage.db.close)
+            cleanup.callback(storage.db.close)
             chat = storage.create_conversation()
             preview, stable = [Devices(storage, ch) for ch in MobileChannel]
             invitations = [svc.invite(chat)['code'] for svc in (preview,stable)]
