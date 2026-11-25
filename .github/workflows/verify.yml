@@ -21,6 +21,18 @@ concurrency:
   group: arise-verification-${{ inputs.release_channel || 'preview' }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  mobile-tailnet:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: mobile/tailnode/go.mod
+          cache-dependency-path: mobile/tailnode/go.sum
+      - name: Exercise TLS and peer identity over a private two-node test tailnet
+        working-directory: mobile/tailnode
+        run: go test -mod=readonly -tags tailnetintegration -timeout 90s ./...
   parakeet-mirror:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -254,7 +266,7 @@ jobs:
       group: arise-release-metadata
       cancel-in-progress: false
     if: (github.ref == 'refs/heads/main' || (github.ref == 'refs/heads/qa' && inputs.release_channel != 'stable')) && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_channel != 'none'))
-    needs: [parakeet-mirror, docker, prerequisites, windows, windows-tests, offline-models, windows-offline]
+    needs: [mobile-tailnet, parakeet-mirror, docker, prerequisites, windows, windows-tests, offline-models, windows-offline]
     runs-on: ubuntu-latest
     permissions:
       contents: write
