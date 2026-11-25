@@ -1,6 +1,7 @@
 const $=id=>document.getElementById(id);let busy=false,last='',online=false,refreshing=false;
-async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,credentials:'same-origin'});const data=await r.json();if(!r.ok){if(r.status===401){online=false;$('pair').hidden=false;}throw Error(data.error||'No se confirmó la operación.');}return data;}
-async function refresh(){if(refreshing)return;refreshing=true;try{const data=await api('/messages');online=true;if(typeof window!=='undefined' && window.ariseLanguage)window.ariseLanguage.defaultLanguage(data.ui_language);$('pair').hidden=true;if($('activate'))$('activate').hidden=data.active;renderApprovals(data.approvals||[]);$('status').textContent=data.active?'Conectado al PC · permisos del chat conservados':'Chat inactivo en el PC · historial disponible';const signature=JSON.stringify(data.messages);if(signature===last)return;last=signature;const nearBottom=window.innerHeight+window.scrollY>=document.body.scrollHeight-100;$('messages').replaceChildren(...data.messages.map(m=>{const a=document.createElement('article');const role=document.createElement('strong');role.setAttribute('data-ui-label','');role.textContent=m.role==='user'?'Tú':'ARISE';const body=document.createElement('p');body.textContent=m.text;a.append(role,body);
+let sessionEpoch=0, fetchingAgents=false;
+async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,credentials:'same-origin'});const data=await r.json();if(!r.ok){if(r.status===401)clearSession();throw Error(data.error||'No se confirmó la operación.');}return data;}
+async function refresh(){if(refreshing)return;refreshing=true;try{const epoch=sessionEpoch;const data=await api('/messages');if(epoch!==sessionEpoch)return;online=true;if(typeof window!=='undefined' && window.ariseLanguage)window.ariseLanguage.defaultLanguage(data.ui_language);$('pair').hidden=true;if($('activate'))$('activate').hidden=data.active;renderApprovals(data.approvals||[]);if($('attention')){const count=(data.approvals||[]).length;$('attention').hidden=!count;$('attention').textContent='Necesita tu atención';}if($('agent-panel')){$('agent-panel').hidden=false;if($('agent-panel').open)refreshAgents();}$('status').textContent=data.active?'Conectado al PC · permisos del chat conservados':'Chat inactivo en el PC · historial disponible';const signature=JSON.stringify(data.messages);if(signature===last)return;last=signature;const nearBottom=window.innerHeight+window.scrollY>=document.body.scrollHeight-100;$('messages').replaceChildren(...data.messages.map(m=>{const a=document.createElement('article');const role=document.createElement('strong');role.setAttribute('data-ui-label','');role.textContent=m.role==='user'?'Tú':'ARISE';const body=document.createElement('p');body.textContent=m.text;a.append(role,body);
 if(m.role==='assistant'){const play=document.createElement('button');play.textContent='Escuchar';play.type='button';play.onclick=()=>speakReply(m.id);a.appendChild(play);}return a;}));if(nearBottom)window.scrollTo(0,document.body.scrollHeight);}catch(e){online=false;$('status').textContent=e.message;}finally{refreshing=false;}}
 $('pair').onsubmit=async e=>{e.preventDefault();try{await api('/pair',{code:$('code').value.trim(),name:$('name').value,otp:$('otp').value.trim()});$('code').value='';$('otp').value='';await refresh();}catch(e){$('status').textContent=e.message;}};
 $('compose').onsubmit=async e=>{e.preventDefault();if(busy)return;busy=true;$('send').disabled=true;const text=$('draft').value;try{const images=await readImages();await api('/prompt',{text,images});if($('images'))$('images').value='';if($('draft').value===text)$('draft').value='';await refresh();}catch(e){$('status').textContent=e.message+' Borrador conservado; verifica el chat antes de repetir.';}finally{busy=false;$('send').disabled=false;}};
@@ -81,4 +82,48 @@ async function readImages(){
     return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({mimeType:file.type,data:reader.result.split(',')[1]});reader.onerror=()=>reject(Error('No se pudo leer la imagen.'));reader.readAsDataURL(file);});
   }));
 }
-if($('logout'))$('logout').onclick=async()=>{try{await api('/logout',{});online=false;$('pair').hidden=false;$('messages').replaceChildren();last='';$('status').textContent='Teléfono desvinculado. Genera otro QR en el PC para volver.';}catch(e){$('status').textContent=e.message;}};
+if($('logout'))$('logout').onclick=async()=>{try{await api('/logout',{});clearSession();$('status').textContent='Teléfono desvinculado. Genera otro QR en el PC para volver.';}catch(e){$('status').textContent=e.message;}};
+
+function clearSession(){
+  sessionEpoch++;
+  online=false;
+  last='';
+  $('pair').hidden=false;
+  $('messages').replaceChildren();
+  if($('approvals'))renderApprovals([]);
+  if($('attention'))$('attention').hidden=true;
+  if($('agent-panel')){
+    $('agent-panel').hidden=true;
+    $('agent-panel').open=false;
+    $('agent-list').replaceChildren();
+    $('agent-state').textContent='';
+  }
+}
+if($('attention'))$('attention').onclick=()=>$('approvals').scrollIntoView({block:'start'});
+if($('agent-panel'))$('agent-panel').ontoggle=()=>{if($('agent-panel').open)refreshAgents();};
+async function refreshAgents(){
+  if(!online || fetchingAgents)return;
+  fetchingAgents=true;
+  const epoch=sessionEpoch;
+  try{
+    const data=await api('/agents');
+    if(epoch!==sessionEpoch)return;
+    const labels={queued:'En cola',running:'Trabajando',waiting:'En espera',completed:'Terminó',failed:'Falló',cancelled:'Cancelado',timed_out:'Tiempo agotado'};
+    const rows=data.agents.map(agent=>{
+      const row=document.createElement('article');
+      const name=document.createElement('strong');
+      name.setAttribute('data-user-content','');
+      name.textContent=agent.agent;
+      const step=document.createElement('p');
+      const status=document.createElement('span');
+      status.textContent=labels[agent.status]||agent.status;
+      step.append(status);
+      if(agent.lastStep && agent.lastStep!==agent.status)step.append(' · '+agent.lastStep);
+      row.append(name,step);
+      return row;
+    });
+    $('agent-list').replaceChildren(...rows);
+    $('agent-state').textContent=!data.active?'Chat inactivo en el PC':!data.available?'Sesión de Gentle no disponible':rows.length?'':'Sin subagentes en este chat.';
+  }catch(e){if(epoch===sessionEpoch){$('agent-list').replaceChildren();$('agent-state').textContent=e.message;}}
+  finally{fetchingAgents=false;}
+}

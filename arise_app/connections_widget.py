@@ -51,7 +51,7 @@ class ConnectionsDialog(QDialog):
             self.button(form,'Desconectar cuenta',lambda p=provider:self.run('connections/disconnect',{'provider':p}))
         mobile = self.page('Celular')
         self.android_download(mobile)
-        hint=QLabel('Instala Tailscale en el PC y el teléfono e inicia sesión. Después configura tu autenticador y vincula el chat. El PC debe permanecer encendido.')
+        hint=QLabel('ARISE crea su propio nodo de Tailscale. Instala Tailscale en el teléfono. Después configura tu autenticador y vincula el chat. El PC debe permanecer encendido.')
         hint.setWordWrap(True);mobile.addRow(hint)
         self.pair_qr=QLabel();self.pair_qr.setAlignment(Qt.AlignCenter);mobile.addRow(self.pair_qr)
         self.button(mobile,'1 · Configurar verificación en dos pasos',lambda:self.run('mobile/security/begin',{},self.show_mobile_qr))
@@ -61,7 +61,12 @@ class ConnectionsDialog(QDialog):
             otp.clear();self.pair_qr.clear();self.output.clear()
             self.status.setText('Autenticador confirmado. Espera su siguiente código para vincular el teléfono.')
         self.button(mobile,'Confirmar autenticador',lambda:self.run('mobile/security/confirm',{'code':otp.text().strip()},confirmed))
-        self.button(mobile,'2 · Preparar conexión privada automáticamente',lambda:self.run('mobile/prepare',{}))
+        node_key = self.field(mobile,'Clave Tailscale de un solo uso (solo al registrar)',secret=True)
+        def connect_node():
+            key = node_key.text().strip()
+            node_key.clear()
+            self.run('mobile/prepare',{'key':key})
+        self.button(mobile,'2 · Conectar nodo privado de ARISE',connect_node)
         self.button(mobile,'3 · Vincular este chat con mi teléfono',lambda:self.run('mobile/link',{},self.show_mobile_qr))
         self.devices=QListWidget();self.devices.setMinimumHeight(90);mobile.addRow(self.devices)
         self.button(mobile,'Actualizar dispositivos',self.refresh_devices)
@@ -90,7 +95,7 @@ class ConnectionsDialog(QDialog):
     def android_download(self, form):
         title = QLabel('ARISE en Android, iPhone y iPad · sin tienda de aplicaciones')
         title.setWordWrap(True); form.addRow(title)
-        hint = QLabel('1. Instala Tailscale en ambos equipos e inicia sesión con la misma cuenta.\n2. Confirma el autenticador.\n3. Prepara la conexión privada y escanea el QR de vinculación.\n4. En Safari: Compartir → Añadir a pantalla de inicio. En Android: menú → Instalar aplicación. Abre el icono y vincula ese navegador con un código nuevo si lo solicita.')
+        hint = QLabel('1. Conecta el teléfono a tu red Tailscale.\n2. Confirma el autenticador.\n3. Prepara la conexión privada y escanea el QR de vinculación.\n4. En Safari: Compartir → Añadir a pantalla de inicio. En Android: menú → Instalar aplicación. Abre el icono y vincula ese navegador con un código nuevo si lo solicita.')
         hint.setWordWrap(True); form.addRow(hint)
         self.button(form, 'Abrir descarga de Tailscale', lambda: QDesktopServices.openUrl(QUrl('https://tailscale.com/download')))
         self.mobile_readiness = QLabel('Comprueba los pasos pendientes antes de vincular.')
@@ -113,10 +118,10 @@ class ConnectionsDialog(QDialog):
         button=QPushButton(label);button.clicked.connect(callback);form.addRow(button)
 
     def request(self,path,data):
-        if getattr(self.runtime,'is_remote',False):return self.runtime.request(path,data)
+        if getattr(self.runtime,'is_remote',False):return self.runtime.request(path,data,timeout=120) if path=='mobile/prepare' else self.runtime.request(path,data)
         r=self.runtime
         methods={'connections/oauth/start':r.connections.oauth_start,'connections/oauth/poll':r.connections.oauth_poll,
-                 'connections/disconnect':r.connections.disconnect,'mobile/start':r.start_mobile,'mobile/stop':r.stop_mobile}
+                 'connections/disconnect':r.connections.disconnect,'mobile/stop':r.stop_mobile}
         if path in methods:return methods[path](**(data or {}))
         if path=='connections/token':return r.connections.save_token(data['provider'],data['token'],**data['options'])
         if path=='mobile/readiness':
@@ -124,7 +129,7 @@ class ConnectionsDialog(QDialog):
             return readiness(r)
         if path=='mobile/prepare':
             from .mobile_setup import prepare
-            return prepare(r)
+            return prepare(r, data.get('key',''))
         if path=='mobile/link':
             from .mobile_setup import invite
             return invite(r)

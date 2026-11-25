@@ -4,6 +4,9 @@ $root=Split-Path $PSScriptRoot -Parent
 $bundle=Join-Path $Target 'bundle'
 New-Item -ItemType Directory -Path $bundle -Force | Out-Null
 function Check-Exit([string]$step) { if($LASTEXITCODE -ne 0){throw "$step falló ($LASTEXITCODE)"} }
+$tailnode=Join-Path (Resolve-Path $bundle) 'arise-tailnode.exe'
+Push-Location (Join-Path $root 'mobile/tailnode')
+try { & go build -mod=readonly -trimpath -o $tailnode .; Check-Exit 'Nodo Tailscale' } finally { Pop-Location }
 $nodeRoot=Join-Path $bundle 'node';New-Item -ItemType Directory -Path $nodeRoot -Force | Out-Null
 Copy-Item -LiteralPath (Get-Command node).Source -Destination (Join-Path $nodeRoot 'node.exe')
 # A clean installation ships Pi and Gentle Shell; existing installs remain detectable.
@@ -36,7 +39,7 @@ $manifest=@{
     pi_command=@('@bundle/node/node.exe','@bundle/node/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     gentle_path=$gentle
     wake_model='@bundle/models/vosk-model-small-es-0.42'
-    versions=@{pi='1.6.0';gentle='5.0.0';gentle_ai='5.0.0';engram='3.7.2';gentle_engram='0.8.0';arise='0.4.57';vosk='small-es-0.42'}
+    versions=@{pi='1.6.0';gentle='5.0.0';gentle_ai='5.0.0';engram='3.7.2';gentle_engram='0.8.0';arise='0.4.58';vosk='small-es-0.42'}
     mcp=@{}
 }
 & python (Join-Path $PSScriptRoot 'prepare_voice_pack.py') --destination $bundle --output (Join-Path (Split-Path $Target -Parent) 'ARISE-Voice-Models-es.zip')

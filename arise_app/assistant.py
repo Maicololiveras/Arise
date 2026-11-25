@@ -33,6 +33,7 @@ class Assistant(Runtime):
         self.mobile_security = MobileSecurity(self.storage)
         self.reminders = Reminders(self)
         self.mobile_server = None
+        self.mobile_lock = threading.RLock()
         with self.storage.lock, self.storage.db:
             for row in self.storage.db.execute("SELECT id,payload FROM tasks ORDER BY created DESC LIMIT 100"):
                 task = json.loads(row["payload"])
@@ -46,26 +47,14 @@ class Assistant(Runtime):
         except Exception as error:
             self.emit('notice', {'text':'Acceso móvil no restaurado: '+str(error)})
 
-    def start_mobile(self, origin, port=0):
-        from .companion import make_mobile_server
-        with self.transition_lock:
-            if self.mobile_server:
-                raise ValueError('El acceso móvil ya está activo; deténlo antes de cambiarlo.')
-            self.mobile_server = make_mobile_server(self, origin, port=port)
-            self.mobile_origin = origin
-            threading.Thread(target=self.mobile_server.serve_forever, daemon=True).start()
-            return {'origin': origin, 'port': self.mobile_server.server_port,
-                    'command': f'tailscale serve --bg http://127.0.0.1:{self.mobile_server.server_port}'}
-
     def stop_mobile(self, persist=True):
-        with self.transition_lock:
+        from .mobile_setup import save_settings
+        with self.mobile_lock:
             if self.mobile_server:
-                self.mobile_server.shutdown()
-                self.mobile_server.server_close()
+                self.mobile_server.close()
                 self.mobile_server = None
-        if persist:
-            from .mobile_setup import save_settings
-            save_settings(self, {'enabled':False})
+            if persist:
+                save_settings(self, {'enabled': False, 'transport': 'tsnet'})
         return {'stopped': True}
 
     def request_shutdown(self):
@@ -192,7 +181,7 @@ class Assistant(Runtime):
     def approve(self, identity, approved):
         with self.lock:
             pending = self.approvals.get(identity)
-            if not pending:
+            if not pending or pending["event"].is_set() or pending["generation"] != self.stop_generation or pending["chat"] != self.conversation:
                 raise ValueError("La decisión ya no está pendiente.")
             pending["approved"] = approved is True
             pending["event"].set()

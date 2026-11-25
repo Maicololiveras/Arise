@@ -1,5 +1,8 @@
 # ARISE Assistant
 
+**Preview 0.4.58+** · [Guía para conectar el teléfono al nodo privado de ARISE](docs/MOBILE-TAILSCALE.md). This replaces the host Serve setup for Preview.
+
+
 **QA development 0.4.57:** Type `/option` and press Enter to search the active Gentle Shell commands without opening a new window. Select a command to open its supported RPC controls in the chat. In **Settings → Agent**, low-memory mode skips prewarming and releases a confirmed idle session after 1–120 minutes (default 10). Pending work keeps the engine running.
 
 **Agent menu:** In the desktop chat header, choose **Agent** to open Gentle Shell profiles, pick an available model or reasoning effort, or sign in. Model and effort changes apply to the idle chat without restarting its engine. Manual paths and identifiers are under Settings → Agent → Show manual configuration.

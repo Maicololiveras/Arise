@@ -109,6 +109,8 @@ def build(expected):
     application = package / 'Contents/Resources' if mac else package
     shutil.copy2(ROOT / ('host/target/release/arise-host' + suffix), application / ('ARISE-host' + suffix))
     bundle = application / 'bundle'; bundle.mkdir()
+    if identity.startswith('windows-'):
+        run('go', 'build', '-mod=readonly', '-trimpath', '-o', (bundle / ('arise-tailnode' + suffix)).resolve(), '.', cwd=ROOT/'mobile/tailnode')
     node_root = bundle / 'node'; node_root.mkdir()
     shutil.copy2(node, node_root / ('node' + suffix))
     for name in ('package.json', 'package-lock.json'):

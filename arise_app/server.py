@@ -57,6 +57,8 @@ def make_server(runtime, port=0):
                     self.send_header("Connection","keep-alive");self.send_header("Content-Type","application/json; charset=utf-8")
                     self.send_header("Cache-Control","no-store");self.send_header("Content-Length",str(len(payload)))
                     self.end_headers();self.wfile.write(payload);return
+                if parsed.path.startswith("/api/mobile/") and not hmac.compare_digest(self.headers.get("X-Arise-Accounts",""), runtime.accounts_token):
+                    self.reply({"error":"Se requiere el cliente de escritorio"},403);return
                 if parsed.path == "/api/status": value = runtime.status()
                 elif parsed.path == '/api/connections': value = {'connections': runtime.connections.status()}
                 elif parsed.path == '/api/reminders': value = {'reminders': runtime.reminders.list(runtime.conversation)}
@@ -86,7 +88,7 @@ def make_server(runtime, port=0):
 
         def do_POST(self):
             if not self.authorize(): return
-            if (self.path.startswith("/api/accounts/") or self.path in ("/api/desktop/layout-ack", "/api/study")) and not hmac.compare_digest(self.headers.get("X-Arise-Accounts", ""), runtime.accounts_token):
+            if (self.path.startswith(("/api/accounts/","/api/mobile/")) or self.path in ("/api/desktop/layout-ack", "/api/study")) and not hmac.compare_digest(self.headers.get("X-Arise-Accounts", ""), runtime.accounts_token):
                 self.reply({"error":"Esta operación solo está disponible en Ajustes de ARISE."},403);return
             self.connection.settimeout(10)
             if not self.headers.get("Content-Type", "").startswith("application/json"):
@@ -120,13 +122,12 @@ def make_server(runtime, port=0):
                     value = readiness(runtime)
                 elif route == '/api/mobile/prepare':
                     from .mobile_setup import prepare
-                    value = prepare(runtime)
+                    value = prepare(runtime, data.get("key", ""))
                 elif route == '/api/mobile/link':
                     from .mobile_setup import invite
                     value = invite(runtime)
                 elif route == '/api/mobile/security/begin': value = runtime.mobile_security.begin()
                 elif route == '/api/mobile/security/confirm': value = runtime.mobile_security.confirm(data.get('code'))
-                elif route == '/api/mobile/start': value = runtime.start_mobile(data['origin'])
                 elif route == '/api/mobile/stop': value = runtime.stop_mobile()
                 elif route == '/api/mobile/invite': value = runtime.devices.invite(runtime.conversation)
                 elif route == '/api/mobile/revoke':

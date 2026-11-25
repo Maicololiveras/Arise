@@ -1,92 +1,137 @@
-"""Private Tailscale setup. Existing Serve/Funnel configuration is never overwritten."""
+"""App-owned tailnet node. Mobile HTTP travels over child pipes only."""
+import io
 import json
 import os
-from pathlib import Path
-import shutil
+import queue
+import re
+import struct
 import subprocess
+import threading
+
+from .bundle import application_root
+from .companion import mobile_handler
 
 
-def cli(*args):
-    binary=shutil.which('tailscale')
-    if not binary:
-        candidate=Path(os.environ.get('ProgramFiles','C:/Program Files'))/'Tailscale/tailscale.exe'
-        if candidate.is_file(): binary=str(candidate)
-    if not binary: raise RuntimeError('Instala Tailscale en este PC, inicia sesión y vuelve a pulsar Conectar mi teléfono.')
-    result=subprocess.run([binary,*args],capture_output=True,text=True,timeout=45,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    if result.returncode:
-        raise RuntimeError('Tailscale no completó la configuración. Abre su aplicación, comprueba la sesión y los permisos. '+result.stderr[:400])
-    return result.stdout
-
-
-def prepare(runtime):
-    if not runtime.mobile_security.enabled(): raise RuntimeError('Primero configura y confirma el autenticador de ARISE.')
-    state=json.loads(cli('status','--json'))
-    if state.get('BackendState')!='Running': raise RuntimeError('Abre Tailscale en este PC e inicia sesión con la misma cuenta que usarás en el teléfono.')
-    dns=state.get('Self',{}).get('DNSName','').rstrip('.')
-    if not dns.endswith('.ts.net'): raise RuntimeError('Tailscale todavía no informa un nombre privado para este equipo.')
-    origin='https://'+dns
-    serve=json.loads(cli('serve','status','--json') or '{}')
-    if serve:
-        saved=read_settings(runtime)
-        expected=f'http://127.0.0.1:{saved.get("port",0)}'
-        handlers=serve.get('Web',{}).get(dns+':443',{}).get('Handlers',{})
-        if (not saved.get('enabled') or saved.get('origin')!=origin or
-            handlers!={'/':{'Proxy':expected}} or any(serve.get('AllowFunnel',{}).values()) or
-            set(serve.get('Web',{}))!={dns+':443'} or set(serve.get('TCP',{}))!={'443'}):
-            raise RuntimeError('Tailscale ya publica otros servicios. ARISE no los reemplazará; revisa su configuración antes de conectar.')
-    if not runtime.mobile_server:
-        runtime.start_mobile(origin,port=read_settings(runtime).get('port',0))
-    elif getattr(runtime,'mobile_origin',None)!=origin:
-        raise RuntimeError('Detén el acceso móvil anterior antes de cambiar de red.')
-    port=runtime.mobile_server.server_port
-    try:
-        cli('serve','--bg',f'http://127.0.0.1:{port}')
-    except Exception:
-        runtime.stop_mobile(persist=False)
-        raise
-    save_settings(runtime,{'enabled':True,'origin':origin,'port':port})
-    return {'ready':True,'origin':origin,'message':'Conexión privada preparada. Usa Tailscale en el teléfono y genera la vinculación. El MFA de tu cuenta Tailscale se administra en su proveedor; ARISE no lo ha verificado.'}
+def binary():
+    return application_root() / 'bundle' / ('arise-tailnode.exe' if os.name == 'nt' else 'arise-tailnode')
 
 
 def read_settings(runtime):
-    path=runtime.storage.root/'mobile-server.json'
-    if not path.exists(): return {}
-    return json.loads(path.read_text(encoding='utf-8'))
+    path = runtime.storage.root / 'mobile-server.json'
+    return json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
 
 
-def save_settings(runtime,value):
-    path=runtime.storage.root/'mobile-server.json'
-    temp=path.with_suffix('.tmp');temp.write_text(json.dumps(value),encoding='utf-8');os.replace(temp,path)
+def save_settings(runtime, value):
+    path = runtime.storage.root / 'mobile-server.json'
+    temp = path.with_suffix('.tmp')
+    temp.write_text(json.dumps(value), encoding='utf-8')
+    os.replace(temp, path)
+
+
+class TailNode:
+    def __init__(self, runtime, key):
+        directory = runtime.storage.root / 'tailnode'
+        directory.mkdir(mode=0o700, exist_ok=True)
+        env = {name: os.environ[name] for name in ('HOME','USERPROFILE','SystemRoot','WINDIR','LOCALAPPDATA',
+                'APPDATA','TMPDIR','TMP','TEMP','LANG','PATH','SSL_CERT_FILE','SSL_CERT_DIR') if name in os.environ}
+        env['TS_NO_LOGS_NO_SUPPORT'] = 'true'
+        self.process = subprocess.Popen([str(binary())], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, env=env, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        try:
+            self.process.stdin.write((json.dumps({'Dir':str(directory.resolve()), 'Key':key})+'\n').encode())
+            self.process.stdin.flush()
+            ready = queue.Queue(1)
+            threading.Thread(target=lambda: ready.put(self.process.stdout.readline(256)), daemon=True).start()
+            dns = ready.get(timeout=105).decode('ascii').strip()
+            if not re.fullmatch(r'[a-z0-9-]+\.[a-z0-9.-]+\.ts\.net', dns):
+                raise RuntimeError('Comprueba la clave de un solo uso con etiqueta tag:arise-mobile, MagicDNS, HTTPS y la aprobación del dispositivo en Tailscale.')
+            self.origin = 'https://' + dns
+            self.handler = mobile_handler(runtime, self.origin)
+            threading.Thread(target=self.serve, daemon=True).start()
+        except BaseException:
+            self.close()
+            raise
+
+    def serve(self):
+        # The Go listener normalizes and bounds each complete request before writing.
+        process = self.process
+        class PipeHandler(self.handler):
+            def setup(self):
+                self.rfile, self.wfile, self.connection = self.request, process.stdin, None
+            def finish(self):
+                self.wfile.flush()
+        try:
+            while process.poll() is None:
+                header = process.stdout.read(4)
+                if len(header) != 4:
+                    break
+                length, = struct.unpack('!I', header)
+                if not 0 < length <= 12_030_000:
+                    break
+                packet = process.stdout.read(length)
+                if len(packet) != length:
+                    break
+                PipeHandler(io.BytesIO(packet), ('tailnet', 0), None)
+        except (OSError, ValueError):
+            pass
+        finally:
+            if process.poll() is None:
+                process.terminate()
+
+    def close(self):
+        if self.process.poll() is None:
+            self.process.kill()
+        self.process.wait()
+        self.process.stdin.close()
+        self.process.stdout.close()
+
+
+def prepare(runtime, key=''):
+    if not isinstance(key, str) or len(key) > 1024:
+        raise ValueError('Clave de registro inválida.')
+    with runtime.mobile_lock:
+        if not runtime.mobile_security.enabled():
+            raise RuntimeError('Primero confirma el autenticador de ARISE.')
+        if not binary().is_file():
+            raise RuntimeError('Esta instalación carece de arise-tailnode. Consulta la guía móvil de QA.')
+        if runtime.mobile_server and runtime.mobile_server.process.poll() is not None:
+            runtime.mobile_server.close()
+            runtime.mobile_server = None
+        if not runtime.mobile_server:
+            saved = read_settings(runtime)
+            if not key and saved.get('transport') != 'tsnet':
+                raise ValueError('Introduce una clave de registro de un solo uso para el nodo ARISE.')
+            node = TailNode(runtime, key)
+            try:
+                save_settings(runtime, {'transport':'tsnet', 'enabled':True})
+            except Exception:
+                node.close()
+                raise
+            runtime.mobile_server = node
+            runtime.mobile_origin = node.origin
+        return {'ready':True, 'origin':runtime.mobile_origin}
 
 
 def resume(runtime):
-    value=read_settings(runtime)
-    if value.get('enabled'):
-        if not runtime.mobile_security.enabled(): raise RuntimeError('Acceso móvil detenido: falta el autenticador.')
-        runtime.start_mobile(value['origin'],port=value['port'])
+    saved = read_settings(runtime)
+    if saved.get('enabled') and saved.get('transport') == 'tsnet':
+        prepare(runtime)
 
 
 def invite(runtime):
-    if not runtime.mobile_server or not runtime.mobile_security.enabled(): raise RuntimeError('Configura el autenticador y conecta el teléfono primero.')
+    if not runtime.mobile_server or runtime.mobile_server.process.poll() is not None or not runtime.mobile_security.enabled():
+        raise RuntimeError('Prepara la conexión privada antes de vincular el chat.')
     from urllib.parse import urlencode
-    invitation=runtime.devices.invite(runtime.conversation)
-    return {**invitation,'url':runtime.mobile_origin+'/#'+urlencode({'code':invitation['code']})}
+    invitation = runtime.devices.invite(runtime.conversation)
+    return {**invitation, 'url':runtime.mobile_origin+'/#'+urlencode({'code':invitation['code']})}
 
 
 def readiness(runtime):
-    """Read-only diagnostics; no account creation, enrollment or Serve mutation."""
-    steps = []
-    try:
-        state = json.loads(cli('status', '--json'))
-        connected = state.get('BackendState') == 'Running'
-        message = 'Tailscale conectado en el PC.' if connected else 'Abre Tailscale en el PC e inicia sesión.'
-    except Exception:
-        connected = False
-        message = 'Instala o abre Tailscale en el PC e inicia sesión.'
-    steps.append({'ready':connected,'message':message})
+    installed = binary().is_file()
     secured = runtime.mobile_security.enabled()
-    steps.append({'ready':secured,'message':'Autenticador confirmado.' if secured else 'Configura y confirma el autenticador en este panel.'})
-    serving = bool(runtime.mobile_server)
-    steps.append({'ready':serving,'message':'Acceso privado preparado.' if serving else 'Prepara la conexión privada después del autenticador.'})
-    steps.append({'ready':False,'message':'En el teléfono: conecta Tailscale, escanea el QR y añade ARISE a la pantalla de inicio. Esta comprobación es manual.'})
-    return {'steps':steps,'ready_to_pair':connected and secured and serving}
+    serving = bool(runtime.mobile_server and runtime.mobile_server.process.poll() is None)
+    return {'steps':[{'ready':installed,'message':'Componente Tailscale integrado.' if installed else 'Falta arise-tailnode.'},
+                     {'ready':secured,'message':'Autenticador confirmado.' if secured else 'Configura el autenticador.'},
+                     {'ready':serving,'message':'Nodo conectado.' if serving else 'Prepara el nodo privado.'},
+                     {'ready':False,'message':'En el teléfono conecta Tailscale y escanea el QR.'}],
+            'ready_to_pair':installed and secured and serving}

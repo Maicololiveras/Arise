@@ -1,6 +1,6 @@
 """Least-privilege mobile surface, separate from the privileged desktop bridge.
 
-Bind loopback only and publish this port through Tailscale Serve (never Funnel).
+The embedded tailnet node sends normalized HTTP requests over private pipes.
 Pairing is initiated on the desktop, bound to one chat, one-use and time limited.
 """
 import base64
@@ -28,6 +28,10 @@ class Devices:
                 CREATE TABLE IF NOT EXISTS mobile_devices(id TEXT PRIMARY KEY,chat TEXT,name TEXT,hash TEXT,expires REAL,deadline REAL,revoked INTEGER);
             ''')
 
+            columns = {row['name'] for row in storage.db.execute('PRAGMA table_info(mobile_devices)')}
+            if 'peer' not in columns:
+                storage.db.execute("ALTER TABLE mobile_devices ADD COLUMN peer TEXT NOT NULL DEFAULT ''")
+
     def invite(self, chat):
         code = secrets.token_urlsafe(24)
         with self.storage.lock, self.storage.db:
@@ -35,26 +39,26 @@ class Devices:
             self.storage.db.execute("INSERT INTO mobile_pairing VALUES(?,?,?)", (digest(code), chat, time.time()+300))
         return {"code": code, "expires_in": 300, "chat": chat}
 
-    def pair(self, code, name, verified=False):
+    def pair(self, code, name, verified=False, peer=""):
         if not isinstance(code, str) or len(code)>200 or not isinstance(name, str) or not 1<=len(name)<=80: raise ValueError("Vinculación inválida.")
         with self.storage.lock, self.storage.db:
             row = self.storage.db.execute("SELECT * FROM mobile_pairing WHERE hash=? AND expires>?", (digest(code), time.time())).fetchone()
             if not row: raise ValueError("Código usado o vencido. Genera otro en el PC.")
             self.storage.db.execute("DELETE FROM mobile_pairing WHERE hash=?", (digest(code),))
             identity, token = secrets.token_hex(16), secrets.token_urlsafe(32)
-            self.storage.db.execute("INSERT INTO mobile_devices VALUES(?,?,?,?,?,?,0)", (identity, row['chat'], name, digest(token), time.time()+(30*86400 if verified else 900), time.time()+30*86400))
+            self.storage.db.execute("INSERT INTO mobile_devices VALUES(?,?,?,?,?,?,0,?)", (identity, row['chat'], name, digest(token), time.time()+(30*86400 if verified else 900), time.time()+30*86400, peer))
             return token
 
-    def authorize(self, token):
+    def authorize(self, token, peer=""):
         if not isinstance(token, str) or len(token)>200: raise PermissionError("Dispositivo no autorizado.")
         with self.storage.lock:
-            row = self.storage.db.execute("SELECT id,chat,name FROM mobile_devices WHERE hash=? AND revoked=0 AND expires>? AND deadline>?", (digest(token), time.time(), time.time())).fetchone()
+            row = self.storage.db.execute("SELECT id,chat,name FROM mobile_devices WHERE hash=? AND revoked=0 AND peer=? AND expires>? AND deadline>?", (digest(token), peer, time.time(), time.time())).fetchone()
             if not row: raise PermissionError("Sesión vencida o revocada. Vincula nuevamente desde el PC.")
             return dict(row)
 
-    def rotate(self, token):
+    def rotate(self, token, peer=""):
         with self.storage.lock, self.storage.db:
-            self.authorize(token)
+            self.authorize(token, peer)
             fresh = secrets.token_urlsafe(32)
             self.storage.db.execute("UPDATE mobile_devices SET hash=?,expires=MIN(MAX(expires,?),deadline) WHERE hash=?", (digest(fresh), time.time()+900, digest(token)))
             return fresh
@@ -68,7 +72,7 @@ class Devices:
             self.storage.db.execute("UPDATE mobile_devices SET revoked=1 WHERE chat=? AND id=?", (chat, identity))
 
 
-def make_mobile_server(runtime, origin, port=0):
+def mobile_handler(runtime, origin, require_peer=True):
     parsed = urlparse(origin)
     if parsed.scheme != 'https' or not (parsed.hostname or '').endswith('.ts.net') or parsed.path or parsed.query or parsed.fragment or parsed.username or parsed.port:
         raise ValueError("Configura el origen HTTPS exacto de Tailscale, sin ruta ni puerto.")
@@ -85,10 +89,16 @@ def make_mobile_server(runtime, origin, port=0):
             if cookie is not None: self.send_header('Set-Cookie', f'arise_device={cookie}; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age={2592000 if cookie else 0}')
             self.end_headers(); self.wfile.write(raw)
 
+        def peer(self):
+            peer = self.headers.get('X-Arise-Tailnode', '')
+            if require_peer and (not peer or len(peer) > 128):
+                raise PermissionError('Identidad de red no disponible.')
+            return peer
+
         def context(self):
             cookies = SimpleCookie(self.headers.get('Cookie', ''))
             token = cookies['arise_device'].value if 'arise_device' in cookies else ''
-            return token, runtime.devices.authorize(token)
+            return token, runtime.devices.authorize(token, self.peer())
 
         def do_GET(self):
             try:
@@ -103,28 +113,44 @@ def make_mobile_server(runtime, origin, port=0):
                     name, mime = public[self.path]
                     return self.reply((Path(__file__).parent/'resources'/name).read_bytes(), mime=mime)
                 token, device = self.context()
+                if self.path == '/agents':
+                    with runtime.transition_lock:
+                        runtime.devices.authorize(token, self.peer())
+                        active = runtime.conversation == device['chat']
+                        rows = []
+                        available = False
+                        if active and runtime.pi and runtime.pi.process.poll() is None:
+                            reply = runtime.shell_control(device['chat'], 'list_subagents', {})
+                            available = reply.get('supported', False)
+                            rows = [{key: str(row.get(key, ''))[:120] for key in ('id', 'agent', 'status', 'lastStep')}
+                                    for row in reply.get('data', {}).get('agents', [])[:50]]
+                        runtime.devices.authorize(token, self.peer())
+                    return self.reply({'agents':rows, 'active':active, 'available':available})
                 if self.path != '/messages': return self.reply({'error':'Ruta no disponible.'},404)
                 messages = runtime.storage.messages(device['chat'])[-100:]
                 with runtime.lock:
                     approvals=[{'id':key,'action':item['action'],'preview':item['preview']} for key,item in runtime.approvals.items()
                                if item.get('chat')==device['chat'] and item.get('generation')==runtime.stop_generation and not item['event'].is_set()]
                 return self.reply({'ui_language':runtime.storage.config.get('ui_language','es'),'chat':device['chat'], 'approvals':approvals, 'active':runtime.conversation==device['chat'],
-                                   'messages':[{k:m[k] for k in ('id','role','text','created')} for m in messages]})
+                                   'messages':[{k:m[k] for k in ('id','role','text','created')} for m in messages if m['role'] in ('user','assistant')]})
             except PermissionError as e: self.reply({'error':str(e)},401)
+
+            except (RuntimeError, OSError): self.reply({'error':'Agentes temporalmente no disponibles.'},503)
 
         def do_POST(self):
             try:
                 # Browser requests are same-origin only; the desktop bridge stays inaccessible.
                 if self.headers.get('Origin') != origin: return self.reply({'error':'Origen no autorizado.'},403)
                 if self.headers.get('Content-Type') != 'application/json': return self.reply({'error':'Se requiere JSON.'},415)
-                self.connection.settimeout(5)
+                if self.connection is not None:
+                    self.connection.settimeout(5)
                 length = int(self.headers.get('Content-Length','0'))
                 if not 0<length<=(12000000 if self.path=='/prompt' else 1400000 if self.path=='/transcribe' else 40000): raise ValueError('Mensaje demasiado grande.')
                 data = json.loads(self.rfile.read(length))
                 if not isinstance(data,dict): raise ValueError('JSON inválido.')
                 if self.path == '/pair':
                     runtime.mobile_security.verify(data.get('otp'))
-                    return self.reply({'paired':True},cookie=runtime.devices.pair(data.get('code'),data.get('name'),verified=True))
+                    return self.reply({'paired':True},cookie=runtime.devices.pair(data.get('code'),data.get('name'),verified=True, peer=self.peer()))
                 token, device = self.context()
                 if self.path == '/logout':
                     runtime.devices.revoke(device['chat'],device['id'])
@@ -134,18 +160,18 @@ def make_mobile_server(runtime, origin, port=0):
                     if not isinstance(audio,str): raise ValueError('Audio inválido.')
                     from .mobile_voice import transcribe
                     text=transcribe(runtime.storage.config,base64.b64decode(audio,validate=True))
-                    runtime.devices.authorize(token)
+                    runtime.devices.authorize(token, self.peer())
                     return self.reply({'text':text})
                 if self.path == '/speech':
                     message=next((m for m in runtime.storage.messages(device['chat']) if m['id']==data.get('id') and m['role']=='assistant'),None)
                     if not message: raise ValueError('Respuesta no disponible.')
                     from .mobile_voice import speak
                     audio=speak(message['text'])
-                    runtime.devices.authorize(token)
+                    runtime.devices.authorize(token, self.peer())
                     return self.reply(audio,mime='audio/wav')
-                if self.path == '/renew': return self.reply({'renewed':True},cookie=runtime.devices.rotate(token))
+                if self.path == '/renew': return self.reply({'renewed':True},cookie=runtime.devices.rotate(token, self.peer()))
                 with runtime.transition_lock:
-                    runtime.devices.authorize(token)
+                    runtime.devices.authorize(token, self.peer())
                     if self.path == '/activate':
                         if runtime.conversation!=device['chat']:
                             if runtime.busy or runtime.pi_has_children or any(j['process'].poll() is None for j in runtime.terminals.jobs.values()):
@@ -177,6 +203,11 @@ def make_mobile_server(runtime, origin, port=0):
             except PermissionError as e: self.reply({'error':str(e)},401)
             except (ValueError, TypeError): self.reply({'error':'Solicitud inválida o código vencido.'},400)
             except Exception: self.reply({'error':'No se confirmó la operación. Revisa el PC antes de reenviar.'},503)
-    server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
+    return Handler
+
+
+def make_mobile_server(runtime, origin, port=0):
+    """Loopback harness for integration tests."""
+    server = ThreadingHTTPServer(('127.0.0.1', port), mobile_handler(runtime, origin, require_peer=False))
     server.daemon_threads = True
     return server

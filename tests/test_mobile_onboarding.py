@@ -1,3 +1,4 @@
+from pathlib import Path
 import base64
 import copy
 import io
@@ -38,23 +39,30 @@ class MobileTests(unittest.TestCase):
             with self.assertRaises(PermissionError):restarted.verify(otp(secret,100030//30))
         with patch('arise_app.mobile_security.time.time',return_value=100400):restarted.verify(otp(secret,100400//30))
         self.assertNotIn(secret,(self.storage.root/'settings.json').read_text())
-    def test_setup_refuses_other_services_and_funnel(self):
-        runtime=SimpleNamespace(storage=self.storage,mobile_security=Mock(enabled=Mock(return_value=True)),mobile_server=None,start_mobile=Mock(),stop_mobile=Mock())
-        status='{"BackendState":"Running","Self":{"DNSName":"pc.tail.ts.net."}}'
-        for existing in ('{"TCP":{"443":{}}}', '{"AllowFunnel":{"pc.tail.ts.net:443":true}}'):
-            with patch('arise_app.mobile_setup.cli',side_effect=[status,existing]) as command:
-                with self.assertRaises(RuntimeError):prepare(runtime)
-                self.assertEqual(command.call_count,2)
-        runtime.start_mobile.assert_not_called()
-    def test_setup_and_restart_keep_same_port(self):
-        runtime=SimpleNamespace(storage=self.storage,mobile_security=Mock(enabled=Mock(return_value=True)),mobile_server=None)
-        def start(origin,port=0):runtime.mobile_server=SimpleNamespace(server_port=port or 54321);runtime.mobile_origin=origin
-        runtime.start_mobile=Mock(side_effect=start);runtime.stop_mobile=Mock()
-        with patch('arise_app.mobile_setup.cli',side_effect=['{"BackendState":"Running","Self":{"DNSName":"pc.tail.ts.net."}}','{}','']) as command:
-            result=prepare(runtime)
-            self.assertTrue(result['ready']);self.assertEqual(command.call_args.args,('serve','--bg','http://127.0.0.1:54321'))
-        runtime.mobile_server=None;resume(runtime)
-        runtime.start_mobile.assert_called_with('https://pc.tail.ts.net',port=54321)
+    def test_old_host_serve_configuration_never_restarts(self):
+        runtime = SimpleNamespace(storage=self.storage, mobile_security=self.security)
+        save_settings(runtime, {'enabled':True,'origin':'https://old.tail.ts.net','port':54321})
+        with patch('arise_app.mobile_setup.TailNode') as launch:
+            resume(runtime)
+            launch.assert_not_called()
+
+    def test_enrollment_and_resume_use_private_node(self):
+        import threading
+        runtime = SimpleNamespace(storage=self.storage, mobile_security=Mock(enabled=lambda: True),
+                                  mobile_lock=threading.RLock(), mobile_server=None)
+        node = Mock(origin='https://arise-mobile.tail.ts.net')
+        node.process.poll.return_value = None
+        with patch('arise_app.mobile_setup.binary',return_value=Path(__file__)), patch('arise_app.mobile_setup.TailNode',return_value=node) as launch:
+            with self.assertRaises(ValueError): prepare(runtime)
+            prepare(runtime,'one-use-test')
+            launch.assert_called_once_with(runtime,'one-use-test')
+            prepare(runtime)
+            self.assertEqual(launch.call_count,1)
+            self.assertNotIn('one-use-test',(self.storage.root/'mobile-server.json').read_text())
+            runtime.mobile_server = None
+            resume(runtime)
+            launch.assert_called_with(runtime,'')
+
     def test_audio_format_rejected_before_loading_model(self):
         output=io.BytesIO()
         with wave.open(output,'wb') as f:f.setnchannels(2);f.setsampwidth(2);f.setframerate(16000);f.writeframes(b'\x00'*100)
@@ -83,6 +91,20 @@ class MobileTests(unittest.TestCase):
                 self.assertEqual(status,200);token=cookie.split(';')[0].split('=',1)[1]
                 self.assertIn('HttpOnly',cookie);self.assertIn('Secure',cookie)
                 self.assertEqual(post('/pair',{'code':invite,'name':'Phone','otp':otp(secret,100030//30)})[0],401)
+                def get_agents():
+                    c=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=3)
+                    try:
+                        c.request('GET','/agents',headers={'Cookie':'arise_device='+token})
+                        return json.loads(c.getresponse().read())
+                    finally: c.close()
+                runtime.pi=Mock()
+                runtime.pi.process.poll.return_value=None
+                runtime.shell_control=Mock(return_value={'supported':True,'data':{'agents':[{'agent':'planner','id':'a','status':'running','lastStep':'writing','prompt':'private fixture'}]}})
+                self.assertEqual(get_agents()['agents'],[{'agent':'planner','id':'a','status':'running','lastStep':'writing'}])
+                runtime.conversation=other
+                self.assertEqual(get_agents()['agents'],[])
+                runtime.shell_control.assert_called_once_with(chat,'list_subagents',{})
+                runtime.conversation=chat
                 runtime.approvals['foreign']={'chat':other,'generation':0,'event':threading.Event()}
                 self.assertEqual(post('/approval',{'id':'foreign','approved':False},token)[0],400)
                 runtime.approve.assert_not_called()
@@ -94,10 +116,10 @@ class MobileTests(unittest.TestCase):
 class ReadinessTests(unittest.TestCase):
     def test_readiness_never_changes_network_or_enrollment(self):
         from arise_app.mobile_setup import readiness
-        r=SimpleNamespace(mobile_security=Mock(enabled=Mock(return_value=True)),mobile_server=object())
-        with patch('arise_app.mobile_setup.cli',return_value='{"BackendState":"Running"}') as command:
+        r=SimpleNamespace(mobile_security=Mock(enabled=Mock(return_value=True)),mobile_server=Mock())
+        r.mobile_server.process.poll.return_value=None
+        with patch('arise_app.mobile_setup.binary',return_value=Path(__file__)):
             value=readiness(r)
-        command.assert_called_once_with('status','--json')
         self.assertTrue(value['ready_to_pair'])
         self.assertFalse(value['steps'][-1]['ready'])
         r.mobile_security.begin.assert_not_called()

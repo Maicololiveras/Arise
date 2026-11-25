@@ -1,5 +1,8 @@
 # Guided mobile access — Windows and Android QA
 
+**Preview 0.4.58+** · [Guía para conectar el teléfono al nodo privado de ARISE](MOBILE-TAILSCALE.md). This replaces the host Serve setup for Preview.
+
+
 This is a controlled companion feature, not a guarantee of vulnerability-free
 operation. VPS/Coolify remains deferred. The PC hosts the model/tools and must
 remain powered on with ARISE and Tailscale available.

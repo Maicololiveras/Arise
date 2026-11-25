@@ -1,3 +1,7 @@
+# ARISE 0.4.58 — Private mobile agent panel
+
+Pair the phone with a dedicated Tailscale node in Settings → Connections → Mobile. View live subagent status and pending decisions for the paired chat. Existing host Serve installations require migration. See docs/MOBILE-TAILSCALE.md.
+
 # ARISE 0.4.57 — Gentle Shell 5 desktop controls
 
 Open Settings → Agent to manage profiles, choose models and orchestration modes, inspect subagent activity or cancel a subagent. Use /option for the live command catalog. Interactive components appear inside the chat. Gentle Voice uses local dictation. Gentle Music on Windows is deferred. The integrated engine uses Gentle Shell 5.0.0, Gentle AI 5.0.0 and Pi 1.6.0.

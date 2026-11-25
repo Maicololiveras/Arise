@@ -1,5 +1,8 @@
 # Installable mobile web app
 
+**Preview 0.4.58+** · [Guía para conectar el teléfono al nodo privado de ARISE](MOBILE-TAILSCALE.md). This replaces the host Serve setup for Preview.
+
+
 The current mobile distribution is a PC-hosted PWA for Android, iPhone and iPad.
 It is included in ARISE PC 0.4.41+. It does not require an Apple/Google developer
 account, an APK/IPA, a production keystore or an app-store payment. Native mobile
