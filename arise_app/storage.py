@@ -2,6 +2,7 @@ from __future__ import annotations
 import base64
 import ctypes
 import json
+import math
 import os
 import sqlite3
 import threading
@@ -48,6 +49,9 @@ class Storage:
         CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY,title TEXT,created REAL,pi_file TEXT);
         CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY,conversation TEXT,role TEXT,text TEXT,created REAL);
         CREATE INDEX IF NOT EXISTS messages_chat ON messages(conversation);
+        CREATE TABLE IF NOT EXISTS chat_usage(chat TEXT,model TEXT,tokens INTEGER,cost REAL,priced INTEGER,turns INTEGER,PRIMARY KEY(chat,model));
+        CREATE TABLE IF NOT EXISTS chat_results(id TEXT PRIMARY KEY,chat TEXT,name TEXT,content BLOB);
+        CREATE INDEX IF NOT EXISTS results_chat ON chat_results(chat);
         CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY,payload TEXT,created REAL);
         CREATE TABLE IF NOT EXISTS voice_turns(id INTEGER PRIMARY KEY AUTOINCREMENT,conversation TEXT,payload TEXT,created REAL);
         """)
@@ -83,6 +87,55 @@ class Storage:
     def messages(self, conversation):
         with self.lock:
             return [{**dict(r), "images":json.loads(r["images"])} for r in self.db.execute("SELECT * FROM messages WHERE conversation=? ORDER BY created,rowid", (conversation,))]
+
+    def mobile_page(self, chat, after):
+        columns = "rowid AS pos,id,role,text,created"
+        sql = f"SELECT {columns} FROM messages WHERE conversation=? AND role IN ('assistant','user')"
+        with self.lock:
+            if after is None:
+                rows = list(reversed(self.db.execute(sql+" ORDER BY rowid DESC LIMIT 100", (chat,)).fetchall()))
+            else:
+                if type(after) is not int or not 0 <= after < 2**63:
+                    raise ValueError("Cursor inválido.")
+                rows = self.db.execute(sql+" AND rowid>? ORDER BY rowid LIMIT 101", (chat,after)).fetchall()
+        page = rows[:100]
+        return {"messages":[dict(row) for row in page], "after":page[-1]["pos"] if page else after or 0,
+                "more":len(rows)>100}
+
+    def record_usage(self, chat, message):
+        usage = message.get("usage")
+        if not isinstance(usage, dict):
+            return
+        tokens = usage.get("totalTokens")
+        if type(tokens) is not int or not 0 <= tokens < 2**48:
+            return
+        cost = (usage.get("cost") or {}).get("total") if isinstance(usage.get("cost"),dict) else None
+        priced = type(cost) in (int,float) and 0 <= cost < 1e12 and math.isfinite(cost)
+        model = "/".join(str(message[k])[:160] for k in ("provider","model") if message.get(k)) or "—"
+        with self.lock, self.db:
+            self.db.execute("""INSERT INTO chat_usage VALUES(?,?,?,?,?,1) ON CONFLICT(chat,model)
+                DO UPDATE SET tokens=tokens+excluded.tokens,cost=cost+excluded.cost,
+                priced=priced+excluded.priced,turns=turns+1""",(chat,model,tokens,cost if priced else 0,int(priced)))
+
+    def save_result(self, chat, name, content):
+        if len(content)>8_000_000:
+            return None
+        identity=uuid.uuid4().hex
+        with self.lock, self.db:
+            self.db.execute("INSERT INTO chat_results VALUES(?,?,?,?)",(identity,chat,name,content))
+            self.db.execute("""DELETE FROM chat_results WHERE chat=? AND id NOT IN
+                (SELECT id FROM chat_results WHERE chat=? ORDER BY rowid DESC LIMIT 10)""",(chat,chat))
+        return identity
+
+    def mobile_details(self, chat):
+        with self.lock:
+            usage=self.db.execute("SELECT model,tokens,cost,priced,turns FROM chat_usage WHERE chat=? ORDER BY model",(chat,)).fetchall()
+            results=self.db.execute("SELECT id,name,length(content) AS size FROM chat_results WHERE chat=? ORDER BY rowid DESC",(chat,)).fetchall()
+            return {"usage":[dict(r) for r in usage],"results":[dict(r) for r in results]}
+
+    def mobile_result(self, chat, identity):
+        with self.lock:
+            return self.db.execute("SELECT name,content FROM chat_results WHERE chat=? AND id=?",(chat,identity)).fetchone()
 
     def message_page(self, chat, before=None, limit=40):
         """Keyset pagination: exclude diagnostics before limiting, no offset drift."""

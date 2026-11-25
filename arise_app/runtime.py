@@ -25,6 +25,7 @@ Consulta arise_tools para conocer la autorización local y las capacidades obser
 Si el usuario pide delegar en un chat o terminal local, usa terminal.delegate del catálogo de ARISE. No abras pi ni una shell por bash para sustituirlo.
 Para responder o corregir una terminal delegada usa terminal.send con su ID; consulta terminal.list. Una terminal waiting o waiting_user sigue pendiente, no terminada. No redelegues la misma tarea.
 Gentle Shell gobierna la ejecución y los subagentes; no uses delegación para eludir una denegación.
+Para entregar archivos al celular usa files.write para texto y documents.create_docx para Word.
 Puedes explorar archivos y crear Word con documents.create_docx sin usar el escritorio. Comprueba el
 contenido y el archivo resultante; una copia vacía de plantilla no es una entrega. No inventes la plantilla WEG.
 La ejecución local requiere habilitación explícita en Ajustes > Agente para este chat. Mantén las políticas
@@ -323,6 +324,8 @@ class Runtime:
                 env['ARISE_GENTLE_PREFIX'] = config['gentle_bundle_root']
             self.pi_epoch += 1
             epoch = self.pi_epoch
+            self.question_prefix = uuid.uuid4().hex + "|"
+            env["ARISE_QUESTION_PREFIX"] = self.question_prefix
             env["ARISE_SESSION_EPOCH"] = str(epoch)
             if hasattr(self, "credentials"):
                 env.update(self.credentials.environment())
@@ -450,6 +453,8 @@ class Runtime:
         elif kind == "message_end" and event.get("message", {}).get("role") == "assistant":
             self.current_message = ""
             message = event["message"]
+            if message.get("usage"):
+                self.storage.record_usage(self.conversation, message)
             text = "\n".join(b.get("text", "") for b in message.get("content", []) if b.get("type") == "text")
             if text:
                 self.storage.message(self.conversation, "assistant", text)
@@ -478,6 +483,9 @@ class Runtime:
         elif kind == "extension_ui_request":
             if event.get("method") in ("select", "confirm", "input", "editor"):
                 self.publish_activity({"type":"waiting"})
+                prefix = getattr(self, "question_prefix", None)
+                if prefix and event["method"] in ("input","select") and str(event.get("title","")).startswith(prefix):
+                    event = dict(event, title=event["title"][len(prefix):], mobile_chat=self.conversation)
                 self.dialogs[event["id"]] = event
                 self.emit("dialog", event)
             elif event.get("method") == "notify":
@@ -678,11 +686,14 @@ class Runtime:
         return self.status()
 
     def answer_dialog(self, data):
+        with self.transition_lock, self.lock:
+            return self._answer_dialog_locked(data)
+
+    def _answer_dialog_locked(self, data):
         identity = data.get("id")
         request = self.dialogs.get(identity)
         if request and request.get('terminal_id'):
             return self.terminals.reply(request['terminal_id'],request['request_id'],data,request['chat'])
-        request = self.dialogs.pop(identity, None)
         if not request or not self.pi:
             raise ValueError("La pregunta ya no está pendiente.")
         record = {"type": "extension_ui_response", "id": identity}
@@ -696,6 +707,7 @@ class Runtime:
                 raise ValueError("Opción inválida.")
             record["value"] = str(value)
         self.pi.send(record)
+        self.dialogs.pop(identity, None)
         self.emit("dialog_resolved", {"id":identity})
         return {"ok": True}
 

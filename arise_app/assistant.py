@@ -114,20 +114,22 @@ class Assistant(Runtime):
             self.orb.update("error")
             raise
 
-    def steer(self, text, images=None):
+    def steer(self, text, images=None, delivery="steer"):
         with self.transition_lock:
-            return self._steer_owned(text, images)
+            return self._steer_owned(text, images, delivery)
 
-    def _steer_owned(self, text, images=None):
+    def _steer_owned(self, text, images=None, delivery="steer"):
         from .attachments import validate_images
         images=validate_images(images)
         if images and not str(text).strip(): text="Describe estas imágenes."
         if not self.busy:
             return self.prompt(text, images)
-        self.storage.message(self.conversation, "user", text, images)
-        payload={"type":"steer", "message":text}
+        if delivery not in ("steer","follow_up"):
+            raise ValueError("Modo de envío inválido.")
+        payload={"type":delivery, "message":text}
         if images: payload["images"]=images
         self.pi.request(payload)
+        self.storage.message(self.conversation, "user", text, images)
         self.emit("user", {"text": text, "images":images})
         return {"task_id": self.current_task, "steering": True}
 
@@ -245,6 +247,7 @@ class Assistant(Runtime):
                 if name == "documents.read_docx": return self.wrap(read_docx(self.scoped_path(arguments["path"])))
             raise ValueError("Herramienta de documentos desconocida.")
         if name == "files.write":
+            chat = self.conversation
             path = self.scoped_path(arguments["path"])
             text = arguments["text"]
             if not isinstance(text, str) or len(text.encode()) > 2_000_000:
@@ -252,9 +255,11 @@ class Assistant(Runtime):
             with self.action_lock:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 temp = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
-                temp.write_text(text, encoding="utf-8")
+                content = text.encode("utf-8")
+                temp.write_bytes(content)
                 os.replace(temp, path)
-            return self.wrap({"path": str(path), "written": True})
+                result_id = self.storage.save_result(chat, path.name, content)
+            return self.wrap({"path": str(path), "written": True, "result_id":result_id})
         if name == "gmail.draft":
             attachments = []
             total = 0

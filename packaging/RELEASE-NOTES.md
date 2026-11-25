@@ -1,3 +1,7 @@
+# ARISE 0.4.59 — Mobile chat continuity
+
+Answer agent questions on either device, recover messages after a disconnect, steer or queue a follow-up and download generated files. The mobile chat shows reported token usage and estimated USD costs by model.
+
 # ARISE 0.4.58 — Private mobile agent panel
 
 Pair the phone with a dedicated Tailscale node in Settings → Connections → Mobile. Preview and Stable have independent node identities, API routes, authenticators and session credentials. View live subagent status and pending decisions for the paired chat. Existing host Serve installations require migration. See docs/MOBILE-TAILSCALE.md.

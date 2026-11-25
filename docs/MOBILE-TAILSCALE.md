@@ -53,3 +53,13 @@ En una red existente, integra estas entradas en la política vigente y revisa lo
 - El cifrado protege el transporte. El PC y el teléfono autorizados pueden ver el contenido del chat. Las herramientas y el proveedor de modelos siguen sujetos a la configuración que hayas elegido en Arise. El nombre del dispositivo y los metadatos necesarios para coordinar la red son visibles para Tailscale.
 
 [tsnet](https://tailscale.com/docs/features/tsnet) · [Certificados HTTPS](https://tailscale.com/kb/1153/enabling-https) · [Política de red](https://tailscale.com/docs/reference/syntax/policy-file)
+
+## Usar el chat desde el celular
+
+Con el nodo privado activo y el chat vinculado, abre el icono de ARISE. Puedes probar la integración con un pedido como «Pregúntame qué columnas necesito y crea un informe Word con la respuesta».
+
+1. Responde en el PC o el celular. Las preguntas de elección y texto de Gentle Shell 5 aparecen en ambos. El motor acepta la primera respuesta válida. Cada pregunta conserva su propio formulario. Las aprobaciones de acciones conservan su verificación habitual.
+2. Si el agente está trabajando, elige **Orientar ahora** para corregir el rumbo o **Enviar al terminar** para dejarle una segunda tarea.
+3. Si pierdes la conexión, vuelve al chat. Mientras la página siga abierta, recupera los mensajes confirmados desde el último recibido. Al abrir una página nueva carga los últimos 100. Un envío sin confirmación conserva el borrador para que puedas verificar el historial.
+4. Abre **Entregables y consumo** para descargar copias de los archivos creados con `files.write` o `documents.create_docx`. El PC conserva los últimos diez entregables de hasta 8 MB cada uno por chat. Una edición posterior del archivo del workspace no modifica la copia descargable. Los documentos anteriores a esta versión siguen disponibles en el PC.
+5. En **Uso del agente principal** verás tokens y coste estimado en USD por proveedor y modelo desde la actualización. La fracción indica cuántas respuestas tenían una estimación de precio sobre el total registrado. Una raya indica que falta el precio. Las suscripciones y los subagentes pueden tener contabilidad propia.

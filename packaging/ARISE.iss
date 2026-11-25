@@ -1,4 +1,4 @@
-#define AppVersion "0.4.58"
+#define AppVersion "0.4.59"
 #ifndef PreviewBuild
   #define PreviewBuild "0"
 #endif

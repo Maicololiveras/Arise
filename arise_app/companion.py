@@ -79,13 +79,16 @@ def mobile_handler(runtime, origin, require_peer=True):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_): pass
 
-        def reply(self, body, code=200, cookie=None, mime='application/json'):
+        def reply(self, body, code=200, cookie=None, mime='application/json', filename=None):
             raw = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
             self.send_response(code)
             for k,v in {'Content-Type': mime, 'Content-Length': str(len(raw)), 'Cache-Control': 'no-store',
                         'Permissions-Policy':'microphone=(self), camera=(), geolocation=()',
                         'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
                         'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'"}.items(): self.send_header(k,v)
+            if filename is not None:
+                from urllib.parse import quote
+                self.send_header('Content-Disposition', "attachment; filename*=UTF-8''" + quote(filename, safe=''))
             if cookie is not None: self.send_header('Set-Cookie', f'{channel.cookie}={cookie}; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age={2592000 if cookie else 0}')
             self.end_headers(); self.wfile.write(raw)
 
@@ -137,6 +140,11 @@ def mobile_handler(runtime, origin, require_peer=True):
                                     for row in reply.get('data', {}).get('agents', [])[:50]]
                         runtime.devices.authorize(token, self.peer())
                     return self.reply({'agents':rows, 'active':active, 'available':available})
+                if self.path.startswith('/results/'):
+                    result = runtime.storage.mobile_result(device['chat'],self.path[len('/results/'):])
+                    if result is None: return self.reply({'error':'Archivo no disponible.'},404)
+                    runtime.devices.authorize(token,self.peer())
+                    return self.reply(result['content'],mime='application/octet-stream',filename=result['name'])
                 if self.path != '/messages': return self.reply({'error':'Ruta no disponible.'},404)
                 messages = runtime.storage.messages(device['chat'])[-100:]
                 with runtime.lock:
@@ -184,6 +192,21 @@ def mobile_handler(runtime, origin, require_peer=True):
                 if self.path == '/renew': return self.reply({'renewed':True},cookie=runtime.devices.rotate(token, self.peer()))
                 with runtime.transition_lock:
                     runtime.devices.authorize(token, self.peer())
+                    chat = device['chat']
+                    if self.path == '/sync':
+                        after = data.get('after') if data.get('chat') == chat else None
+                        page = runtime.storage.mobile_page(chat, after)
+                        active = runtime.conversation == chat
+                        with runtime.lock:
+                            questions = [{k:q[k] for k in ('id','method','title','options') if k in q}
+                                         for q in runtime.dialogs.values() if active and q.get('mobile_chat')==chat]
+                            approvals = [{'id':key,'action':a['action'],'preview':a['preview']}
+                                         for key,a in runtime.approvals.items() if active and a.get('chat')==chat
+                                         and a.get('generation')==runtime.stop_generation and not a['event'].is_set()]
+                        snapshot = dict(page, **runtime.storage.mobile_details(chat), chat=chat, reset=after is None,
+                                        questions=questions, approvals=approvals, active=active, busy=active and runtime.busy,
+                                        ui_language=runtime.storage.config.get('ui_language','es'))
+                        return self.reply(snapshot)
                     if self.path == '/activate':
                         if runtime.conversation!=device['chat']:
                             if runtime.busy or runtime.pi_has_children or any(j['process'].poll() is None for j in runtime.terminals.jobs.values()):
@@ -191,6 +214,16 @@ def mobile_handler(runtime, origin, require_peer=True):
                             runtime.switch_conversation(device['chat'])
                         return self.reply({'active':True})
                     if runtime.conversation != device['chat']: return self.reply({'error':'Abre este chat en el PC para enviar o detener. El historial sigue disponible.'},409)
+                    if self.path == '/answer':
+                        identity, value = data.get('id'), data.get('value')
+                        if not isinstance(identity,str) or not isinstance(value,str) or len(value)>12000:
+                            raise ValueError('Respuesta inválida.')
+                        with runtime.lock:
+                            question = runtime.dialogs.get(identity)
+                            if not question or question.get('mobile_chat')!=chat:
+                                return self.reply({'error':'La pregunta ya se resolvió o cerró.'},409)
+                            runtime.answer_dialog({'id':identity,'value':value})
+                        return self.reply({'answered':True})
                     if self.path == '/approval':
                         identity=data.get('id')
                         if not isinstance(identity,str) or not isinstance(data.get('approved'),bool): raise ValueError('Decisión inválida.')
@@ -207,6 +240,9 @@ def mobile_handler(runtime, origin, require_peer=True):
                         # Existing permissions and approval UI still govern every action.
                         from .attachments import validate_images
                         images=validate_images(data.get('images'))
+                        delivery = data.get('delivery','steer')
+                        if delivery == 'follow_up': return self.reply(runtime.steer(text, images=images, delivery=delivery))
+                        if delivery != 'steer': raise ValueError('Modo de envío inválido.')
                         return self.reply(runtime.steer(text,images=images) if images else runtime.steer(text))
                     if self.path == '/stop':
                         runtime.stop()

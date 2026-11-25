@@ -52,13 +52,15 @@ def create_docx(runtime, args):
         checked = open_document(temp)
         if [p.text for p in checked.paragraphs][-len(paragraphs):] != paragraphs:
             raise RuntimeError('No se pudo verificar el contenido guardado.')
-        digest = hashlib.sha256(temp.read_bytes()).hexdigest()
+        content = temp.read_bytes()
+        digest = hashlib.sha256(content).hexdigest()
         with runtime.lock:
             if runtime.conversation != chat or runtime.stop_generation != generation:
                 raise RuntimeError('Documento cancelado al detener o cambiar de chat.')
             # Atomic no-clobber publication on NTFS and POSIX; never overwrite a template.
             os.link(temp, path)
-        return {'path': str(path), 'conversation': chat, 'bytes': path.stat().st_size,
+        result_id = runtime.storage.save_result(chat, path.name, content)
+        return {'result_id':result_id, 'path': str(path), 'conversation': chat, 'bytes': path.stat().st_size,
                 'sha256': digest, 'content_verified': True, 'visual_verified': False,
                 'paragraphs_added': len(paragraphs), 'template_mode': 'append' if args.get('template') else 'none'}
     finally:

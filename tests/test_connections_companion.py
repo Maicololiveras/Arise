@@ -129,6 +129,60 @@ class DurableTests(unittest.TestCase):
         with patch('arise_app.companion.time.time',return_value=time.time()+901):
             with self.assertRaises(PermissionError):self.r.devices.rotate(token)
 
+    def test_reconnect_excludes_other_chats_and_paginates(self):
+        self.s.message(self.chat,'assistant','first')
+        cursor=self.s.mobile_page(self.chat,None)['after']
+        self.s.message(self.other,'assistant','private')
+        self.s.message(self.chat,'system','local diagnostic')
+        for i in range(102): self.s.message(self.chat,'assistant',str(i))
+        page=self.s.mobile_page(self.chat,cursor)
+        tail=self.s.mobile_page(self.chat,page['after'])
+        self.assertTrue(page['more'])
+        self.assertEqual([m['text'] for m in page['messages']+tail['messages']],list(map(str,range(102))))
+        self.assertFalse(tail['more'])
+
+    def test_scoped_download_questions_and_usage(self):
+        from arise_app.runtime import Runtime
+        from types import MethodType
+        self.r.dialogs={'q':{'id':'q','title':'Choose','method':'select','options':['A'],'mobile_chat':self.chat},
+                        'local':{'id':'local','title':'Credentials','method':'input'}}
+        self.r.busy=True
+        self.r.pi=Mock()
+        self.r.answer_dialog=MethodType(Runtime.answer_dialog,self.r)
+        self.r._answer_dialog_locked=MethodType(Runtime._answer_dialog_locked,self.r)
+        result=self.s.save_result(self.chat,'Informe #1.txt',b'result')
+        private=self.s.save_result(self.other,'private',b'secret')
+        self.s.record_usage(self.chat,{'model':'model','usage':{'totalTokens':21,'cost':{'total':0.15}}})
+        self.s.record_usage(self.chat,{'model':'model','usage':{'totalTokens':4}})
+        origin='https://pc.example.ts.net'
+        server=make_mobile_server(self.r,origin)
+        thread=threading.Thread(target=server.serve_forever);thread.start()
+        token=self.r.devices.pair(self.r.devices.invite(self.chat)['code'],'phone')
+        def request(path,body=None):
+            client=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=3)
+            try:
+                client.request('POST' if body is not None else 'GET',self.r.devices.channel.api+path,
+                    json.dumps(body) if body is not None else None,{'Origin':origin,'Content-Type':'application/json',
+                    'Cookie':self.r.devices.channel.cookie+'='+token})
+                response=client.getresponse()
+                return response.status,dict(response.getheaders()),response.read()
+            finally:client.close()
+        try:
+            state=json.loads(request('/sync',{})[2])
+            self.assertEqual([q['id'] for q in state['questions']],['q'])
+            self.assertEqual([r['id'] for r in state['results']],[result])
+            self.assertEqual(state['usage'],[{'model':'model','tokens':25,'cost':0.15,'priced':1,'turns':2}])
+            self.assertEqual(request('/results/'+private)[0],404)
+            code,headers,content=request('/results/'+result)
+            self.assertEqual((code,content),(200,b'result'))
+            self.assertIn("Informe%20%231",headers['Content-Disposition'])
+            self.assertEqual(request('/answer',{'id':'local','value':'x'})[0],409)
+            self.assertEqual(request('/answer',{'id':'q','value':'B'})[0],400)
+            self.assertEqual(request('/answer',{'id':'q','value':'A'})[0],200)
+            self.assertEqual(request('/answer',{'id':'q','value':'A'})[0],409)
+            self.r.pi.send.assert_called_once()
+        finally:server.shutdown();server.server_close();thread.join()
+
     def test_installable_assets_are_public_but_chat_stays_private(self):
         server=make_mobile_server(self.r,'https://pc.example.ts.net')
         thread=threading.Thread(target=server.serve_forever);thread.start()
