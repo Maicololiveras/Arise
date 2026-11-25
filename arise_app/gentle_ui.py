@@ -181,7 +181,11 @@ def extension_for_rpc(gentle, cache, source=None):
     elif package['version'] in ('4.0.0','4.2.0','4.3.0','4.5.0','4.7.0','4.8.0','4.9.0','5.0.0') and source.name == 'index.ts' and source.parent.name == 'history':
         patterns=[(r'(async function runPromptHistorySelection\([\s\S]*?\): Promise<PromptRecord \| null> \{)', HISTORY)]
     elif package['version'] == '5.0.0' and source.name in ('ask-user-choice.ts','ask-user-question.ts'):
-        text = re.sub(r'(await ctx\.ui\.(?:input|select)\()', lambda m: m[0] + '(process.env.ARISE_QUESTION_PREFIX ?? "") + ', text)
+        # Gentle uses exact choices for provider consent and maintenance authorization.
+        prefix = '(process.env.ARISE_QUESTION_PREFIX ?? "")'
+        if source.name == 'ask-user-choice.ts':
+            prefix = f'(allowsCustomResponse(params) ? {prefix} : "")'
+        text = re.sub(r'(await ctx\.ui\.(?:input|select)\()', lambda m: m[0] + prefix + " + ", text)
     elif package['version'] != '5.0.0' or 'ctx.ui.custom' not in text:
         return source
     for pattern,body in patterns:
