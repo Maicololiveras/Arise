@@ -1,6 +1,6 @@
 # ARISE 0.4.58 — Private mobile agent panel
 
-Pair the phone with a dedicated Tailscale node in Settings → Connections → Mobile. View live subagent status and pending decisions for the paired chat. Existing host Serve installations require migration. See docs/MOBILE-TAILSCALE.md.
+Pair the phone with a dedicated Tailscale node in Settings → Connections → Mobile. Preview and Stable have independent node identities, API routes, authenticators and session credentials. View live subagent status and pending decisions for the paired chat. Existing host Serve installations require migration. See docs/MOBILE-TAILSCALE.md.
 
 # ARISE 0.4.57 — Gentle Shell 5 desktop controls
 

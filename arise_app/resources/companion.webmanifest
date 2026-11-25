@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "ARISE Companion",
-  "short_name": "ARISE",
+  "name": "__MOBILE_TITLE__ Companion",
+  "short_name": "__MOBILE_TITLE__",
   "lang": "es",
   "start_url": "/",
   "scope": "/",

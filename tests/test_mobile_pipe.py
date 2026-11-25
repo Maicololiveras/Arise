@@ -38,10 +38,11 @@ class MobilePipeTests(unittest.TestCase):
                 node.handler = mobile_handler(runtime, origin)
                 thread = threading.Thread(target=node.serve, daemon=True)
                 thread.start()
-                def request(method, path, data=None, peer="phone-A"):
+                def request(method, path, data=None, peer="phone-A", protocol=None):
                     body = json.dumps(data).encode() if data else b''
-                    headers = [f'{method} {path} HTTP/1.1','Host: arise-mobile.example.ts.net',
-                               'X-Arise-Tailnode: '+peer,'Origin: '+origin,'Cookie: arise_device='+cookie,'Content-Type: application/json',
+                    protocol = protocol or runtime.devices.channel.api
+                    headers = [f'{method} {protocol}{path} HTTP/1.1','Host: arise-mobile.example.ts.net',
+                               'X-Arise-Tailnode: '+peer,'Origin: '+origin,'Cookie: '+runtime.devices.channel.cookie+'='+cookie,'Content-Type: application/json',
                                'Content-Length: '+str(len(body))]
                     packet = ('\r\n'.join(headers)+'\r\n\r\n').encode()+body
                     outgoing.write(struct.pack('!I',len(packet))+packet)
@@ -50,6 +51,9 @@ class MobilePipeTests(unittest.TestCase):
                     headers = http.client.parse_headers(replies)
                     return int(status.split()[1]), json.loads(replies.read(int(headers['Content-Length'])))
                 try:
+                    from arise_app.mobile_channel import MobileChannel
+                    other = next(ch for ch in MobileChannel if ch is not runtime.devices.channel)
+                    self.assertEqual(request('GET','/messages',protocol=other.api)[0],404)
                     self.assertEqual(request('GET','/messages',peer='phone-B')[0],401)
                     self.assertEqual(request('GET','/messages')[1]['approvals'][0]['id'],'request')
                     self.assertEqual(request('POST','/approval',dict(id='request',approved=True,otp='fixture'))[0],200)

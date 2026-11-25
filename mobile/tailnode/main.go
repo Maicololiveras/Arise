@@ -21,15 +21,16 @@ import (
 	"tailscale.com/tsnet"
 )
 
-type config struct{ Dir, Key string }
+type config struct{ Dir, Key, Channel string }
 
 type gateway struct {
-	host    string
-	input   *bufio.Reader
-	output  io.Writer
-	slot    chan struct{}
-	pending chan struct{}
-	peer    func(*http.Request) string
+	protocol string
+	host     string
+	input    *bufio.Reader
+	output   io.Writer
+	slot     chan struct{}
+	pending  chan struct{}
+	peer     func(*http.Request) string
 }
 
 func (g *gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -45,11 +46,24 @@ func (g *gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(403)
 		return
 	}
+	route, private := strings.CutPrefix(r.URL.Path, g.protocol+"/")
+	if !private {
+		switch r.URL.Path {
+		case "/", "/companion.js", "/companion-language.js", "/companion-install.js", "/companion.css", "/companion.webmanifest", "/companion-icon-180.png", "/companion-icon-192.png", "/companion-icon-512.png":
+			if r.Method != http.MethodGet {
+				w.WriteHeader(405)
+				return
+			}
+		default:
+			w.WriteHeader(404)
+			return
+		}
+	}
 	limit := int64(40000)
-	switch r.URL.Path {
-	case "/prompt":
+	switch route {
+	case "prompt":
 		limit = 12000000
-	case "/transcribe":
+	case "transcribe":
 		limit = 1400000
 	}
 	select {
@@ -125,7 +139,11 @@ func run() error {
 	if err = json.Unmarshal(line, &cfg); err != nil || cfg.Dir == "" {
 		return errors.New("invalid configuration")
 	}
-	node := &tsnet.Server{Hostname: "arise-mobile", Dir: cfg.Dir, AuthKey: cfg.Key, Logf: func(string, ...any) {}, UserLogf: func(string, ...any) {}}
+	if cfg.Channel != "preview" && cfg.Channel != "stable" {
+		return errors.New("invalid release channel")
+	}
+	name := "arise-" + cfg.Channel
+	node := &tsnet.Server{Hostname: name, Dir: cfg.Dir, AuthKey: cfg.Key, Logf: func(string, ...any) {}, UserLogf: func(string, ...any) {}}
 	defer node.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
 	defer cancel()
@@ -133,7 +151,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if st.Self == nil || st.Self.Tags == nil || !slices.Contains(st.Self.Tags.AsSlice(), "tag:arise-mobile") {
+	if st.Self == nil || st.Self.Tags == nil || st.Self.Tags.Len() != 1 || !slices.Contains(st.Self.Tags.AsSlice(), "tag:"+name) {
 		return errors.New("missing node tag")
 	}
 	host := strings.TrimSuffix(st.Self.DNSName, ".")
@@ -158,7 +176,7 @@ func run() error {
 		}
 		return string(who.Node.StableID)
 	}
-	server := &http.Server{Handler: &gateway{host, in, os.Stdout, make(chan struct{}, 1), make(chan struct{}, 16), identity}, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 150 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16384}
+	server := &http.Server{Handler: &gateway{"/mobile/" + cfg.Channel + "/v1", host, in, os.Stdout, make(chan struct{}, 1), make(chan struct{}, 16), identity}, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 150 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16384}
 	fmt.Fprintln(os.Stdout, host)
 	return server.Serve(tls.NewListener(listener, &tls.Config{MinVersion: tls.VersionTLS13, GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		if hello.ServerName != host {

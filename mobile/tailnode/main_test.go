@@ -15,8 +15,8 @@ func TestPrivatePipe(t *testing.T) {
 	const host = "arise-mobile.example.ts.net"
 	var wire bytes.Buffer
 	response := "HTTP/1.0 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}"
-	g := gateway{host, bufio.NewReader(strings.NewReader(response)), &wire, make(chan struct{}, 1), make(chan struct{}, 16), func(*http.Request) string { return "verified-phone" }}
-	request := httptest.NewRequest("POST", "/approval", strings.NewReader("{}"))
+	g := gateway{"/mobile/preview/v1", host, bufio.NewReader(strings.NewReader(response)), &wire, make(chan struct{}, 1), make(chan struct{}, 16), func(*http.Request) string { return "verified-phone" }}
+	request := httptest.NewRequest("POST", "/mobile/preview/v1/approval", strings.NewReader("{}"))
 	request.Host = host
 	denied := httptest.NewRecorder()
 	g.ServeHTTP(denied, request)
@@ -24,6 +24,13 @@ func TestPrivatePipe(t *testing.T) {
 		t.Fatal("unexpected cross-origin forwarding")
 	}
 	request.Header.Set("Origin", "https://"+host)
+	wrong := request.Clone(request.Context())
+	wrong.URL.Path = "/mobile/stable/v1/approval"
+	rejected := httptest.NewRecorder()
+	g.ServeHTTP(rejected, wrong)
+	if rejected.Code != 404 || wire.Len() != 0 {
+		t.Fatal("cross-channel request reached application")
+	}
 	request.Header.Set("X-Arise-Tailnode", "untrusted")
 	request.Header.Set("Authorization", "desktop-only")
 	request.Header.Set("Cookie", "arise_device=paired")
@@ -41,7 +48,7 @@ func TestPrivatePipe(t *testing.T) {
 		t.Fatal(err)
 	}
 	body, err := io.ReadAll(forwarded.Body)
-	if err != nil || string(body) != "{}" || forwarded.URL.Path != "/approval" || forwarded.Header.Get("Authorization") != "" || forwarded.Header.Get("X-Arise-Tailnode") != "verified-phone" || forwarded.Header.Get("Cookie") != "arise_device=paired" {
+	if err != nil || string(body) != "{}" || forwarded.URL.Path != "/mobile/preview/v1/approval" || forwarded.Header.Get("Authorization") != "" || forwarded.Header.Get("X-Arise-Tailnode") != "verified-phone" || forwarded.Header.Get("Cookie") != "arise_device=paired" {
 		t.Fatal("incorrect private request")
 	}
 }

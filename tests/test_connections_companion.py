@@ -153,8 +153,8 @@ class DurableTests(unittest.TestCase):
                 self.assertEqual(code,200)
                 self.assertEqual(icon_headers['Content-Type'],'image/png')
                 self.assertEqual(image[:8],b'\x89PNG\r\n\x1a\n')
-            self.assertEqual(get('/messages')[0],401)
-            self.assertEqual(get('/../storage.db')[0],401)
+            self.assertEqual(get(self.r.devices.channel.api+'/messages')[0],401)
+            self.assertEqual(get('/../storage.db')[0],404)
             self.r.steer.assert_not_called()
         finally:server.shutdown();server.server_close();thread.join()
 
@@ -165,7 +165,7 @@ class DurableTests(unittest.TestCase):
         def post(path,body,origin='https://pc.example.ts.net'):
             client=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=3)
             try:
-                client.request('POST',path,json.dumps(body),{'Content-Type':'application/json','Origin':origin,'Cookie':'arise_device='+token})
+                client.request('POST',self.r.devices.channel.api+path,json.dumps(body),{'Content-Type':'application/json','Origin':origin,'Cookie':self.r.devices.channel.cookie+'='+token})
                 response=client.getresponse();status=response.status;response.read();return status
             finally:client.close()
         try:

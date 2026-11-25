@@ -61,7 +61,9 @@ class ConnectionsDialog(QDialog):
             otp.clear();self.pair_qr.clear();self.output.clear()
             self.status.setText('Autenticador confirmado. Espera su siguiente código para vincular el teléfono.')
         self.button(mobile,'Confirmar autenticador',lambda:self.run('mobile/security/confirm',{'code':otp.text().strip()},confirmed))
-        node_key = self.field(mobile,'Clave Tailscale de un solo uso (solo al registrar)',secret=True)
+        from .mobile_channel import MobileChannel
+        channel = MobileChannel.installed()
+        node_key = self.field(mobile,f'Clave de un solo uso · tag:arise-{channel.value}',secret=True)
         def connect_node():
             key = node_key.text().strip()
             node_key.clear()

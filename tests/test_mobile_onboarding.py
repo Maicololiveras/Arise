@@ -58,7 +58,7 @@ class MobileTests(unittest.TestCase):
             launch.assert_called_once_with(runtime,'one-use-test')
             prepare(runtime)
             self.assertEqual(launch.call_count,1)
-            self.assertNotIn('one-use-test',(self.storage.root/'mobile-server.json').read_text())
+            self.assertNotIn('one-use-test',next(self.storage.root.glob('mobile-*-v1-server.json')).read_text())
             runtime.mobile_server = None
             resume(runtime)
             launch.assert_called_with(runtime,'')
@@ -80,7 +80,7 @@ class MobileTests(unittest.TestCase):
         def post(path,body,token=''):
             c=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=3)
             try:
-                c.request('POST',path,json.dumps(body),{'Origin':'https://pc.tail.ts.net','Content-Type':'application/json','Cookie':'arise_device='+token})
+                c.request('POST',runtime.devices.channel.api+path,json.dumps(body),{'Origin':'https://pc.tail.ts.net','Content-Type':'application/json','Cookie':runtime.devices.channel.cookie+'='+token})
                 r=c.getresponse();status=r.status;cookie=r.getheader('Set-Cookie');r.read();return status,cookie
             finally:c.close()
         try:
@@ -94,7 +94,7 @@ class MobileTests(unittest.TestCase):
                 def get_agents():
                     c=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=3)
                     try:
-                        c.request('GET','/agents',headers={'Cookie':'arise_device='+token})
+                        c.request('GET',runtime.devices.channel.api+'/agents',headers={'Cookie':runtime.devices.channel.cookie+'='+token})
                         return json.loads(c.getresponse().read())
                     finally: c.close()
                 runtime.pi=Mock()
@@ -123,3 +123,36 @@ class ReadinessTests(unittest.TestCase):
         self.assertTrue(value['ready_to_pair'])
         self.assertFalse(value['steps'][-1]['ready'])
         r.mobile_security.begin.assert_not_called()
+
+class MobileChannelTests(unittest.TestCase):
+    def test_same_storage_and_peer_do_not_share_any_channel_credential(self):
+        from arise_app.mobile_channel import MobileChannel
+        from arise_app.companion import Devices
+        with tempfile.TemporaryDirectory() as root:
+            storage = Storage(root)
+            self.addCleanup(storage.db.close)
+            chat = storage.create_conversation()
+            preview, stable = [Devices(storage, ch) for ch in MobileChannel]
+            invitations = [svc.invite(chat)['code'] for svc in (preview,stable)]
+            with self.assertRaises(ValueError): stable.pair(invitations[0],'phone',peer='same')
+            with self.assertRaises(ValueError): preview.pair(invitations[1],'phone',peer='same')
+            tokens = [svc.pair(code,'phone',peer='same') for svc,code in zip((preview,stable),invitations)]
+            for own, other, token in ((preview,stable,tokens[0]), (stable,preview,tokens[1])):
+                self.assertNotEqual(own.channel.api,other.channel.api)
+                self.assertNotEqual(own.channel.cookie,other.channel.cookie)
+                with self.assertRaises(PermissionError): other.rotate(token,'same')
+                other.revoke(chat,own.authorize(token,'same')['id'])
+                self.assertEqual(own.authorize(token,'same')['chat'],chat)
+            a,b = [MobileSecurity(storage, channel=ch) for ch in MobileChannel]
+            self.assertNotEqual(a.vault.path,b.vault.path)
+            a.vault,b.vault = Vault(),Vault()
+            asecret,bsecret = a.begin()['secret'], b.begin()['secret']
+            self.assertNotEqual(asecret,bsecret)
+            with patch('arise_app.mobile_security.time.time', return_value=123456789):
+                step=123456789//30
+                a.confirm(otp(asecret,step))
+                b.confirm(otp(bsecret,step))
+                for _ in range(5):
+                    with self.assertRaises(PermissionError): a.verify('invalid')
+            with patch('arise_app.mobile_security.time.time',return_value=123456819):
+                b.verify(otp(bsecret,step+1))

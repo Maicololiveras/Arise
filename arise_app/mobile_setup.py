@@ -9,6 +9,7 @@ import subprocess
 import threading
 
 from .bundle import application_root
+from .mobile_channel import MobileChannel
 from .companion import mobile_handler
 
 
@@ -17,12 +18,12 @@ def binary():
 
 
 def read_settings(runtime):
-    path = runtime.storage.root / 'mobile-server.json'
+    path = runtime.storage.root / f'mobile-{MobileChannel.installed().value}-v1-server.json'
     return json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
 
 
 def save_settings(runtime, value):
-    path = runtime.storage.root / 'mobile-server.json'
+    path = runtime.storage.root / f'mobile-{MobileChannel.installed().value}-v1-server.json'
     temp = path.with_suffix('.tmp')
     temp.write_text(json.dumps(value), encoding='utf-8')
     os.replace(temp, path)
@@ -30,7 +31,8 @@ def save_settings(runtime, value):
 
 class TailNode:
     def __init__(self, runtime, key):
-        directory = runtime.storage.root / 'tailnode'
+        channel = MobileChannel.installed()
+        directory = runtime.storage.root / f'tailnode-{channel.value}-v1'
         directory.mkdir(mode=0o700, exist_ok=True)
         env = {name: os.environ[name] for name in ('HOME','USERPROFILE','SystemRoot','WINDIR','LOCALAPPDATA',
                 'APPDATA','TMPDIR','TMP','TEMP','LANG','PATH','SSL_CERT_FILE','SSL_CERT_DIR') if name in os.environ}
@@ -38,13 +40,13 @@ class TailNode:
         self.process = subprocess.Popen([str(binary())], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.DEVNULL, env=env, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         try:
-            self.process.stdin.write((json.dumps({'Dir':str(directory.resolve()), 'Key':key})+'\n').encode())
+            self.process.stdin.write((json.dumps({'Dir':str(directory.resolve()), 'Key':key,'Channel':channel.value})+'\n').encode())
             self.process.stdin.flush()
             ready = queue.Queue(1)
             threading.Thread(target=lambda: ready.put(self.process.stdout.readline(256)), daemon=True).start()
             dns = ready.get(timeout=105).decode('ascii').strip()
             if not re.fullmatch(r'[a-z0-9-]+\.[a-z0-9.-]+\.ts\.net', dns):
-                raise RuntimeError('Comprueba la clave de un solo uso con etiqueta tag:arise-mobile, MagicDNS, HTTPS y la aprobación del dispositivo en Tailscale.')
+                raise RuntimeError(f'Comprueba la clave de un solo uso con etiqueta tag:arise-{channel.value}, MagicDNS, HTTPS y la aprobación del dispositivo en Tailscale.')
             self.origin = 'https://' + dns
             self.handler = mobile_handler(runtime, self.origin)
             threading.Thread(target=self.serve, daemon=True).start()

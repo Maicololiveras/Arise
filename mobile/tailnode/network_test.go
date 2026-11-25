@@ -62,7 +62,7 @@ func TestTailnetPhone(t *testing.T) {
 	roots.AddCert(certificate)
 	const service = "arise-mobile.tail-scale.ts.net"
 	seen := make(chan string, 1)
-	g := &gateway{service, bufio.NewReader(strings.NewReader("HTTP/1.0 200 OK\r\nContent-Length: 4\r\n\r\npass")), io.Discard, make(chan struct{}, 1), make(chan struct{}, 16), func(r *http.Request) string {
+	g := &gateway{"/mobile/preview/v1", service, bufio.NewReader(strings.NewReader("HTTP/1.0 200 OK\r\nContent-Length: 4\r\n\r\npass")), io.Discard, make(chan struct{}, 1), make(chan struct{}, 16), func(r *http.Request) string {
 		w, e := local.WhoIs(r.Context(), r.RemoteAddr)
 		if e != nil {
 			return ""
@@ -77,7 +77,7 @@ func TestTailnetPhone(t *testing.T) {
 	defer tr.CloseIdleConnections()
 	addr, _ := host.TailscaleIPs()
 	client := http.Client{Transport: tr}
-	req, _ := http.NewRequestWithContext(ctx, "GET", "https://"+addr.String()+"/agents", nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", "https://"+addr.String()+"/mobile/preview/v1/agents", nil)
 	req.Host = service
 	resp, err := client.Do(req)
 	if err != nil {

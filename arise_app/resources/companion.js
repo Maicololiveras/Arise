@@ -1,6 +1,7 @@
+const mobileAPI='__MOBILE_API__';
 const $=id=>document.getElementById(id);let busy=false,last='',online=false,refreshing=false;
 let sessionEpoch=0, fetchingAgents=false;
-async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,credentials:'same-origin'});const data=await r.json();if(!r.ok){if(r.status===401)clearSession();throw Error(data.error||'No se confirmó la operación.');}return data;}
+async function api(path,body){const r=await fetch(mobileAPI+path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,credentials:'same-origin'});const data=await r.json();if(!r.ok){if(r.status===401)clearSession();throw Error(data.error||'No se confirmó la operación.');}return data;}
 async function refresh(){if(refreshing)return;refreshing=true;try{const epoch=sessionEpoch;const data=await api('/messages');if(epoch!==sessionEpoch)return;online=true;if(typeof window!=='undefined' && window.ariseLanguage)window.ariseLanguage.defaultLanguage(data.ui_language);$('pair').hidden=true;if($('activate'))$('activate').hidden=data.active;renderApprovals(data.approvals||[]);if($('attention')){const count=(data.approvals||[]).length;$('attention').hidden=!count;$('attention').textContent='Necesita tu atención';}if($('agent-panel')){$('agent-panel').hidden=false;if($('agent-panel').open)refreshAgents();}$('status').textContent=data.active?'Conectado al PC · permisos del chat conservados':'Chat inactivo en el PC · historial disponible';const signature=JSON.stringify(data.messages);if(signature===last)return;last=signature;const nearBottom=window.innerHeight+window.scrollY>=document.body.scrollHeight-100;$('messages').replaceChildren(...data.messages.map(m=>{const a=document.createElement('article');const role=document.createElement('strong');role.setAttribute('data-ui-label','');role.textContent=m.role==='user'?'Tú':'ARISE';const body=document.createElement('p');body.textContent=m.text;a.append(role,body);
 if(m.role==='assistant'){const play=document.createElement('button');play.textContent='Escuchar';play.type='button';play.onclick=()=>speakReply(m.id);a.appendChild(play);}return a;}));if(nearBottom)window.scrollTo(0,document.body.scrollHeight);}catch(e){online=false;$('status').textContent=e.message;}finally{refreshing=false;}}
 $('pair').onsubmit=async e=>{e.preventDefault();try{await api('/pair',{code:$('code').value.trim(),name:$('name').value,otp:$('otp').value.trim()});$('code').value='';$('otp').value='';await refresh();}catch(e){$('status').textContent=e.message;}};
@@ -21,7 +22,7 @@ if (typeof location !== 'undefined' && location.hash) {
 let recorder=null,playing=null;
 async function speakReply(id){
   if(playing){playing.pause();URL.revokeObjectURL(playing.src);playing=null;}
-  try{const r=await fetch('/speech',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id}),credentials:'same-origin'});
+  try{const r=await fetch(mobileAPI+'/speech',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id}),credentials:'same-origin'});
     if(!r.ok)throw Error((await r.json()).error||'No se pudo generar la voz.');
     playing=new Audio(URL.createObjectURL(await r.blob()));playing.onended=()=>URL.revokeObjectURL(playing.src);await playing.play();
   }catch(e){$('status').textContent=e.message;}
